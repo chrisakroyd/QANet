@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from math import ceil
-from util.util import load_json, pad_array
+from src.util import load_json, pad_array
 
 
 def pad(words, characters, word_limit, char_limit):
@@ -54,12 +54,12 @@ def load_context_answers(path):
     return train_context, train_answers, val_context, val_answers
 
 
-def load_data(train_path,
-              val_path,
-              question_limit,
-              context_limit,
-              char_limit,
-              max_examples=None):
+def load_squad(train_path,
+               val_path,
+               question_limit,
+               context_limit,
+               char_limit,
+               max_examples=None):
     # Read in the file, limit to max_examples and then eval the conversations
     train = load_json(train_path)
     dev = load_json(val_path)

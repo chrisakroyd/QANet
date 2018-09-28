@@ -1,7 +1,7 @@
-import nltk
 import numpy as np
 import spacy
 from collections import Counter
+from nltk import word_tokenize
 
 default_punct = set(list(' !"#$%&()*+,-./:;=@[\]^_`{|}~?'))
 default_oov_token = '<oov>'
@@ -34,7 +34,7 @@ class Tokenizer:
         if self.tokenizer == 'spacy':
             self.nlp = spacy.load('en_core_web_sm', disable=['tagger', 'ner', 'parser'])
         elif self.tokenizer == 'nltk':
-            self.nlp = nltk.word_tokenize
+            self.nlp = word_tokenize
         else:
             raise ValueError('Unknown tokenizer scheme.')
 
@@ -43,7 +43,7 @@ class Tokenizer:
 
     def tokenize(self, text):
         if self.lower:
-            text = str(text).lower()
+            text = text.lower()
         tokens = []
         for token in self.nlp(text):
             text = token.text if self.tokenizer == 'spacy' else token
@@ -53,7 +53,7 @@ class Tokenizer:
         return tokens
 
     def fit_on_texts(self, texts):
-        if isinstance(texts, str):
+        if not isinstance(texts, list):
             texts = [texts]
 
         for text in texts:
@@ -72,25 +72,25 @@ class Tokenizer:
     # Takes in trainable words and max_features, limits word index to top features and adds the trainable words as high
     # id values to permit an add operation and trainable embeddings for selected tokens.
     def update_indexes(self):
-        # Create an ordered dict of words + chars (High occurrence to least)
-        sorted_words = sorted(self.word_counter.items())
-        sorted_chars = sorted(self.char_counter.items())
-        # Create indexes of words/chars that occur greater than min and are in the vocab or not filtered.
-        word_index = {
-            word: i + 1 for i, (word, count) in enumerate(sorted_words)
+        # Create an ordered list of words + chars below the max for each.
+        sorted_words = self.word_counter.most_common(self.max_words)
+        sorted_chars = self.char_counter.most_common(self.max_chars)
+        # Create list of words/chars that occur greater than min and are in the vocab or not filtered.
+        word_index = [
+            word for (word, count) in sorted_words
             if count > self.min_word_occurrence and word in self.vocab
             and word not in self.filters and word not in self.trainable_words
-        }
-        char_index = {char: i + 1 for i, (char, count) in enumerate(sorted_chars)
-                      if count > self.min_char_occurrence and char not in self.filters}
-        # Shift to continuous range 1 to max_words.
-        word_index = {word: i + 1 for i, (word, _) in enumerate(word_index.items()) if i <= self.max_words}
-        char_index = {char: i + 1 for i, (char, _) in enumerate(char_index.items()) if i <= self.max_chars}
+        ]
+        char_index = [char for (char, count) in sorted_chars
+                      if count > self.min_char_occurrence and char not in self.filters]
+        # Shift to continuous range 1 to index length + convert to dict.
+        word_index = {word: i + 1 for i, word in enumerate(word_index)}
+        char_index = {char: i + 1 for i, char in enumerate(char_index)}
         # Add any trainable words to the end of the index (Can exceed max_words)
         vocab_size = len(word_index)
         for i, word in enumerate(self.trainable_words):
             word_index[word] = (vocab_size + i) + 1
-        # Add OOV token to the word index (Always have an OOV token).
+        # Add OOV token to the word + char index (Always have an OOV token).
         if self.oov_token not in word_index:
             word_index[self.oov_token] = len(word_index) + 1  # Add OOV as the last character
 
@@ -124,7 +124,7 @@ class Tokenizer:
     def texts_to_sequences(self, texts, max_words=15, max_chars=16, numpy=True, pad=True):
         seq_words, seq_chars, lengths = [], [], []
         # Wrap in list if string to avoid having to handle separately
-        if isinstance(texts, str):
+        if not isinstance(texts, list):
             texts = [texts]
 
         # Word indexes haven't been initialised or need updating.

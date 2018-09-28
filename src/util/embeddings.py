@@ -1,5 +1,5 @@
 import numpy as np
-from util.util import load_json
+from .util import load_json
 
 
 def create_vocab(path):
@@ -81,6 +81,26 @@ def load_embeddings(path,
     embedding_matrix, oov_count = load_embedding_matrix(embedding_index, word_index, embedding_dimensions)
 
     return embedding_matrix, trainable_matrix
+
+
+def save_embeddings(path, embedding_matrix, word_index):
+    with open(path, 'w', encoding='utf8') as embeddings:
+        for key, value in word_index.items():
+            embed = embedding_matrix[value, :]
+            embeddings.write('%s %s\n' % (key, ' '.join(map(str, embed))))
+
+
+def merge_embeddings(embedding_matrix, trainable_embedding_matrix, word_index, trainable_words):
+    vocab_size = len(word_index) + 1
+    num_trainable = len(trainable_words) + 1
+    valid_word_range = vocab_size - num_trainable
+
+    for word in trainable_words:
+        index = word_index[word]
+        # Merge the trainable and embedding matrix
+        embedding_matrix[index] = trainable_embedding_matrix[index - valid_word_range]
+
+    return embedding_matrix
 
 
 def load_contextual_embeddings(index_paths, embedding_paths, embed_dim, char_dim):
