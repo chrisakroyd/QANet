@@ -19,9 +19,10 @@ def model_config(defaults):
     flags.DEFINE_string('dataset', defaults.dataset, 'Which dataset to use, e.g. Squad or MS Marco.')
     # Adds a name for this run.
     flags.DEFINE_string('run_name', defaults.run_name, 'Name for this run of training.')
-    # Within these flags we define where to find the original GLoVe/FastText embeddings and where to save data.
+    # Within these flags we define where to find the original GLoVe/FastText embeddings and where to find/save data.
     flags.DEFINE_string('embedding_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
-    flags.DEFINE_string('data_save_dir', defaults.embedding_save_dir,
+    flags.DEFINE_string('squad_dir', defaults.squad_dir, 'Directory where squad data is saved.')
+    flags.DEFINE_string('data_save_dir', defaults.data_save_dir,
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
     flags.DEFINE_string('log_dir', defaults.log_dir, 'Directory to save tf.summary logs.')
@@ -47,7 +48,7 @@ def model_config(defaults):
     flags.DEFINE_integer('min_char_occur', defaults.min_chars,
                          'Min times a character must be seen to be included in the char index.')
     # QANet paper utilises a trainable OOV token, we also allow specification of multiple trainable word embeddings.
-    flags.DEFINE_integer('oov_token', defaults.oov_token, 'Which word represents out of vocab words.')
+    flags.DEFINE_string('oov_token', defaults.oov_token, 'Which word represents out of vocab words.')
     flags.DEFINE_list('trainable_words', defaults.trainable_words, 'Which words should have trainable embeddings.')
     # Flags for the pre-processing pipeline.
     flags.DEFINE_integer('shuffle_buffer_size', defaults.shuffle_buffer_size,
@@ -78,11 +79,12 @@ def model_config(defaults):
     flags.DEFINE_float('l2_weight_decay', defaults.l2_strength, 'L2 weight decay strength.')
     flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.')
     flags.DEFINE_float('learning_rate', defaults.learning_rate, 'Learning rate.')
-    flags.DEFINE_boolean('enable_ema', defaults.enable_ema, 'Enable Exponential moving average weight decay.')
     flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.')
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')
     flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint.')
     flags.DEFINE_integer('save_loss_every', defaults.save_loss_every, 'After how many steps do we save the loss value.')
     flags.DEFINE_integer('run_val_every', defaults.run_val_every, 'After how many steps do we calculate EM/F1 scores.')
+    # @TODO Still to implement.
     flags.DEFINE_integer('early_stop', defaults.early_stop, 'Early stop patience.')
+    return flags

@@ -1,4 +1,3 @@
-import tensorflow as tf
 from src.constants import FilePaths
 from src.util import namespace_json
 from src.config import gpu_config, model_config
@@ -10,7 +9,7 @@ from demo import demo
 
 def main(config, flags):
     hparams = flags.FLAGS
-    mode = config.mode.lower()
+    mode = hparams.mode.lower()
 
     if mode == 'train':
         train(config, hparams)
@@ -26,5 +25,5 @@ def main(config, flags):
 
 
 if __name__ == '__main__':
-    defaults = namespace_json(path=FilePaths.defaults)
-    tf.app.run(main=main, argv=[gpu_config(), model_config(defaults)])
+    defaults = namespace_json(path=FilePaths.defaults.value)
+    main(gpu_config(), model_config(defaults))

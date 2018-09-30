@@ -4,12 +4,11 @@ from collections import Counter
 from nltk import word_tokenize
 
 default_punct = set(list(' !"#$%&()*+,-./:;=@[\]^_`{|}~?'))
-default_oov_token = '<oov>'
 
 
 class Tokenizer:
     def __init__(self, lower=False, filters=default_punct, max_words=25000, max_chars=2500, min_word_occurrence=-1,
-                 min_char_occurrence=-1, vocab=None, word_index=None, char_index=None, oov_token=default_oov_token,
+                 min_char_occurrence=-1, vocab=None, word_index=None, char_index=None, oov_token='<oov>',
                  trainable_words=None, tokenizer='spacy', use_chars=True):
         self.word_counter = Counter()
         self.char_counter = Counter()
@@ -39,6 +38,8 @@ class Tokenizer:
             raise ValueError('Unknown tokenizer scheme.')
 
         if not isinstance(self.filters, set):
+            if isinstance(self.filters, str):
+                filters = list(filters)
             self.filters = set(filters)
 
     def tokenize(self, text):
@@ -83,10 +84,10 @@ class Tokenizer:
         ]
         char_index = [char for (char, count) in sorted_chars
                       if count > self.min_char_occurrence and char not in self.filters]
-        # Shift to continuous range 1 to index length + convert to dict.
+        # Give each word id's in continuous range 1 to index length + convert to dict.
         word_index = {word: i + 1 for i, word in enumerate(word_index)}
         char_index = {char: i + 1 for i, char in enumerate(char_index)}
-        # Add any trainable words to the end of the index (Can exceed max_words)
+        # Add any trainable words to the end of the index (Therefore can exceed max_words)
         vocab_size = len(word_index)
         for i, word in enumerate(self.trainable_words):
             word_index[word] = (vocab_size + i) + 1

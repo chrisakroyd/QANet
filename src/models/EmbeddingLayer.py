@@ -23,12 +23,12 @@ class HighwayLayer(tf.keras.Model):
                                             padding='same',
                                             name='activation_%d' % layer_id)
 
-        # self.gate_dropout = tf.keras.layers.Dropout(rate=dropout)
+        self.gate_dropout = tf.keras.layers.Dropout(rate=dropout)
         self.trans_dropout = tf.keras.layers.Dropout(rate=dropout)
 
     def call(self, x, training=None, mask=None):
         gate_out = self.gate(x)
-        # gate_out = self.gate_dropout(gate_out)
+        gate_out = self.gate_dropout(gate_out)
         trans_out = self.trans(x)
         trans_out = self.trans_dropout(trans_out)
         out = gate_out * trans_out + (1 - gate_out) * x

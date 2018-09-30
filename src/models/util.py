@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def create_placeholders(context_limit, question_limit, char_limit, size):
+def create_placeholders(context_limit, question_limit, char_limit):
     ctxt_words = tf.placeholder(dtype=tf.int32, shape=(None, context_limit, ), name='context_words')
     ctxt_chars = tf.placeholder(dtype=tf.int32, shape=(None, context_limit, char_limit, ), name='context_chars')
     ques_words = tf.placeholder(dtype=tf.int32, shape=(None, question_limit, ), name='question_words')

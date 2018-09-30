@@ -160,7 +160,7 @@ class ConvBlock(tf.keras.Model):
                                                               kernel_size=kernel_size,
                                                               strides=1,
                                                               padding='same',
-                                                              use_bias=True,
+                                                              use_bias=False,
                                                               activation='relu')
 
         self.layer_norm = LayerNorm()
@@ -213,7 +213,7 @@ class FeedForwardBlock(tf.keras.Model):
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
         self.dropout = tf.keras.layers.Dropout(dropout)
-        # Our convoloutional feed forward layers
+        # Feed forward layers, follows Attention is all you need. (Position-wise Feed-Forward Networks)
         self.conv_ff_1 = tf.keras.layers.Conv1D(filters,
                                                 kernel_size=1,
                                                 strides=1,

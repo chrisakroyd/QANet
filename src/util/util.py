@@ -32,7 +32,7 @@ def load_json(path):
 
 
 def namespace_json(path):
-    return SimpleNamespace(load_json(path))
+    return SimpleNamespace(**load_json(path))
 
 
 # Generates a dict that acts a word_index for the trainable_words.

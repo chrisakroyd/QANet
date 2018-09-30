@@ -3,53 +3,40 @@ from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttenti
 
 
 class QANet:
-    def __init__(self, embedding_matrix, char_matrix, trainable_matrix, train=True,
-                 learn_rate=0.001, gradient_decay=0.9999, filters=128, heads=1, embed_dim=300, char_dim=200,
-                 context_limit=400, question_limit=50, answer_limit=30, char_limit=16, dropout=0.1, l2=3e-7,
-                 elmo=False, limit_to_max=True):
-        self.learn_rate = learn_rate
-        self.gradient_decay = gradient_decay
-        self.filters = filters
-        self.heads = heads
-        self.context_limit = context_limit
-        self.question_limit = question_limit
-        self.answer_limit = answer_limit
-        self.char_limit = char_limit
-        self.dropout = dropout
-        self.elmo = elmo
+    def __init__(self, embedding_matrix, char_matrix, trainable_matrix, hparams, train=True):
         self.train = train
-        self.limit_to_max = limit_to_max
+        self.hparams = hparams
         self.global_step = tf.train.get_or_create_global_step()
-        self.l2 = l2
         # These are the model layers, Primarily think of this as 1 embedding encoder shared between
         # context + query -> context_attention -> 1 * encoder layers run 3 times with the first 2 outputs
         # being used to calc the start prob + last two outputs used to calc the end prob.
         # Optionally use elmo (requires tokenized text rather than index input.
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
-                                                         filters=filters, char_limit=char_limit,
-                                                         word_dim=embed_dim, char_dim=char_dim, mask_zero=False)
+                                              filters=self.hparams.filters, char_limit=self.hparams.char_limit,
+                                              word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim,
+                                              mask_zero=False)
 
-        self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=1,
-                                                             conv_layers=4,
-                                                             kernel_size=7,
-                                                             filters=filters,
-                                                             heads=heads,
-                                                             dropout=self.dropout,
+        self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
+                                                             conv_layers=self.hparams.embed_encoder_convs,
+                                                             kernel_size=self.hparams.embed_encoder_kernel_width,
+                                                             filters=self.hparams.filters,
+                                                             heads=self.hparams.heads,
+                                                             dropout=self.hparams.dropout,
                                                              name='embedding_encoder')
 
         self.context_query = ContextQueryAttention()
 
-        self.input_projection = tf.keras.layers.Conv1D(filters,
+        self.input_projection = tf.keras.layers.Conv1D(self.hparams.filters,
                                                        strides=1,
                                                        use_bias=False,
                                                        kernel_size=1)
 
-        self.model_encoder_blocks = StackedEncoderBlocks(blocks=7,
-                                                         conv_layers=2,
-                                                         kernel_size=5,
-                                                         filters=filters,
-                                                         heads=heads,
-                                                         dropout=self.dropout,
+        self.model_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.model_encoder_blocks,
+                                                         conv_layers=self.hparams.model_encoder_convs,
+                                                         kernel_size=self.hparams.model_encoder_kernel_width,
+                                                         filters=self.hparams.filters,
+                                                         heads=self.hparams.heads,
+                                                         dropout=self.hparams.dropout,
                                                          name='model_encoder')
 
         self.start_output = OutputLayer()
@@ -59,9 +46,8 @@ class QANet:
         self.end_softmax = tf.keras.layers.Softmax()
 
     def init(self, placeholders):
-        if self.elmo:
-            self.context_words, self.context_length, self.question_words, self.question_length, \
-            self.y_start, self.y_end, self.answer_id = placeholders
+        if self.hparams.use_elmo:
+            self.context_words, self.question_words, self.y_start, self.y_end, self.answer_id = placeholders
         else:
             self.context_words, self.context_chars, self.question_words, self.question_chars, \
             self.y_start, self.y_end, self.answer_id = placeholders
@@ -70,7 +56,7 @@ class QANet:
         self.step()
 
         if self.train:
-            self.add_train_ops(self.learn_rate)
+            self.add_train_ops(self.hparams.learn_rate)
 
     def masks(self):
         # Initialize the masks
@@ -83,13 +69,14 @@ class QANet:
         self.lr = tf.minimum(learn_rate,  0.001 / tf.log(999.) * tf.log(tf.cast(self.global_step, tf.float32) + 1))
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr, beta1=0.8, epsilon=1e-7)
 
-        grads = self.optimizer.compute_gradients(self.loss)
-        gradients, variables = zip(*grads)
-        capped_grads, _ = tf.clip_by_global_norm(gradients, 5.0)
-        self.train_op = self.optimizer.apply_gradients(
-            zip(capped_grads, variables), global_step=self.global_step)
-
-        # self.train_op = self.optimizer.minimize(self.loss, self.global_step)
+        if self.hparams.gradient_clip > 0.0:
+            grads = self.optimizer.compute_gradients(self.loss)
+            gradients, variables = zip(*grads)
+            capped_grads, _ = tf.clip_by_global_norm(gradients, self.hparams.gradient_clip)
+            self.train_op = self.optimizer.apply_gradients(
+                zip(capped_grads, variables), global_step=self.global_step)
+        else:
+            self.train_op = self.optimizer.minimize(self.loss, self.global_step)
 
     def slice_ops(self):
         self.context_max = tf.reduce_max(self.context_length)
@@ -98,16 +85,16 @@ class QANet:
         self.question_words = tf.slice(self.question_words, [0, 0], [-1, self.question_max])
         self.context_mask = tf.slice(self.context_mask, [0, 0], [-1, self.context_max])
         self.question_mask = tf.slice(self.question_mask, [0, 0], [-1, self.question_max])
-        self.context_chars = tf.slice(self.context_chars, [0, 0, 0], [-1, self.context_max, self.char_limit])
-        self.question_chars = tf.slice(self.question_chars, [0, 0, 0], [-1, self.question_max, self.char_limit])
+        self.context_chars = tf.slice(self.context_chars, [0, 0, 0], [-1, self.context_max, self.hparams.char_limit])
+        self.question_chars = tf.slice(self.question_chars, [0, 0, 0], [-1, self.question_max, self.hparams.char_limit])
 
     def step(self):
-        if self.elmo:
+        if self.hparams.use_elmo:
             # Run through the embedding block
             c_emb = self.embedding_block(self.context_words, self.context_length)
             q_emb = self.embedding_block(self.question_words, self.question_length)
         else:
-            if self.limit_to_max:
+            if self.hparams.limit_to_max:
                 self.slice_ops()
             # Embed the question + context
             c_emb = self.embedding_block([self.context_words, self.context_chars, self.context_max])
@@ -133,7 +120,7 @@ class QANet:
         outer = tf.matmul(tf.expand_dims(self.start_softmax(logits_start), axis=2),
                           tf.expand_dims(self.end_softmax(logits_end), axis=1))
 
-        outer = tf.matrix_band_part(outer, 0, self.answer_limit)
+        outer = tf.matrix_band_part(outer, 0, self.hparams.answer_limit)
         self.yp1 = tf.argmax(tf.reduce_max(outer, axis=2), axis=1)
         self.yp2 = tf.argmax(tf.reduce_max(outer, axis=1), axis=1)
 
@@ -147,13 +134,13 @@ class QANet:
         self.loss = tf.reduce_mean(loss_start + loss_end)
 
         # Add regularization loss over all trainable weights.
-        if self.l2:
-            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables() if 'bias' not in v.name])\
-                           * self.l2
+        if self.hparams.l2_strength > 0.0:
+            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2_strength
             self.loss += self.l2_loss
 
-        if self.gradient_decay is not None:
-            self.var_ema = tf.train.ExponentialMovingAverage(self.gradient_decay)
+        # EMA maintains a shadow copy of the trainable variables, increases memory usage as well as test performonce.
+        if self.hparams.ema_decay > 0.0:
+            self.var_ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay)
             ema_op = self.var_ema.apply(tf.trainable_variables())
 
             with tf.control_dependencies([ema_op]):

@@ -65,10 +65,11 @@ def load_embedding_matrix(embedding_index, word_index, embedding_dimensions):
 def load_embeddings(path,
                     word_index,
                     embedding_dimensions=300,
-                    trainable_embeddings=[]):
+                    trainable_embeddings=[],
+                    embedding_index=None):
     print('Loading embeddings...')
-    # Read the embeddings file
-    embedding_index = read_embeddings_file(path)
+    # Read the given embeddings file if its not given.
+    embedding_index = embedding_index if embedding_index is not None else read_embeddings_file(path)
 
     if len(trainable_embeddings) > 0:
         trainable_matrix, embedding_index = generate_trainable_matrix(embedding_index,

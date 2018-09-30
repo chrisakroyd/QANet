@@ -1,0 +1,1 @@
+from .squad import squad_process
