@@ -17,7 +17,6 @@ class Tokenizer:
 
         self.word_index = word_index if word_index else {}
         self.char_index = char_index if char_index else {}
-        self.filters = filters
         self.max_words = max_words
         self.max_chars = max_chars
         self.oov_token = oov_token
@@ -37,10 +36,10 @@ class Tokenizer:
         else:
             raise ValueError('Unknown tokenizer scheme.')
 
-        if not isinstance(self.filters, set):
-            if isinstance(self.filters, str):
+        if not isinstance(filters, set):
+            if isinstance(filters, str):
                 filters = list(filters)
-            self.filters = set(filters)
+            self.filters = set(filters if filters else [])
 
     def tokenize(self, text):
         if self.lower:

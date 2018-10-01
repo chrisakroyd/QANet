@@ -160,7 +160,7 @@ class ConvBlock(tf.keras.Model):
                                                               kernel_size=kernel_size,
                                                               strides=1,
                                                               padding='same',
-                                                              use_bias=False,
+                                                              use_bias=True,
                                                               activation='relu')
 
         self.layer_norm = LayerNorm()

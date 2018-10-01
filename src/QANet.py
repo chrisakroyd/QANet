@@ -10,7 +10,7 @@ class QANet:
         # These are the model layers, Primarily think of this as 1 embedding encoder shared between
         # context + query -> context_attention -> 1 * encoder layers run 3 times with the first 2 outputs
         # being used to calc the start prob + last two outputs used to calc the end prob.
-        # Optionally use elmo (requires tokenized text rather than index input.
+        # Optionally use elmo (requires tokenized text rather than index input).
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                               filters=self.hparams.filters, char_limit=self.hparams.char_limit,
                                               word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim,
@@ -94,8 +94,11 @@ class QANet:
             c_emb = self.embedding_block(self.context_words, self.context_length)
             q_emb = self.embedding_block(self.question_words, self.question_length)
         else:
-            if self.hparams.limit_to_max:
+            if self.hparams.slice_to_max:
                 self.slice_ops()
+            else:
+                self.context_max = self.hparams.context_limit
+                self.question_max = self.hparams.question_limit
             # Embed the question + context
             c_emb = self.embedding_block([self.context_words, self.context_chars, self.context_max])
             q_emb = self.embedding_block([self.question_words, self.question_chars, self.question_max])
@@ -134,8 +137,8 @@ class QANet:
         self.loss = tf.reduce_mean(loss_start + loss_end)
 
         # Add regularization loss over all trainable weights.
-        if self.hparams.l2_strength > 0.0:
-            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2_strength
+        if self.hparams.l2 > 0.0:
+            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2
             self.loss += self.l2_loss
 
         # EMA maintains a shadow copy of the trainable variables, increases memory usage as well as test performonce.

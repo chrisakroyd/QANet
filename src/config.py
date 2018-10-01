@@ -20,13 +20,12 @@ def model_config(defaults):
     # Adds a name for this run.
     flags.DEFINE_string('run_name', defaults.run_name, 'Name for this run of training.')
     # Within these flags we define where to find the original GLoVe/FastText embeddings and where to find/save data.
-    flags.DEFINE_string('embedding_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
+    flags.DEFINE_string('embeddings_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
     flags.DEFINE_string('squad_dir', defaults.squad_dir, 'Directory where squad data is saved.')
-    flags.DEFINE_string('data_save_dir', defaults.data_save_dir,
+    flags.DEFINE_string('data_dir', defaults.data_dir,
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
-    flags.DEFINE_string('log_dir', defaults.log_dir, 'Directory to save tf.summary logs.')
-    flags.DEFINE_string('model_save_dir', defaults.save_dir, 'Directory to save the model.')
+    flags.DEFINE_string('out_dir', defaults.out_dir, 'Directory to save the models, logs and answer files.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')
     flags.DEFINE_boolean('embedding_projector', defaults.embedding_projector,
@@ -76,9 +75,9 @@ def model_config(defaults):
                          'Kernel width of each conv layer of the model encoder.')
     # Flags for train hyper params e.g. dropout, l2, gradient ema decay values (set to QANet paper values).
     flags.DEFINE_float('dropout', defaults.dropout, 'Fraction of units to drop.')
-    flags.DEFINE_float('l2_weight_decay', defaults.l2_strength, 'L2 weight decay strength.')
+    flags.DEFINE_float('l2', defaults.l2, 'L2 weight decay.')
     flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.')
-    flags.DEFINE_float('learning_rate', defaults.learning_rate, 'Learning rate.')
+    flags.DEFINE_float('learn_rate', defaults.learning_rate, 'Learning rate.')
     flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.')
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')

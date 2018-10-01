@@ -1,5 +1,5 @@
 import tensorflow as tf
-from models.utils import mask_logits
+from src.models.utils import mask_logits
 
 
 class OutputLayer(tf.keras.layers.Layer):

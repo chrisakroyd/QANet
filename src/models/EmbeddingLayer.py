@@ -18,8 +18,7 @@ class HighwayLayer(tf.keras.Model):
                                             kernel_size=1,
                                             strides=1,
                                             use_bias=bias,
-                                            # activation='relu',
-                                            activation=None,
+                                            activation='relu',
                                             padding='same',
                                             name='activation_%d' % layer_id)
 

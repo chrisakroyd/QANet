@@ -2,8 +2,7 @@ import numpy as np
 from .util import load_json
 
 
-def create_vocab(path):
-    embedding_index = read_embeddings_file(path)
+def create_vocab(embedding_index):
     vocab = set([e for e, _ in embedding_index.items()])
     return vocab
 

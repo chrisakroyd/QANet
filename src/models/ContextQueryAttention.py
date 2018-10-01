@@ -1,5 +1,5 @@
 import tensorflow as tf
-from models.utils import dot, batch_dot, mask_logits
+from src.models.utils import dot, batch_dot, mask_logits
 
 
 class ContextQueryAttention(tf.keras.layers.Layer):

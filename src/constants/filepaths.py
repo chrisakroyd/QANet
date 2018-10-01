@@ -10,13 +10,11 @@ class FilePaths(Enum):
 
 
 class FileNames(Enum):
-    train_squad_1 = 'train-v.1.1.json'
-    dev_squad_1 = 'dev-v.1.1.json'
+    train_squad_1 = 'train-v1.1.json'
+    dev_squad_1 = 'dev-v1.1.json'
     embedding_types = ['word', 'trainable', 'char']
     data_types = ['train', 'dev']
     index = '{}_index.json'
     embeddings = '{}_embeddings.txt'
-    indexed = '{}_indexed.json'
-    elmo = '{}_elmo.json'
     context = '{}_contexts.json'
     answers = '{}_answers.json'
