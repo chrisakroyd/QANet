@@ -5,7 +5,7 @@ import tensorflow as tf
 from collections import Counter
 
 
-def evaluate_list(results, contexts, answers, data_type, writer, step):
+def evaluate_list(results, contexts, answers, data_type=None, writer=None, step=0):
     answer_texts = {}
     losses = []
 
@@ -18,14 +18,14 @@ def evaluate_list(results, contexts, answers, data_type, writer, step):
 
     metrics = calc_metrics(answer_texts, losses, data_type, writer, step)
 
-    return metrics
+    return metrics, answer_texts
 
 
-def calc_metrics(answer_texts, losses, data_type, writer, step):
+def calc_metrics(answer_texts, losses, data_type=None, writer=None, step=0):
     metrics = evaluate(answer_texts)
     metrics["loss"] = np.mean(losses)
 
-    if writer is not None:
+    if writer is not None and data_type is not None:
         writer.add_summary(tf.Summary(value=[tf.Summary.Value(tag="{}/loss".format(data_type),
                                                               simple_value=metrics["loss"]), ]), step)
         writer.add_summary(tf.Summary(value=[tf.Summary.Value(

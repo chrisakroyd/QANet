@@ -102,6 +102,7 @@ def train(config, hparams):
                 evaluate_list(val_results, val_contexts, val_answers, 'val', writer, global_step)
                 train_results = []
 
+            # @TODO Add in saving trained embeddings.
             # Save the model weights.
             if global_step % hparams.checkpoint_every == 0:
                 writer.flush()
