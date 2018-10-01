@@ -1,1 +1,1 @@
-from .squad import squad_process
+from .squad import process as squad_process
