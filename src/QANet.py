@@ -14,7 +14,7 @@ class QANet:
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                               filters=self.hparams.filters, char_limit=self.hparams.char_limit,
                                               word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim,
-                                              mask_zero=False)
+                                              mask_zero=True)
 
         self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
                                                              conv_layers=self.hparams.embed_encoder_convs,
@@ -46,11 +46,8 @@ class QANet:
         self.end_softmax = tf.keras.layers.Softmax()
 
     def init(self, placeholders):
-        if self.hparams.use_elmo:
-            self.context_words, self.question_words, self.y_start, self.y_end, self.answer_id = placeholders
-        else:
-            self.context_words, self.context_chars, self.question_words, self.question_chars, \
-            self.y_start, self.y_end, self.answer_id = placeholders
+        self.context_words, self.context_chars, self.question_words, self.question_chars, \
+        self.y_start, self.y_end, self.answer_id = placeholders
 
         self.masks()
         self.step()
@@ -74,7 +71,7 @@ class QANet:
             gradients, variables = zip(*grads)
             capped_grads, _ = tf.clip_by_global_norm(gradients, self.hparams.gradient_clip)
             self.train_op = self.optimizer.apply_gradients(
-                zip(capped_grads, variables), global_step=self.global_step)
+                    zip(capped_grads, variables), global_step=self.global_step)
         else:
             self.train_op = self.optimizer.minimize(self.loss, self.global_step)
 
@@ -89,19 +86,14 @@ class QANet:
         self.question_chars = tf.slice(self.question_chars, [0, 0, 0], [-1, self.question_max, self.hparams.char_limit])
 
     def step(self):
-        if self.hparams.use_elmo:
-            # Run through the embedding block
-            c_emb = self.embedding_block(self.context_words, self.context_length)
-            q_emb = self.embedding_block(self.question_words, self.question_length)
-        else:
-            if self.hparams.slice_to_max:
+        if self.hparams.slice_to_max:
                 self.slice_ops()
-            else:
-                self.context_max = self.hparams.context_limit
-                self.question_max = self.hparams.question_limit
-            # Embed the question + context
-            c_emb = self.embedding_block([self.context_words, self.context_chars, self.context_max])
-            q_emb = self.embedding_block([self.question_words, self.question_chars, self.question_max])
+        else:
+            self.context_max = self.hparams.context_limit
+            self.question_max = self.hparams.question_limit
+        # Embed the question + context
+        c_emb = self.embedding_block([self.context_words, self.context_chars, self.context_max])
+        q_emb = self.embedding_block([self.question_words, self.question_chars, self.question_max])
 
         # Encode the question + context with the embedding encoder
         c = self.embedding_encoder_blocks(c_emb, training=self.train, mask=self.context_mask)
@@ -138,15 +130,20 @@ class QANet:
 
         # Add regularization loss over all trainable weights.
         if self.hparams.l2 > 0.0:
-            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2
-            self.loss += self.l2_loss
+            with tf.name_scope('l2_ops'):
+                self.l2_test2 = [tf.trainable_variables()[0], tf.trainable_variables()[1]]
+                self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2
+                self.loss += self.l2_loss
+        else:
+            self.l2_loss = tf.identity(0.0)
 
-        # EMA maintains a shadow copy of the trainable variables, increases memory usage as well as test performonce.
+        # EMA maintains a shadow copy of the trainable variables, increases memory usage as well as test performance.
         if self.hparams.ema_decay > 0.0:
-            self.var_ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay)
-            ema_op = self.var_ema.apply(tf.trainable_variables())
+            with tf.name_scope('ema_ops'):
+                self.var_ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay)
+                ema_op = self.var_ema.apply(tf.trainable_variables())
 
-            with tf.control_dependencies([ema_op]):
-                self.reg_loss = tf.identity(self.l2_loss)
-                self.loss = tf.identity(self.loss)
-                self.assign_vars = [tf.assign(var, self.var_ema.average(var)) for var in tf.trainable_variables()]
+                with tf.control_dependencies([ema_op]):
+                    self.reg_loss = tf.identity(self.l2_loss)
+                    self.loss = tf.identity(self.loss)
+                    self.assign_vars = [tf.assign(var, self.var_ema.average(var)) for var in tf.trainable_variables()]

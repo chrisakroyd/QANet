@@ -5,16 +5,16 @@ from src.config import gpu_config, model_config
 from src.constants import FilePaths
 from src.loaders import load_squad
 from src.metrics import evaluate_list
-from src.models import create_placeholders, create_dataset
+from src.pipeline import create_placeholders, create_dataset
 from src.QANet import QANet
-from src.util import namespace_json, load_contextual_embeddings, make_dirs, train_paths, embedding_paths
+from src.util import namespace_json, load_contextual_embeddings, make_dirs, train_paths, embedding_paths, save_json
 
 
 def train(config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
     data_directory, model_directory, log_directory = train_paths(hparams)
-    word_index_path, word_embedding_path, char_index_path, character_embedding_path, trainable_index_path, \
-    trainable_embedding_path, = embedding_paths(hparams)
+    word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
+    character_embedding_path = embedding_paths(hparams)
     make_dirs([model_directory, log_directory])
 
     train, val = load_squad(hparams)
@@ -23,8 +23,8 @@ def train(config, hparams):
     val, val_contexts, val_answers = val
 
     word_matrix, trainable_matrix, character_matrix = load_contextual_embeddings(
-        index_paths=(word_index_path, trainable_index_path, char_index_path,),
-        embedding_paths=(word_embedding_path, trainable_embedding_path, character_embedding_path),
+        index_paths=(word_index_path, trainable_index_path, char_index_path, ),
+        embedding_paths=(word_embedding_path, trainable_embedding_path, character_embedding_path, ),
         embed_dim=hparams.embed_dim,
         char_dim=hparams.char_dim
     )
@@ -79,8 +79,6 @@ def train(config, hparams):
                 answer_ids, loss, l2_loss, answer_starts, answer_ends, _ = sess.run(
                     [model.answer_id, model.loss, model.l2_loss, model.yp1, model.yp2, model.train_op],
                     feed_dict={handle: train_handle})
-            # Cache the result of the run for train evaluation.
-            train_results.append((answer_ids, loss, answer_starts, answer_ends,))
 
             # Save the loss + l2 loss
             if global_step % hparams.save_loss_every == 0:

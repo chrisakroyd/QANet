@@ -71,8 +71,12 @@ class EmbeddingLayer(tf.keras.Model):
                                                                                        verify_shape=True),
                                         name='char_embedding')
 
-        self.char_conv = tf.keras.layers.Conv1D(filters, kernel_size=kernel_size, activation='relu',
+        self.char_conv = tf.keras.layers.Conv1D(filters,
+                                                kernel_size=kernel_size,
+                                                activation='relu',
                                                 name='char_embed_conv')
+
+        self.max_pool = tf.keras.layers.GlobalMaxPool1D()
 
         self.word_embedding_dropout = tf.keras.layers.Dropout(word_dropout)
         self.character_embedding_dropout = tf.keras.layers.Dropout(char_dropout)
@@ -101,7 +105,7 @@ class EmbeddingLayer(tf.keras.Model):
         char_embedding = self.character_embedding_dropout(char_embedding)
 
         char_embedding = self.char_conv(char_embedding)
-        char_embedding = tf.reduce_max(char_embedding, axis=1)
+        char_embedding = self.max_pool(char_embedding)
         char_embedding = tf.reshape(char_embedding, shape=(-1, input_length, char_embedding.shape[-1],))
 
         trainable_embedding = self.trainable_embedding(self.trainable_tokens_mask(words))

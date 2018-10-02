@@ -4,7 +4,7 @@ from src.config import gpu_config, model_config
 from src.constants import FilePaths
 from src.loaders import load_squad
 from src.metrics import evaluate_list
-from src.models import create_placeholders, create_dataset
+from src.pipeline import create_placeholders, create_dataset
 from src.QANet import QANet
 from src.util import namespace_json, load_contextual_embeddings, train_paths, embedding_paths
 

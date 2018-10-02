@@ -14,10 +14,11 @@ def pad(words, characters, word_limit, char_limit):
 
 def load_squad_set(contexts, answers, hparams):
     data_size = len(answers)
+    # Size of each dimension
     context_limit = hparams.context_limit
     question_limit = hparams.question_limit
     char_limit = hparams.char_limit
-
+    # Init the arrays to hold the data.
     context_words = np.zeros((data_size, context_limit), dtype=np.int32)
     context_chars = np.zeros((data_size, context_limit, char_limit), dtype=np.int32)
     question_words = np.zeros((data_size, question_limit), dtype=np.int32)
@@ -25,21 +26,29 @@ def load_squad_set(contexts, answers, hparams):
     answer_starts = np.zeros((data_size, ), dtype=np.int32)
     answer_ends = np.zeros((data_size, ), dtype=np.int32)
     answer_ids = np.zeros((data_size, ), dtype=np.int32)
+    # Pad the context words + chars and cache
+    context_cache = {key: pad(value['context_words'], value['context_chars'], context_limit, char_limit)
+                     for key, value in contexts.items()}
 
     for i, (key, row) in enumerate(answers.items()):
         context_id = str(row['context_id'])
-        row_context_words = contexts[context_id]['context_words']
-        row_context_chars = contexts[context_id]['context_chars']
         row_question_words = row['question_words']
         row_question_chars = row['question_chars']
 
-        context_words[i], context_chars[i] = pad(row_context_words, row_context_chars, context_limit, char_limit)
+        cached = context_cache[context_id]
+        context_words[i] = np.copy(cached[0])
+        context_chars[i] = np.copy(cached[-1])
         question_words[i], question_chars[i] = pad(row_question_words, row_question_chars, question_limit, char_limit)
 
         answer_starts[i] = row['answer_starts']
         answer_ends[i] = row['answer_ends']
-
         answer_ids[i] = row['answer_id']
+
+        # Check that we have no entries of just 0.
+        assert np.count_nonzero(context_words[i]) > 0
+        assert np.count_nonzero(context_chars[i]) > 0
+        assert np.count_nonzero(question_words[i]) > 0
+        assert np.count_nonzero(question_chars[i]) > 0
 
     return context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids
 

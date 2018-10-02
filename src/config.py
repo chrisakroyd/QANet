@@ -28,8 +28,6 @@ def model_config(defaults):
     flags.DEFINE_string('out_dir', defaults.out_dir, 'Directory to save the models, logs and answer files.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')
-    flags.DEFINE_boolean('embedding_projector', defaults.embedding_projector,
-                         'Whether or not to visualise embeddings with tf.summary.')
     flags.DEFINE_boolean('runtime_data', defaults.runtime_data,
                          'Whether or not to collect runtime metadata for tf.summary.')
     # Dimension for the word + char embeddings. Char embeddings are generated during the pre-processing stage.
