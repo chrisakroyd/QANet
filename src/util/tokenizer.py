@@ -40,6 +40,8 @@ class Tokenizer:
             if isinstance(filters, str):
                 filters = list(filters)
             self.filters = set(filters if filters else [])
+        else:
+            self.filters = filters
 
     def tokenize(self, text):
         if self.lower:

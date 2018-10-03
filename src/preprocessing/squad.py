@@ -126,6 +126,7 @@ def process(hparams):
     word_index_path, word_embeddings_path, trainable_index_path, trainable_embeddings_path, char_index_path,\
     char_embeddings_path = embedding_paths(hparams)
     # Read the embedding index and create a vocab of words with embeddings.
+    print('Loading Embeddings, this may take some time...')
     embedding_index = read_embeddings_file(hparams.embeddings_path)
     vocab = create_vocab(embedding_index)
 

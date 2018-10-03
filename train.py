@@ -80,6 +80,9 @@ def train(config, hparams):
                     [model.answer_id, model.loss, model.l2_loss, model.yp1, model.yp2, model.train_op],
                     feed_dict={handle: train_handle})
 
+            # Cache the result of the run for train evaluation.
+            train_results.append((answer_ids, loss, answer_starts, answer_ends,))
+
             # Save the loss + l2 loss
             if global_step % hparams.save_loss_every == 0:
                 loss_sum = tf.Summary(value=[tf.Summary.Value(tag="model/loss", simple_value=loss)])

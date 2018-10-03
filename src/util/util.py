@@ -22,12 +22,7 @@ def namespace_json(path):
 
 # Generates a dict that acts a word_index for the trainable_words.
 def index_from_list(words, add_one=True):
-    index = {}
-
-    for i, word in enumerate(words):
-        index[word] = (i + 1) if add_one else i  # As word-index is 1 indexed.
-
-    return index
+    return {word: (i+1) if add_one else i for i, word in enumerate(words)}
 
 
 def concat_arrays(arrays):

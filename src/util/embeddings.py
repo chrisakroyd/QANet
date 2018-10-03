@@ -8,7 +8,7 @@ def create_vocab(embedding_index):
 
 
 def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
-    rows = len(index) + 2 if skip_zero else len(index) + 1
+    rows = len(index) + 1 if skip_zero else len(index)
     matrix = np.random.random_sample((rows, embedding_dimensions)) - 0.5
     return matrix
 
@@ -45,19 +45,19 @@ def load_embedding_matrix(embedding_index, word_index, embedding_dimensions):
     embedding_matrix = np.zeros((len(word_index) + 1, embedding_dimensions))
 
     oov_count = 0
-    for word, i in word_index.items():
-        if i > len(embedding_matrix):
-            break
-        
+    for word, index in word_index.items():
+        if index > len(embedding_matrix):
+            raise ValueError('Index larger than embedding matrix for {}'.format(word))
+
         embedding_vector = embedding_index.get(word)
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
-            embedding_matrix[i] = embedding_vector
+            embedding_matrix[index] = embedding_vector
         else:
-            # Give OOV's their own embedding.
-            embedding_matrix[i] = embedding_index.get('<oov>')
-
+            print('{} is an OOV word'.format(word))
             oov_count += 1
+    print(oov_count)
+
     return embedding_matrix, oov_count
 
 
