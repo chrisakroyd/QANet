@@ -36,7 +36,7 @@ class HighwayLayer(tf.keras.Model):
 
 class EmbeddingLayer(tf.keras.Model):
     def __init__(self, word_matrix, trainable_matrix, character_matrix, filters, char_limit,
-                 kernel_size=5, word_dim=300, char_dim=200, highway_layers=2, word_dropout=0.1, char_dropout=0.05,
+                 kernel_size=5, word_dim=300, char_dim=200, word_dropout=0.1, char_dropout=0.05,
                  mask_zero=True):
         super(EmbeddingLayer, self).__init__()
         self.char_dim = char_dim
@@ -82,10 +82,7 @@ class EmbeddingLayer(tf.keras.Model):
         self.character_embedding_dropout = tf.keras.layers.Dropout(char_dropout)
 
         self.projection = tf.keras.layers.Conv1D(filters, kernel_size=1, strides=1, use_bias=False)
-        # Change made so this would work in eager mode
-        # self.highway_layers = tf.keras.models.Sequential([
-        #     HighwayLayer(filters, dropout, layer_id=i) for i in range(highway_layers)
-        # ])
+
         self.highway_1 = HighwayLayer(filters, word_dropout, layer_id=1)
         self.highway_2 = HighwayLayer(filters, word_dropout, layer_id=2)
 
@@ -119,6 +116,5 @@ class EmbeddingLayer(tf.keras.Model):
         # Change made so this would work in eager mode.
         embedding = self.highway_1(embedding)
         embedding = self.highway_2(embedding)
-        # embedding = self.highway_layers(embedding)
 
         return embedding

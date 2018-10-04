@@ -55,6 +55,9 @@ class QANet:
         if self.train:
             self.add_train_ops(self.hparams.learn_rate)
 
+        if self.train and self.hparams.ema_decay > 0.0:
+            self.add_ema_ops()
+
     def masks(self):
         # Initialize the masks
         self.context_mask = tf.cast(self.context_words, tf.bool)
@@ -74,6 +77,12 @@ class QANet:
                     zip(capped_grads, variables), global_step=self.global_step)
         else:
             self.train_op = self.optimizer.minimize(self.loss, self.global_step)
+
+    def add_ema_ops(self):
+        with tf.name_scope('ema_ops'):
+            self.ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay, num_updates=self.global_step)
+            with tf.control_dependencies([self.train_op]):
+                self.train_op = self.ema.apply(tf.trainable_variables() + tf.moving_average_variables())
 
     def slice_ops(self):
         self.context_max = tf.reduce_max(self.context_length)
@@ -135,15 +144,8 @@ class QANet:
                 self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2
                 self.loss += self.l2_loss
         else:
-            self.l2_loss = tf.identity(0.0)
+            self.l2_loss = 0.0
 
-        # EMA maintains a shadow copy of the trainable variables, increases memory usage as well as test performance.
-        if self.hparams.ema_decay > 0.0:
-            with tf.name_scope('ema_ops'):
-                self.var_ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay)
-                ema_op = self.var_ema.apply(tf.trainable_variables())
-
-                with tf.control_dependencies([ema_op]):
-                    self.reg_loss = tf.identity(self.l2_loss)
-                    self.loss = tf.identity(self.loss)
-                    self.assign_vars = [tf.assign(var, self.var_ema.average(var)) for var in tf.trainable_variables()]
+        # Ensures that the ops are added to the graph.
+        self.loss = tf.identity(self.loss)
+        self.l2_loss = tf.identity(self.l2_loss)

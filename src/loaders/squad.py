@@ -12,6 +12,16 @@ def pad(words, characters, word_limit, char_limit):
     return padded_words, padded_chars
 
 
+def cache_contexts(contexts, context_limit, char_limit, drop=True):
+    context_cache = {}
+    for key, value in contexts.items():
+        context_cache[key] = pad(value['context_words'], value['context_chars'], context_limit, char_limit)
+        if drop:
+            value.pop('context_words')
+            value.pop('context_chars')
+    return context_cache
+
+
 def load_squad_set(contexts, answers, hparams):
     data_size = len(answers)
     # Size of each dimension
@@ -27,8 +37,7 @@ def load_squad_set(contexts, answers, hparams):
     answer_ends = np.zeros((data_size, ), dtype=np.int32)
     answer_ids = np.zeros((data_size, ), dtype=np.int32)
     # Pad the context words + chars and cache
-    context_cache = {key: pad(value['context_words'], value['context_chars'], context_limit, char_limit)
-                     for key, value in contexts.items()}
+    context_cache = cache_contexts(contexts, context_limit, char_limit)
 
     for i, (key, row) in enumerate(answers.items()):
         context_id = str(row['context_id'])
@@ -49,6 +58,10 @@ def load_squad_set(contexts, answers, hparams):
         assert np.count_nonzero(context_chars[i]) > 0
         assert np.count_nonzero(question_words[i]) > 0
         assert np.count_nonzero(question_chars[i]) > 0
+
+        # Looks silly but by removing words + chars from the dict now we no longer need it saves a lot of memory.
+        row.pop('question_words')
+        row.pop('question_chars')
 
     return context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids
 

@@ -14,7 +14,7 @@ def create_placeholders(context_limit, question_limit, char_limit):
     return ctxt_words, ctxt_chars, ques_words, ques_chars, y_start, y_end, answer_id
 
 
-def create_dataset(data, placeholders, batch_size, shuffle=True):
+def create_dataset(data, placeholders, batch_size, shuffle=True, prefetch=2):
     context_words_input, context_chars_input, question_words_input, question_chars_input, \
     answer_starts_input, answer_ends_input, answer_ids_input = placeholders
     context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids = data
@@ -29,7 +29,7 @@ def create_dataset(data, placeholders, batch_size, shuffle=True):
     data_set = data_set.repeat()
     data_set = data_set.batch(batch_size=batch_size)
     # Prefetch in theory speeds up the pipeline by overlapping the batch generation and running previous batch.
-    data_set = data_set.prefetch(1)
+    data_set = data_set.prefetch(prefetch)
     # Create the feed dict for initializing the iterator.
     feed_dict = {
         context_words_input: context_words,
@@ -44,7 +44,7 @@ def create_dataset(data, placeholders, batch_size, shuffle=True):
     return data_set, feed_dict
 
 
-def create_bucket_dataset(data, placeholders, batch_size, shuffle=True):
+def create_bucket_dataset(data, placeholders, batch_size, shuffle=True, prefetch=1):
     context_words_input, context_chars_input, question_words_input, question_chars_input, \
     answer_starts_input, answer_ends_input, answer_ids_input = placeholders
     context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids = data
@@ -59,7 +59,7 @@ def create_bucket_dataset(data, placeholders, batch_size, shuffle=True):
     data_set = data_set.repeat()
     data_set = data_set.batch(batch_size=batch_size)
     # Prefetch in theory speeds up the pipeline by overlapping the batch generation and running previous batch.
-    data_set = data_set.prefetch(1)
+    data_set = data_set.prefetch(prefetch)
     # Create the feed dict for initializing the iterator.
     feed_dict = {
         context_words_input: context_words,

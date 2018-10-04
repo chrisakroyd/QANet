@@ -11,8 +11,8 @@ from src.util import namespace_json, load_contextual_embeddings, train_paths, em
 
 def test(config, hparams):
     data_directory, model_directory, log_directory = train_paths(hparams)
-    word_index_path, word_embedding_path, char_index_path, character_embedding_path, trainable_index_path, \
-    trainable_embedding_path, = embedding_paths(hparams)
+    word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
+    character_embedding_path = embedding_paths(hparams)
 
     _, val = load_squad(hparams)
     val, val_contexts, val_answers = val
@@ -40,11 +40,14 @@ def test(config, hparams):
         sess.run(tf.global_variables_initializer())
         sess.run(val_iterator.initializer, feed_dict=val_feed_dict)
         val_handle = sess.run(val_iterator.string_handle())
-        # Restore the model
-        saver = tf.train.Saver()
+        # Restore the moving average version of the learned variables for eval.
+        if hparams.ema_decay > 0.0:
+            variable_averages = tf.train.ExponentialMovingAverage(0.)
+            saver = tf.train.Saver(variable_averages.variables_to_restore())
+        else:
+            saver = tf.train.Saver()
         saver.restore(sess, tf.train.latest_checkpoint(model_directory))
         # Assign the shadow EMA variables to the graph.
-        sess.run(model.assign_vars)
         results = []
         # +1 for uneven batch values, +1 for the range.
         for _ in tqdm(range(1, (len(val_answers) // hparams.batch_size + 1) + 1)):
