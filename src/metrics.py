@@ -5,13 +5,13 @@ import tensorflow as tf
 from collections import Counter
 
 
-def evaluate_list(results, contexts, answers, data_type=None, writer=None, step=0):
+def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, step=0):
     answer_texts = {}
     losses = []
 
-    for result in results:
-        answer_ids, loss, answer_starts, answer_ends = result
-        answer_data = get_answer_data(contexts, answers, answer_ids.tolist(),
+    for pred in preds:
+        answer_ids, loss, answer_starts, answer_ends = pred
+        answer_data = get_answer_data(contexts, answers, context_mapping, answer_ids.tolist(),
                                       answer_starts.tolist(), answer_ends.tolist())
         answer_texts.update(answer_data)
         losses.append(loss)
@@ -36,17 +36,17 @@ def calc_metrics(answer_texts, losses, data_type=None, writer=None, step=0):
     return metrics
 
 
-def get_ground_truth_for_batch(contexts, answers, answer_ids):
+def get_ground_truth_for_batch(contexts, answers, context_mapping, answer_ids):
     ground_truths = {}
     for answer_id in answer_ids:
         answer_id = str(answer_id)
-        context_id = str(answers[answer_id]['context_id'])
+        context_id = str(context_mapping[answer_id])
 
         ground_truths[answer_id] = {
             'answer_id': answer_id,
             'context': contexts[context_id]['context'],
             'word_spans': contexts[context_id]['word_spans'],
-            'answers': answers[answer_id]['answers']
+            'answers': answers[answer_id]
         }
     return ground_truths
 
@@ -67,8 +67,8 @@ def get_answer_texts_for_batch(ground_truths, answer_ids, starts, ends):
     return answer_texts
 
 
-def get_answer_data(contexts, answers, answer_ids, answer_starts, answer_ends):
-    ground_truths = get_ground_truth_for_batch(contexts, answers, answer_ids)
+def get_answer_data(contexts, answers, context_mapping, answer_ids, answer_starts, answer_ends):
+    ground_truths = get_ground_truth_for_batch(contexts, answers, context_mapping, answer_ids)
     answer_texts = get_answer_texts_for_batch(ground_truths, answer_ids, answer_starts, answer_ends)
     return answer_texts
 

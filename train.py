@@ -5,9 +5,9 @@ from src.config import gpu_config, model_config
 from src.constants import FilePaths
 from src.loaders import load_squad
 from src.metrics import evaluate_list
-from src.pipeline import create_placeholders, create_dataset
+from src.pipeline import create_dataset
 from src.QANet import QANet
-from src.util import namespace_json, load_contextual_embeddings, make_dirs, train_paths, embedding_paths, save_json
+from src.util import namespace_json, load_embeddings, make_dirs, train_paths, embedding_paths
 
 
 def train(config, hparams):
@@ -19,28 +19,24 @@ def train(config, hparams):
 
     train, val = load_squad(hparams)
 
-    train, train_contexts, train_answers = train
-    val, val_contexts, val_answers = val
+    train_contexts, train_spans, train_questions, train_answers, train_ctxt_mapping = train
+    val_contexts, val_spans, val_questions, val_answers, val_ctxt_mapping = val
 
-    word_matrix, trainable_matrix, character_matrix = load_contextual_embeddings(
+    word_matrix, trainable_matrix, character_matrix = load_embeddings(
         index_paths=(word_index_path, trainable_index_path, char_index_path, ),
         embedding_paths=(word_embedding_path, trainable_embedding_path, character_embedding_path, ),
         embed_dim=hparams.embed_dim,
         char_dim=hparams.char_dim
     )
 
-    placeholders = create_placeholders(hparams.context_limit, hparams.question_limit, hparams.char_limit)
-
     with tf.device('/cpu:0'):
-        train_set, train_feed_dict = create_dataset(train, placeholders, batch_size=hparams.batch_size)
-        val_set, val_feed_dict = create_dataset(val, placeholders, batch_size=hparams.batch_size, shuffle=False)
+        train_set, train_iter = create_dataset(train_contexts, train_questions, train_ctxt_mapping, hparams)
+        _, val_iter = create_dataset(val_contexts, val_questions, val_ctxt_mapping, hparams, shuffle=False)
 
     with tf.Session(config=config) as sess:
         # Create the dataset iterators.
         handle = tf.placeholder(tf.string, shape=[])
-        iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, val_set.output_shapes)
-        train_iterator = train_set.make_initializable_iterator()
-        val_iterator = val_set.make_initializable_iterator()
+        iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
         # Create and initialize the model
         model = QANet(word_matrix, character_matrix, trainable_matrix, hparams)
         model.init(iterator.get_next())
@@ -48,17 +44,15 @@ def train(config, hparams):
         # saver boilerplate
         writer = tf.summary.FileWriter(log_directory, graph=sess.graph)
         saver = tf.train.Saver()
-        # Initialize the iterators + the handles for switching.
-        sess.run(train_iterator.initializer, feed_dict=train_feed_dict)
-        sess.run(val_iterator.initializer, feed_dict=val_feed_dict)
-        train_handle = sess.run(train_iterator.string_handle())
-        val_handle = sess.run(val_iterator.string_handle())
+        # Initialize the handles for switching.
+        train_handle = sess.run(train_iter.string_handle())
+        val_handle = sess.run(val_iter.string_handle())
 
         if os.path.exists(model_directory) and tf.train.latest_checkpoint(model_directory) is not None:
             saver.restore(sess, tf.train.latest_checkpoint(model_directory))
 
         global_step = max(sess.run(model.global_step), 1)
-        train_results = []
+        train_preds = []
 
         for _ in tqdm(range(global_step, hparams.train_steps)):
             global_step = sess.run(model.global_step) + 1
@@ -67,7 +61,7 @@ def train(config, hparams):
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
 
-                answer_ids, loss, l2_loss, answer_starts, answer_ends, _ = sess.run(
+                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run(
                     [model.answer_id, model.loss, model.l2_loss, model.yp1, model.yp2, model.train_op],
                     feed_dict={handle: train_handle},
                     options=run_options,
@@ -76,12 +70,12 @@ def train(config, hparams):
                 writer.add_run_metadata(run_metadata, 'step%03d' % global_step)
                 writer.flush()
             else:
-                answer_ids, loss, l2_loss, answer_starts, answer_ends, _ = sess.run(
+                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run(
                     [model.answer_id, model.loss, model.l2_loss, model.yp1, model.yp2, model.train_op],
                     feed_dict={handle: train_handle})
 
             # Cache the result of the run for train evaluation.
-            train_results.append((answer_ids, loss, answer_starts, answer_ends,))
+            train_preds.append((answer_ids, loss, answer_start, answer_end,))
 
             # Save the loss + l2 loss
             if global_step % hparams.save_loss_every == 0:
@@ -92,16 +86,16 @@ def train(config, hparams):
 
             # Run the eval procedure, we use the predictions over train + eval and calculate EM + F1.
             if global_step % hparams.run_val_every == 0:
-                val_results = []
+                val_preds = []
                 # +1 for uneven batch values, +1 for the range.
                 for _ in tqdm(range(1, (len(val_answers) // hparams.batch_size + 1) + 1)):
-                    answer_ids, loss, answer_starts, answer_ends = sess.run(
+                    answer_ids, loss, answer_start, answer_end = sess.run(
                         [model.answer_id, model.loss, model.yp1, model.yp2], feed_dict={handle: val_handle})
-                    val_results.append((answer_ids, loss, answer_starts, answer_ends,))
+                    val_preds.append((answer_ids, loss, answer_start, answer_end,))
                 # Evaluate the predictions and reset the train result list for next eval period.
-                evaluate_list(train_results, train_contexts, train_answers, 'train', writer, global_step)
-                evaluate_list(val_results, val_contexts, val_answers, 'val', writer, global_step)
-                train_results = []
+                evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer, global_step)
+                evaluate_list(val_preds, val_spans, val_answers, val_ctxt_mapping, 'val', writer, global_step)
+                train_preds = []
 
             # @TODO Add in saving trained embeddings.
             # Save the model weights.

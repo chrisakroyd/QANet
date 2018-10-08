@@ -2,7 +2,7 @@ import re
 from ftfy import fix_text
 from tqdm import tqdm
 from src.util import raw_data_paths, processed_data_paths, embedding_paths
-from src.util import Tokenizer, generate_matrix, load_embeddings, save_embeddings, save_json, load_json, \
+from src.util import Tokenizer, generate_matrix, load_embedding, save_embeddings, save_json, load_json, \
     index_from_list, read_embeddings_file, create_vocab
 
 # Regexes
@@ -155,11 +155,11 @@ def process(hparams):
     char_index = tokenizer.char_index
     trainable_word_index = index_from_list(hparams.trainable_words)
 
-    embedding_matrix, trainable_matrix = load_embeddings(path=hparams.embeddings_path,
-                                                         word_index=word_index,
-                                                         embedding_dimensions=hparams.embed_dim,
-                                                         trainable_embeddings=hparams.trainable_words,
-                                                         embedding_index=embedding_index)
+    embedding_matrix, trainable_matrix = load_embedding(path=hparams.embeddings_path,
+                                                        word_index=word_index,
+                                                        embedding_dimensions=hparams.embed_dim,
+                                                        trainable_embeddings=hparams.trainable_words,
+                                                        embedding_index=embedding_index)
 
     char_matrix = generate_matrix(index=char_index, embedding_dimensions=hparams.char_dim)
 

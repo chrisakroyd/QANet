@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 
 
 def create_placeholders(context_limit, question_limit, char_limit):
@@ -14,61 +15,44 @@ def create_placeholders(context_limit, question_limit, char_limit):
     return ctxt_words, ctxt_chars, ques_words, ques_chars, y_start, y_end, answer_id
 
 
-def create_dataset(data, placeholders, batch_size, shuffle=True, prefetch=2):
-    context_words_input, context_chars_input, question_words_input, question_chars_input, \
-    answer_starts_input, answer_ends_input, answer_ids_input = placeholders
-    context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids = data
-    # We create from tensor slices using placeholders so we can work in memory.
-    data_set = tf.data.Dataset.from_tensor_slices(
-        (context_words_input, context_chars_input, question_words_input, question_chars_input,
-         answer_starts_input, answer_ends_input, answer_ids_input))
-    # Shuffle and then batch either using max_examples or the total.
-    # data_set = data_set.shuffle(len(context_words))
+def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, prefetch=2):
+    # Extract an array of all answer_ids.
+    answer_ids = np.asarray(list(context_mapping.keys()), dtype=np.int32)
+    # Only store answer_ids for dynamic lookup (87500 int32's so low mem usage)
+    dataset = tf.data.Dataset.from_tensor_slices(answer_ids)
+
+    # As we have numerous repeated contexts each of great length, instead of storing on disk/in memory multiple
+    # copies we dynamically retrieve it per batch, cuts down hard-drive usage by 2GB and RAM by 4GB with no
+    # with no performance hit.
+    def map_to_cache(answer_id):
+        answer_key = str(answer_id)
+        context_id = str(context_mapping[answer_key])
+        context_words, context_chars = contexts[context_id]
+        question_words, question_chars, answer_starts, answer_ends = questions[answer_key]
+        return context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_id
+
+    dataset = dataset.map(lambda answer_id: tuple(
+        tf.py_func(map_to_cache, [answer_id], [tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32])))
+    # Shuffle then repeat as this guarantees we see each example once per epoch.
     if shuffle:
-        data_set = data_set.shuffle(15000)
-    data_set = data_set.repeat()
-    data_set = data_set.batch(batch_size=batch_size)
+        dataset = dataset.shuffle(15000)
+    dataset = dataset.repeat()
+    # We either bucket (used in paper, faster train speed) or just form batches padded to max.
+    if hparams.bucket:
+        raise NotImplementedError('Bucketing not yet implemented')
+    else:
+        dataset = dataset.padded_batch(
+            batch_size=hparams.batch_size,
+            padded_shapes=([hparams.context_limit],
+                           [hparams.context_limit, hparams.char_limit],
+                           [hparams.question_limit],
+                           [hparams.question_limit, hparams.char_limit],
+                           [],
+                           [],
+                           []),
+        )
+
     # Prefetch in theory speeds up the pipeline by overlapping the batch generation and running previous batch.
-    data_set = data_set.prefetch(prefetch)
-    # Create the feed dict for initializing the iterator.
-    feed_dict = {
-        context_words_input: context_words,
-        context_chars_input: context_chars,
-        question_words_input: question_words,
-        question_chars_input: question_chars,
-        answer_starts_input: answer_starts,
-        answer_ends_input: answer_ends,
-        answer_ids_input: answer_ids
-    }
-
-    return data_set, feed_dict
-
-
-def create_bucket_dataset(data, placeholders, batch_size, shuffle=True, prefetch=1):
-    context_words_input, context_chars_input, question_words_input, question_chars_input, \
-    answer_starts_input, answer_ends_input, answer_ids_input = placeholders
-    context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids = data
-    # We create from tensor slices using placeholders so we can work in memory.
-    data_set = tf.data.Dataset.from_tensor_slices(
-        (context_words_input, context_chars_input, question_words_input, question_chars_input,
-         answer_starts_input, answer_ends_input, answer_ids_input))
-    # Shuffle and then batch either using max_examples or the total.
-    # data_set = data_set.shuffle(len(context_words))
-    if shuffle:
-        data_set = data_set.shuffle(15000)
-    data_set = data_set.repeat()
-    data_set = data_set.batch(batch_size=batch_size)
-    # Prefetch in theory speeds up the pipeline by overlapping the batch generation and running previous batch.
-    data_set = data_set.prefetch(prefetch)
-    # Create the feed dict for initializing the iterator.
-    feed_dict = {
-        context_words_input: context_words,
-        context_chars_input: context_chars,
-        question_words_input: question_words,
-        question_chars_input: question_chars,
-        answer_starts_input: answer_starts,
-        answer_ends_input: answer_ends,
-        answer_ids_input: answer_ids
-    }
-
-    return data_set, feed_dict
+    dataset = dataset.prefetch(prefetch)
+    iterator = dataset.make_one_shot_iterator()
+    return dataset, iterator

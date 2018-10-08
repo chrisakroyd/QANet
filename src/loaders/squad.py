@@ -2,68 +2,48 @@ import numpy as np
 from src.util import load_json, pad_array, processed_data_paths
 
 
-def pad(words, characters, word_limit, char_limit):
-    padded_words = np.zeros((word_limit, ), dtype=np.int32)
-    padded_chars = np.zeros((word_limit, char_limit, ), dtype=np.int32)
-
-    padded_words[:len(words)] = words
-    padded_chars[:len(words)] = [pad_array(char_arr, char_limit) for char_arr in characters]
-
-    return padded_words, padded_chars
+# tf data api doesn't work well with un-padded nested structures, therefore pad the nested dimension to char limit.
+def pad_chars(chars, limit):
+    return np.asarray([pad_array(char_arr, limit) for char_arr in chars], dtype=np.int32)
 
 
-def cache_contexts(contexts, context_limit, char_limit, drop=True):
+def load_contexts(contexts, char_limit):
     context_cache = {}
+    context_spans = {}
+
     for key, value in contexts.items():
-        context_cache[key] = pad(value['context_words'], value['context_chars'], context_limit, char_limit)
-        if drop:
-            value.pop('context_words')
-            value.pop('context_chars')
-    return context_cache
+        context_words = np.asarray(value['context_words'], dtype=np.int32)
+        context_chars = pad_chars(value['context_chars'], char_limit)
+        context_cache[key] = context_words, context_chars
+        context_spans[key] = {
+            'context': value['context'],
+            'word_spans': value['word_spans'],
+        }
+    return context_cache, context_spans
+
+
+def load_answers(answers, char_limit):
+    answer_cache = {}
+    context_mapping = {}
+    question_cache = {}
+
+    for key, value in answers.items():
+        question_words = np.asarray(value['question_words'], dtype=np.int32)
+        question_chars = pad_chars(value['question_chars'], char_limit)
+        answer_starts = np.asarray(value['answer_starts'], dtype=np.int32)
+        answer_ends = np.asarray(value['answer_ends'], dtype=np.int32)
+
+        answer_cache[key] = value['answers']
+        context_mapping[key] = value['context_id']
+        question_cache[key] = question_words, question_chars, answer_starts, answer_ends
+
+    return question_cache, answer_cache, context_mapping
 
 
 def load_squad_set(contexts, answers, hparams):
-    data_size = len(answers)
-    # Size of each dimension
-    context_limit = hparams.context_limit
-    question_limit = hparams.question_limit
-    char_limit = hparams.char_limit
-    # Init the arrays to hold the data.
-    context_words = np.zeros((data_size, context_limit), dtype=np.int32)
-    context_chars = np.zeros((data_size, context_limit, char_limit), dtype=np.int32)
-    question_words = np.zeros((data_size, question_limit), dtype=np.int32)
-    question_chars = np.zeros((data_size, question_limit, char_limit), dtype=np.int32)
-    answer_starts = np.zeros((data_size, ), dtype=np.int32)
-    answer_ends = np.zeros((data_size, ), dtype=np.int32)
-    answer_ids = np.zeros((data_size, ), dtype=np.int32)
-    # Pad the context words + chars and cache
-    context_cache = cache_contexts(contexts, context_limit, char_limit)
-
-    for i, (key, row) in enumerate(answers.items()):
-        context_id = str(row['context_id'])
-        row_question_words = row['question_words']
-        row_question_chars = row['question_chars']
-
-        cached = context_cache[context_id]
-        context_words[i] = np.copy(cached[0])
-        context_chars[i] = np.copy(cached[-1])
-        question_words[i], question_chars[i] = pad(row_question_words, row_question_chars, question_limit, char_limit)
-
-        answer_starts[i] = row['answer_starts']
-        answer_ends[i] = row['answer_ends']
-        answer_ids[i] = row['answer_id']
-
-        # Check that we have no entries of just 0.
-        assert np.count_nonzero(context_words[i]) > 0
-        assert np.count_nonzero(context_chars[i]) > 0
-        assert np.count_nonzero(question_words[i]) > 0
-        assert np.count_nonzero(question_chars[i]) > 0
-
-        # Looks silly but by removing words + chars from the dict now we no longer need it saves a lot of memory.
-        row.pop('question_words')
-        row.pop('question_chars')
-
-    return context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_ids
+    context_cache, contexts_spans = load_contexts(contexts, hparams.char_limit)
+    questions, answers, context_mapping = load_answers(answers, hparams.char_limit)
+    return context_cache, contexts_spans, questions, answers, context_mapping
 
 
 def load_squad(hparams):
@@ -76,4 +56,4 @@ def load_squad(hparams):
     train_set = load_squad_set(train_context, train_answers, hparams)
     val_set = load_squad_set(val_context, val_answers, hparams)
 
-    return (train_set, train_context, train_answers), (val_set, val_context, val_answers)
+    return train_set, val_set

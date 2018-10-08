@@ -3,8 +3,7 @@ from .util import load_json
 
 
 def create_vocab(embedding_index):
-    vocab = set([e for e, _ in embedding_index.items()])
-    return vocab
+    return set([e for e, _ in embedding_index.items()])
 
 
 def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
@@ -23,8 +22,6 @@ def generate_trainable_matrix(embedding_index, word_index, embedding_dimensions,
             embedding_index[word] = np.zeros((embedding_dimensions, ))
             # Randomly initialise the training word with values between -0.5 and 0.5
             embedding_matrix[(word_index[word] - valid_word_range)] = np.random.random_sample((embedding_dimensions, )) - 0.5
-        else:
-            print('{} not in word index, skipping...')
 
     return embedding_matrix, embedding_index
 
@@ -34,6 +31,10 @@ def read_embeddings_file(path):
     with open(path, 'r', encoding='utf-8') as f:
         for i, line in enumerate(f):
             values = line.strip().split(' ')
+            # First line is num words + vector size when using fast text, we skip this.
+            if i == 0 and len(values) == 2:
+                print('Detected FastText vector format.')
+                continue
             word = values[0]
             coefs = np.asarray(values[1:], dtype='float32')
             embedding_index[word] = coefs
@@ -44,7 +45,6 @@ def read_embeddings_file(path):
 def load_embedding_matrix(embedding_index, word_index, embedding_dimensions):
     embedding_matrix = np.zeros((len(word_index) + 1, embedding_dimensions))
 
-    oov_count = 0
     for word, index in word_index.items():
         if index > len(embedding_matrix):
             raise ValueError('Index larger than embedding matrix for {}'.format(word))
@@ -53,19 +53,15 @@ def load_embedding_matrix(embedding_index, word_index, embedding_dimensions):
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
             embedding_matrix[index] = embedding_vector
-        else:
-            print('{} is an OOV word'.format(word))
-            oov_count += 1
-    print(oov_count)
 
-    return embedding_matrix, oov_count
+    return embedding_matrix
 
 
-def load_embeddings(path,
-                    word_index,
-                    embedding_dimensions=300,
-                    trainable_embeddings=[],
-                    embedding_index=None):
+def load_embedding(path,
+                   word_index,
+                   embedding_dimensions=300,
+                   trainable_embeddings=[],
+                   embedding_index=None):
     print('Loading embeddings...')
     # Read the given embeddings file if its not given.
     embedding_index = embedding_index if embedding_index is not None else read_embeddings_file(path)
@@ -78,7 +74,7 @@ def load_embeddings(path,
     else:
         trainable_matrix = np.zeros((1, embedding_dimensions))
 
-    embedding_matrix, oov_count = load_embedding_matrix(embedding_index, word_index, embedding_dimensions)
+    embedding_matrix = load_embedding_matrix(embedding_index, word_index, embedding_dimensions)
 
     return embedding_matrix, trainable_matrix
 
@@ -103,7 +99,7 @@ def merge_embeddings(embedding_matrix, trainable_embedding_matrix, word_index, t
     return embedding_matrix
 
 
-def load_contextual_embeddings(index_paths, embedding_paths, embed_dim, char_dim):
+def load_embeddings(index_paths, embedding_paths, embed_dim, char_dim):
     word_index_path, trainable_index_path, char_index_path = index_paths
     word_embedding_path, trainable_embedding_path, char_embedding_path = embedding_paths
 
@@ -113,8 +109,8 @@ def load_contextual_embeddings(index_paths, embedding_paths, embed_dim, char_dim
     trainable_word_index = load_json(trainable_index_path)
     char_index = load_json(char_index_path)
 
-    word_matrix, _ = load_embeddings(word_embedding_path, word_index, embed_dim)
-    trainable_matrix, _ = load_embeddings(trainable_embedding_path, trainable_word_index, embed_dim)
-    character_matrix, _ = load_embeddings(char_embedding_path, char_index, char_dim)
+    word_matrix, _ = load_embedding(word_embedding_path, word_index, embed_dim)
+    trainable_matrix, _ = load_embedding(trainable_embedding_path, trainable_word_index, embed_dim)
+    character_matrix, _ = load_embedding(char_embedding_path, char_index, char_dim)
 
     return word_matrix, trainable_matrix, character_matrix

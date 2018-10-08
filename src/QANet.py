@@ -140,7 +140,6 @@ class QANet:
         # Add regularization loss over all trainable weights.
         if self.hparams.l2 > 0.0:
             with tf.name_scope('l2_ops'):
-                self.l2_test2 = [tf.trainable_variables()[0], tf.trainable_variables()[1]]
                 self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2
                 self.loss += self.l2_loss
         else:
