@@ -1,0 +1,41 @@
+import tensorflow as tf
+
+
+class HighwayLayer(tf.keras.layers.Layer):
+    def __init__(self, dropout, layer_id, use_bias=True):
+        super(HighwayLayer, self).__init__()
+        self.layer_id = layer_id
+        self.use_bias = use_bias
+
+        self.gate_dropout = tf.keras.layers.Dropout(rate=dropout)
+        self.trans_dropout = tf.keras.layers.Dropout(rate=dropout)
+
+    def build(self, input_shape):
+        filters = int(input_shape[-1])
+        self.gate = tf.keras.layers.Conv1D(filters,
+                                           kernel_size=1,
+                                           strides=1,
+                                           use_bias=self.use_bias,
+                                           padding='same',
+                                           activation='sigmoid',
+                                           name='gate_%d' % self.layer_id)
+
+        self.trans = tf.keras.layers.Conv1D(filters,
+                                            kernel_size=1,
+                                            strides=1,
+                                            use_bias=self.use_bias,
+                                            padding='same',
+                                            activation='relu',
+                                            name='activation_%d' % self.layer_id)
+        self.built = True
+
+    def call(self, x, training=None, mask=None):
+        gate_out = self.gate(x)
+        gate_out = self.gate_dropout(gate_out)
+        trans_out = self.trans(x)
+        trans_out = self.trans_dropout(trans_out)
+        out = gate_out * trans_out + (1 - gate_out) * x
+        return out
+
+    def compute_output_shape(self, input_shape):
+        return input_shape

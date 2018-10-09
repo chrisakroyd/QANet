@@ -1,37 +1,6 @@
 import tensorflow as tf
-
+from src.models.layers import HighwayLayer
 Embedding = tf.keras.layers.Embedding
-
-
-class HighwayLayer(tf.keras.Model):
-    def __init__(self, size, dropout, layer_id, bias=True):
-        super(HighwayLayer, self).__init__()
-        self.gate = tf.keras.layers.Conv1D(size,
-                                           kernel_size=1,
-                                           strides=1,
-                                           use_bias=bias,
-                                           padding='same',
-                                           activation='sigmoid',
-                                           name='gate_%d' % layer_id)
-
-        self.trans = tf.keras.layers.Conv1D(size,
-                                            kernel_size=1,
-                                            strides=1,
-                                            use_bias=bias,
-                                            activation='relu',
-                                            padding='same',
-                                            name='activation_%d' % layer_id)
-
-        self.gate_dropout = tf.keras.layers.Dropout(rate=dropout)
-        self.trans_dropout = tf.keras.layers.Dropout(rate=dropout)
-
-    def call(self, x, training=None, mask=None):
-        gate_out = self.gate(x)
-        gate_out = self.gate_dropout(gate_out)
-        trans_out = self.trans(x)
-        trans_out = self.trans_dropout(trans_out)
-        out = gate_out * trans_out + (1 - gate_out) * x
-        return out
 
 
 class EmbeddingLayer(tf.keras.Model):
@@ -71,7 +40,7 @@ class EmbeddingLayer(tf.keras.Model):
                                                                                        verify_shape=True),
                                         name='char_embedding')
 
-        self.char_conv = tf.keras.layers.Conv1D(filters,
+        self.char_conv = tf.keras.layers.Conv1D(char_dim,
                                                 kernel_size=kernel_size,
                                                 activation='relu',
                                                 name='char_embed_conv')
@@ -81,10 +50,10 @@ class EmbeddingLayer(tf.keras.Model):
         self.word_embedding_dropout = tf.keras.layers.Dropout(word_dropout)
         self.character_embedding_dropout = tf.keras.layers.Dropout(char_dropout)
 
+        self.highway_1 = HighwayLayer(word_dropout, layer_id=1)
+        self.highway_2 = HighwayLayer(word_dropout, layer_id=2)
+        # Need to down project for the shared model encoders.
         self.projection = tf.keras.layers.Conv1D(filters, kernel_size=1, strides=1, use_bias=False)
-
-        self.highway_1 = HighwayLayer(filters, word_dropout, layer_id=1)
-        self.highway_2 = HighwayLayer(filters, word_dropout, layer_id=2)
 
         # Initialize the layers which masks the words into the range 0 to len(trainable_tokens), where 0 = Glove word,
         # values > 0 = trainable id's. Uses Relu to put them in range 0 - len(trainable_tokens)
@@ -111,10 +80,10 @@ class EmbeddingLayer(tf.keras.Model):
         word_embedding = tf.add(word_embedding, trainable_embedding)
         embedding = tf.concat([word_embedding, char_embedding], axis=2)
 
-        embedding = self.projection(embedding)
-
         # Change made so this would work in eager mode.
         embedding = self.highway_1(embedding)
         embedding = self.highway_2(embedding)
+
+        embedding = self.projection(embedding)
 
         return embedding

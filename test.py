@@ -5,7 +5,7 @@ from src.constants import FilePaths
 from src.loaders import load_squad
 from src.metrics import evaluate_list
 from src.pipeline import create_dataset
-from src.QANet import QANet
+from src.qa_net import QANet
 from src.util import namespace_json, load_embeddings, train_paths, embedding_paths
 
 

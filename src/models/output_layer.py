@@ -7,7 +7,6 @@ class OutputLayer(tf.keras.layers.Layer):
         super(OutputLayer, self).__init__(**kwargs)
         self.conv = tf.keras.layers.Conv1D(1,
                                            strides=1,
-                                           use_bias=False,
                                            kernel_size=kernel_size)
 
     def call(self, block_1, block_2, mask=None):

@@ -1,6 +1,7 @@
 import tensorflow as tf
 import math
 from src.models.utils import split_last_dimension, combine_last_two_dimensions, mask_logits
+from src.models.layers import LayerDropout, LayerNorm
 
 
 class PositionEncoding(tf.keras.layers.Layer):
@@ -28,56 +29,6 @@ class PositionEncoding(tf.keras.layers.Layer):
         signal = tf.reshape(signal, [1, length, channels])
         # Add input and signal
         return x + signal
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
-
-
-class LayerNorm(tf.keras.layers.Layer):
-    def __init__(self, **kwargs):
-        super(LayerNorm, self).__init__(**kwargs)
-        self.epsilon = 1e-6
-
-    def build(self, input_shape):
-        self.scale = self.add_weight(shape=(input_shape[-1], ),
-                                     initializer=tf.ones_initializer(),
-                                     trainable=True,
-                                     name='layer_norm_scale')
-
-        self.bias = self.add_weight(shape=(input_shape[-1], ),
-                                    initializer=tf.zeros_initializer(),
-                                    trainable=True,
-                                    name='layer_norm_bias')
-        self.built = True
-
-    def call(self, x, training=None, mask=None):
-        mean = tf.reduce_mean(x, axis=-1, keepdims=True)
-        variance = tf.reduce_mean(tf.square(x - mean), axis=-1, keepdims=True)
-        norm = (x - mean) * tf.rsqrt(variance + self.epsilon)
-        return norm * self.scale + self.bias
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
-
-
-class LayerDropout(tf.keras.layers.Layer):
-    def __init__(self, dropout, sublayer, total_sublayers, **kwargs):
-        super(LayerDropout, self).__init__(**kwargs)
-        self.Pl = dropout * float(sublayer) / float(total_sublayers)
-        self.residual_dropout = tf.keras.layers.Dropout(dropout)
-
-    def build(self, input_shape):
-        super(LayerDropout, self).build(input_shape)
-
-    def call(self, x, training=None, mask=None):
-        x, residual = x
-
-        if training:
-            pred = tf.random_uniform([]) < self.Pl
-            # @TODO Should only use dropout every second layer.
-            return tf.cond(pred, lambda: residual, lambda: self.residual_dropout(x) + residual)
-        else:
-            return x + residual
 
     def compute_output_shape(self, input_shape):
         return input_shape
