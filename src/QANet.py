@@ -95,11 +95,8 @@ class QANet:
         self.question_chars = tf.slice(self.question_chars, [0, 0, 0], [-1, self.question_max, self.hparams.char_limit])
 
     def step(self):
-        if self.hparams.slice_to_max:
-                self.slice_ops()
-        else:
-            self.context_max = self.hparams.context_limit
-            self.question_max = self.hparams.question_limit
+        # Trim the input sequences to the max non-zero length in batch (speeds up training).
+        self.slice_ops()
         # Embed the question + context
         c_emb = self.embedding_block([self.context_words, self.context_chars, self.context_max])
         q_emb = self.embedding_block([self.question_words, self.question_chars, self.question_max])

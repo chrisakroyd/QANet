@@ -52,9 +52,8 @@ def model_config(defaults):
                          'Buffer size of the dataset shuffle function.')
     flags.DEFINE_boolean('bucket', defaults.bucket, 'Whether to use bucketing (used in paper).')
     flags.DEFINE_list('bucket_ranges', defaults.bucket_ranges, 'Ranges for bucketing (if enabled).')
+    flags.DEFINE_integer('bucket_size', defaults.bucket_size, 'Size of a bucket (If no bucket ranges given).')
     flags.DEFINE_boolean('use_elmo', defaults.use_elmo, 'Whether to use ELMo embeddings.')
-    flags.DEFINE_boolean('slice_to_max', defaults.slice_to_max,
-                         'Whether to trim each batch to the max un-padded length.')
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
     flags.DEFINE_integer('filters', defaults.filters, 'Number of filters on all layers.')

@@ -9,7 +9,7 @@
   "data_dir": "./data/processed",
   "out_dir": "./data/",
   "embed_dim": 300,
-  "char_dim": 64,
+  "char_dim": 200,
   "char_limit": 16,
   "context_limit": 400,
   "question_limit": 50,
@@ -20,11 +20,11 @@
   "trainable_words": ["<OOV>"],
   "min_words": -1,
   "min_chars": -1,
-  "bucket": false,
-  "bucket_ranges": [50, 100, 150, 200, 250, 350, 400],
+  "bucket": true,
+  "bucket_ranges": [],
+  "bucket_size": 40,
   "shuffle_buffer_size": 15000,
   "use_elmo": false,
-  "slice_to_max": true,
   "batch_size": 32,
   "filters": 128,
   "heads": 8,
@@ -45,6 +45,5 @@
   "save_loss_every": 100,
   "early_stop": 10,
   "write_answer_file": false,
-  "runtime_data": false,
-  "embedding_projector": false
+  "runtime_data": false
 }
