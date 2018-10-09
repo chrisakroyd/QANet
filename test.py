@@ -31,12 +31,11 @@ def test(config, hparams):
         # Create the dataset iterators.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, val_set.output_types, val_set.output_shapes)
-        val_iterator = val_set.make_initializable_iterator()
         # Create and initialize the model
         model = QANet(word_matrix, character_matrix, trainable_matrix, hparams)
         model.init(iterator.get_next())
         sess.run(tf.global_variables_initializer())
-        val_handle = sess.run(val_iterator.string_handle())
+        val_handle = sess.run(val_iter.string_handle())
         # Restore the moving average version of the learned variables for eval.
         if hparams.ema_decay > 0.0:
             variable_averages = tf.train.ExponentialMovingAverage(0.)
@@ -52,7 +51,7 @@ def test(config, hparams):
                 [model.answer_id, model.loss, model.yp1, model.yp2], feed_dict={handle: val_handle})
             preds.append((answer_ids, loss, answer_starts, answer_ends,))
         # Evaluate the predictions and reset the train result list for next eval period.
-        metrics, answer_texts = evaluate_list(preds, val_contexts, val_answers, val_ctxt_mapping)
+        metrics, answer_texts = evaluate_list(preds, val_spans, val_answers, val_ctxt_mapping)
         print("Exact Match: {}, F1: {}".format(metrics['exact_match'], metrics['f1']))
 
         if hparams.write_answer_file:

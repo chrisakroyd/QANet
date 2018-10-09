@@ -22,6 +22,10 @@ def train(config, hparams):
     train_contexts, train_spans, train_questions, train_answers, train_ctxt_mapping = train
     val_contexts, val_spans, val_questions, val_answers, val_ctxt_mapping = val
 
+    # Free some memory.
+    del train
+    del val
+
     word_matrix, trainable_matrix, character_matrix = load_embeddings(
         index_paths=(word_index_path, trainable_index_path, char_index_path, ),
         embedding_paths=(word_embedding_path, trainable_embedding_path, character_embedding_path, ),

@@ -14,12 +14,19 @@ def create_placeholders(context_limit, question_limit, char_limit):
 
     return ctxt_words, ctxt_chars, ques_words, ques_chars, y_start, y_end, answer_id
 
+# useful link: https://cs230-stanford.github.io/tensorflow-input-data.html
+
 
 def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, prefetch=2):
     # Extract an array of all answer_ids.
     answer_ids = np.asarray(list(context_mapping.keys()), dtype=np.int32)
-    # Only store answer_ids for dynamic lookup (87500 int32's so low mem usage)
+    # Only store answer_ids for dynamic lookup.
     dataset = tf.data.Dataset.from_tensor_slices(answer_ids)
+    # Order of ops results in different shuffle per epoch.
+    dataset = dataset.repeat()
+    if shuffle:
+        # Buffer size controls the random sampling, when buffer_size = length of data, shuffling is uniform.
+        dataset = dataset.shuffle(buffer_size=hparams.shuffle_buffer_size)
 
     # As we have numerous repeated contexts each of great length, instead of storing on disk/in memory multiple
     # copies we dynamically retrieve it per batch, cuts down hard-drive usage by 2GB and RAM by 4GB with no
@@ -30,13 +37,7 @@ def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, 
         context_words, context_chars = contexts[context_id]
         question_words, question_chars, answer_starts, answer_ends = questions[answer_key]
         return context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_id
-
-    dataset = dataset.map(lambda answer_id: tuple(
-        tf.py_func(map_to_cache, [answer_id], [tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32, tf.int32])))
-    # Shuffle then repeat as this guarantees we see each example once per epoch.
-    if shuffle:
-        dataset = dataset.shuffle(15000)
-    dataset = dataset.repeat()
+    dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], [tf.int32] * 7)))
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     if hparams.bucket:
         raise NotImplementedError('Bucketing not yet implemented')

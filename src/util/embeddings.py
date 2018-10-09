@@ -8,22 +8,27 @@ def create_vocab(embedding_index):
 
 def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
     rows = len(index) + 1 if skip_zero else len(index)
-    matrix = np.random.random_sample((rows, embedding_dimensions)) - 0.5
+    matrix = np.random.normal(scale=0.1, size=(rows, embedding_dimensions))
+
+    if skip_zero:
+        matrix[0] = np.zeros(embedding_dimensions)
+
     return matrix
 
 
 def generate_trainable_matrix(embedding_index, word_index, embedding_dimensions, trainable_words):
-    embedding_matrix = np.zeros((len(trainable_words) + 1, embedding_dimensions))
+    trainable_matrix = np.zeros((len(trainable_words) + 1, embedding_dimensions))
     valid_word_range = len(word_index) - len(trainable_words)
 
     for word in trainable_words:
         if word in word_index:
-            # Zero out the current vector for this word.
+            # Zero out the vector for this word in the pre-trained index.
             embedding_index[word] = np.zeros((embedding_dimensions, ))
-            # Randomly initialise the training word with values between -0.5 and 0.5
-            embedding_matrix[(word_index[word] - valid_word_range)] = np.random.random_sample((embedding_dimensions, )) - 0.5
+            # Randomly initialise the trainable word.
+            trainable_matrix[(word_index[word] - valid_word_range)] = np.random.normal(scale=0.1,
+                                                                                       size=(embedding_dimensions, ))
 
-    return embedding_matrix, embedding_index
+    return trainable_matrix, embedding_index
 
 
 def read_embeddings_file(path):
@@ -62,7 +67,6 @@ def load_embedding(path,
                    embedding_dimensions=300,
                    trainable_embeddings=[],
                    embedding_index=None):
-    print('Loading embeddings...')
     # Read the given embeddings file if its not given.
     embedding_index = embedding_index if embedding_index is not None else read_embeddings_file(path)
 
@@ -103,7 +107,7 @@ def load_embeddings(index_paths, embedding_paths, embed_dim, char_dim):
     word_index_path, trainable_index_path, char_index_path = index_paths
     word_embedding_path, trainable_embedding_path, char_embedding_path = embedding_paths
 
-    print('Loading Contextual Embeddings...')
+    print('Loading Embeddings...')
 
     word_index = load_json(word_index_path)
     trainable_word_index = load_json(trainable_index_path)

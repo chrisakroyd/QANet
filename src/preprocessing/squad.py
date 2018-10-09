@@ -165,9 +165,9 @@ def process(hparams):
 
     # Save the generated data
     save_json(train_contexts_path, train_contexts, format_json=False)
-    save_json(train_answers_path, train_question_answers)
+    save_json(train_answers_path, train_question_answers, format_json=False)
     save_json(dev_contexts_path, dev_contexts, format_json=False)
-    save_json(dev_answers_path, dev_question_answers)
+    save_json(dev_answers_path, dev_question_answers, format_json=False)
     # Save the word index mapping of word:index for both the pre-trained and trainable embeddings.
     save_json(word_index_path, word_index)
     save_json(char_index_path, char_index)
