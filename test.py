@@ -10,16 +10,16 @@ from src.util import namespace_json, load_embeddings, train_paths, embedding_pat
 
 
 def test(config, hparams):
-    data_directory, model_directory, log_directory = train_paths(hparams)
+    _, out_dir, model_dir, log_dir = train_paths(hparams)
     word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
-    character_embedding_path = embedding_paths(hparams)
+    char_embedding_path = embedding_paths(hparams)
 
     _, val = load_squad(hparams)
     val_contexts, val_spans, val_questions, val_answers, val_ctxt_mapping = val
 
     word_matrix, trainable_matrix, character_matrix = load_embeddings(
         index_paths=(word_index_path, trainable_index_path, char_index_path,),
-        embedding_paths=(word_embedding_path, trainable_embedding_path, character_embedding_path),
+        embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
         embed_dim=hparams.embed_dim,
         char_dim=hparams.char_dim
     )
@@ -42,7 +42,7 @@ def test(config, hparams):
             saver = tf.train.Saver(variable_averages.variables_to_restore())
         else:
             saver = tf.train.Saver()
-        saver.restore(sess, tf.train.latest_checkpoint(model_directory))
+        saver.restore(sess, tf.train.latest_checkpoint(model_dir))
         # Assign the shadow EMA variables to the graph.
         preds = []
         # +1 for uneven batch values, +1 for the range.

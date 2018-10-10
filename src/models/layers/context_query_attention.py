@@ -4,10 +4,13 @@ from src.models.utils import dot, batch_dot, mask_logits
 
 class ContextQueryAttention(tf.keras.layers.Layer):
     def __init__(self, **kwargs):
-        super(ContextQueryAttention, self).__init__(name='context_query_attention', **kwargs)
-        # Row wise softmax for Query2Context, Column wise for Context2Query
+        super(ContextQueryAttention, self).__init__(**kwargs)
         self.query_activation = tf.keras.layers.Softmax(axis=-1)
         self.context_activation = tf.keras.layers.Softmax(axis=1)
+
+    def compute_input_shape(self, x):
+        shape = tf.shape(x)
+        return shape[1], shape[2]
 
     def build(self, input_shape):
         self.W0 = self.add_weight(name='W0',
@@ -29,14 +32,18 @@ class ContextQueryAttention(tf.keras.layers.Layer):
                                     shape=[1],
                                     initializer='zero',
                                     trainable=True)
+        super(ContextQueryAttention, self).build(input_shape)
 
-    def call(self, x, context_len=400, question_len=50, context_mask=None, query_mask=None):
+    def call(self, x, training=None, mask=None):
         x_context, x_question = x
+        context_mask, query_mask = mask
+        context_length, _ = self.compute_input_shape(x_context)
+        question_length, _ = self.compute_input_shape(x_question)
         mask_q = tf.expand_dims(query_mask, axis=1)
         mask_c = tf.expand_dims(context_mask, axis=2)
 
-        subres0 = tf.tile(dot(x_context, self.W0), multiples=[1, 1, question_len])
-        subres1 = tf.tile(tf.transpose(dot(x_question, self.W1), perm=(0, 2, 1)), multiples=[1, context_len, 1])
+        subres0 = tf.tile(dot(x_context, self.W0), multiples=[1, 1, question_length])
+        subres1 = tf.tile(tf.transpose(dot(x_question, self.W1), perm=(0, 2, 1)), multiples=[1, context_length, 1])
         subres2 = batch_dot(x_context * self.W2, tf.transpose(x_question, perm=(0, 2, 1)))
         S = subres0 + subres1 + subres2
         S += self.bias

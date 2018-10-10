@@ -16,7 +16,7 @@ class LayerNorm(tf.keras.layers.Layer):
                                     initializer=tf.zeros_initializer(),
                                     trainable=True,
                                     name='layer_norm_bias')
-        self.built = True
+        super(LayerNorm, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
         mean = tf.reduce_mean(x, axis=-1, keepdims=True)

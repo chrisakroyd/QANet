@@ -4,12 +4,10 @@ Embedding = tf.keras.layers.Embedding
 
 
 class EmbeddingLayer(tf.keras.Model):
-    def __init__(self, word_matrix, trainable_matrix, character_matrix, filters, char_limit,
-                 kernel_size=5, word_dim=300, char_dim=200, word_dropout=0.1, char_dropout=0.05,
-                 mask_zero=True):
-        super(EmbeddingLayer, self).__init__()
+    def __init__(self, word_matrix, trainable_matrix, character_matrix, filters, kernel_size=5, word_dim=300,
+                 char_dim=200, word_dropout=0.1, char_dropout=0.05, mask_zero=True, **kwargs):
+        super(EmbeddingLayer, self).__init__(**kwargs)
         self.char_dim = char_dim
-        self.char_limit = char_limit
         self.filters = filters
         self.vocab_size = len(word_matrix)
         self.char_vocab_size = len(character_matrix)
@@ -47,11 +45,11 @@ class EmbeddingLayer(tf.keras.Model):
 
         self.max_pool = tf.keras.layers.GlobalMaxPool1D()
 
-        self.word_embedding_dropout = tf.keras.layers.Dropout(word_dropout)
-        self.character_embedding_dropout = tf.keras.layers.Dropout(char_dropout)
+        self.word_dropout = tf.keras.layers.Dropout(word_dropout)
+        self.char_dropout = tf.keras.layers.Dropout(char_dropout)
 
-        self.highway_1 = HighwayLayer(word_dropout, layer_id=1)
-        self.highway_2 = HighwayLayer(word_dropout, layer_id=2)
+        self.highway_1 = HighwayLayer(word_dropout, name='highway_1')
+        self.highway_2 = HighwayLayer(word_dropout, name='highway_2')
         # Need to down project for the shared model encoders.
         self.projection = tf.keras.layers.Conv1D(filters, kernel_size=1, strides=1, use_bias=False)
 
@@ -60,19 +58,24 @@ class EmbeddingLayer(tf.keras.Model):
         self.trainable_tokens_mask = tf.keras.layers.Lambda(lambda x: x - self.valid_word_range)
         self.relu = tf.keras.layers.Activation('relu')
 
+    def compute_input_shape(self, x):
+        shape = tf.shape(x)
+        return shape[1], shape[2]
+
     def call(self, x, training=None, mask=None):
-        words, chars, input_length = x
+        words, chars = x
+        input_length, char_limit = self.compute_input_shape(chars)
         word_embedding = self.word_embedding(words)
         char_embedding = self.char_embedding(chars)
 
-        char_embedding = tf.reshape(char_embedding, shape=(-1, self.char_limit, self.char_dim, ))
+        char_embedding = tf.reshape(char_embedding, shape=(-1, char_limit, self.char_dim, ))
 
-        word_embedding = self.word_embedding_dropout(word_embedding)
-        char_embedding = self.character_embedding_dropout(char_embedding)
+        word_embedding = self.word_dropout(word_embedding, training=training)
+        char_embedding = self.char_dropout(char_embedding, training=training)
 
         char_embedding = self.char_conv(char_embedding)
         char_embedding = self.max_pool(char_embedding)
-        char_embedding = tf.reshape(char_embedding, shape=(-1, input_length, char_embedding.shape[-1],))
+        char_embedding = tf.reshape(char_embedding, shape=(-1, input_length, self.char_dim, ))
 
         trainable_embedding = self.trainable_embedding(self.trainable_tokens_mask(words))
         trainable_embedding = self.relu(trainable_embedding)
@@ -80,9 +83,9 @@ class EmbeddingLayer(tf.keras.Model):
         word_embedding = tf.add(word_embedding, trainable_embedding)
         embedding = tf.concat([word_embedding, char_embedding], axis=2)
 
-        # Change made so this would work in eager mode.
-        embedding = self.highway_1(embedding)
-        embedding = self.highway_2(embedding)
+        # Two highway layers then a projection to a lower dimensional input for the shared embedding encoder layers.
+        embedding = self.highway_1(embedding, training=training)
+        embedding = self.highway_2(embedding, training=training)
 
         embedding = self.projection(embedding)
 

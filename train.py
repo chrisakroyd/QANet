@@ -12,10 +12,10 @@ from src.util import namespace_json, load_embeddings, make_dirs, train_paths, em
 
 def train(config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
-    data_directory, model_directory, log_directory = train_paths(hparams)
+    _, out_dir, model_dir, log_dir = train_paths(hparams)
     word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
-    character_embedding_path = embedding_paths(hparams)
-    make_dirs([model_directory, log_directory])
+    char_embedding_path = embedding_paths(hparams)
+    make_dirs([out_dir, model_dir, log_dir])
 
     train, val = load_squad(hparams)
 
@@ -28,7 +28,7 @@ def train(config, hparams):
 
     word_matrix, trainable_matrix, character_matrix = load_embeddings(
         index_paths=(word_index_path, trainable_index_path, char_index_path, ),
-        embedding_paths=(word_embedding_path, trainable_embedding_path, character_embedding_path, ),
+        embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path, ),
         embed_dim=hparams.embed_dim,
         char_dim=hparams.char_dim
     )
@@ -46,14 +46,14 @@ def train(config, hparams):
         model.init(iterator.get_next())
         sess.run(tf.global_variables_initializer())
         # saver boilerplate
-        writer = tf.summary.FileWriter(log_directory, graph=sess.graph)
+        writer = tf.summary.FileWriter(log_dir, graph=sess.graph)
         saver = tf.train.Saver()
         # Initialize the handles for switching.
         train_handle = sess.run(train_iter.string_handle())
         val_handle = sess.run(val_iter.string_handle())
 
-        if os.path.exists(model_directory) and tf.train.latest_checkpoint(model_directory) is not None:
-            saver.restore(sess, tf.train.latest_checkpoint(model_directory))
+        if os.path.exists(model_dir) and tf.train.latest_checkpoint(model_dir) is not None:
+            saver.restore(sess, tf.train.latest_checkpoint(model_dir))
 
         global_step = max(sess.run(model.global_step), 1)
         train_preds = []
@@ -105,7 +105,7 @@ def train(config, hparams):
             # Save the model weights.
             if global_step % hparams.checkpoint_every == 0:
                 writer.flush()
-                filename = os.path.join(model_directory, 'model_{}.ckpt'.format(global_step))
+                filename = os.path.join(model_dir, 'model_{}.ckpt'.format(global_step))
                 # Save the model
                 saver.save(sess, filename)
 

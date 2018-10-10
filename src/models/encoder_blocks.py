@@ -36,7 +36,7 @@ class PositionEncoding(tf.keras.layers.Layer):
 
 class MultiHeadAttention(tf.keras.Model):
     def __init__(self, filters=128, num_heads=8, dropout=0.1, **kwargs):
-        super(MultiHeadAttention, self).__init__(name='multi_head_attention', **kwargs)
+        super(MultiHeadAttention, self).__init__(**kwargs)
         self.num_heads = num_heads
         self.filters = filters
 
@@ -77,7 +77,7 @@ class MultiHeadAttention(tf.keras.Model):
             logits = mask_logits(logits, mask)
 
         weights = self.softmax(logits)
-        weights = self.dropout(weights)
+        weights = self.dropout(weights, training=training)
         x = tf.matmul(weights, V)
 
         return combine_last_two_dimensions(tf.transpose(x, [0, 2, 1, 3]))
@@ -105,7 +105,6 @@ class ConvBlock(tf.keras.Model):
         super(ConvBlock, self).__init__(name='conv_block_%d' % sub_layer_id, **kwargs)
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
-        self.dropout_val = dropout
 
         self.seperable_conv = tf.keras.layers.SeparableConv1D(filters=filters,
                                                               kernel_size=kernel_size,
@@ -126,7 +125,7 @@ class ConvBlock(tf.keras.Model):
 
         # Only apply dropout every 2 positions.
         if self.sub_layer_id % 2 == 0:
-            x = self.dropout(x)
+            x = self.dropout(x, training=training)
 
         x = self.seperable_conv(x)
         x = self.layer_dropout([x, residual], training=training)
@@ -138,19 +137,19 @@ class SelfAttentionBlock(tf.keras.Model):
         super(SelfAttentionBlock, self).__init__(name='self_attention_%d' % sub_layer_id, **kwargs)
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
-        self.dropout_val = dropout
         self.layer_norm = LayerNorm()
         self.dropout = tf.keras.layers.Dropout(dropout)
         self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
         self.multi_head_attention = MultiHeadAttention(filters,
                                                        num_heads=heads,
-                                                       dropout=dropout)
+                                                       dropout=dropout,
+                                                       name='multi_head_attention')
 
     def call(self, x, training=None, mask=None):
         residual = x
         x = self.layer_norm(x)
-        x = self.dropout(x)
+        x = self.dropout(x, training=training)
         x = self.multi_head_attention(x, training=training, mask=mask)
         x = self.layer_dropout([x, residual], training=training)
         return x
@@ -159,7 +158,6 @@ class SelfAttentionBlock(tf.keras.Model):
 class FeedForwardBlock(tf.keras.Model):
     def __init__(self, filters, dropout, sub_layer_id, total_sub_layers, **kwargs):
         super(FeedForwardBlock, self).__init__(**kwargs)
-        self.dropout_val = dropout
         self.layer_norm = LayerNorm()
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
@@ -183,7 +181,7 @@ class FeedForwardBlock(tf.keras.Model):
     def call(self, x, training=None, mask=None):
         residual = x
         x = self.layer_norm(x)
-        x = self.dropout(x)
+        x = self.dropout(x, training=training)
         x = self.conv_ff_1(x)
         x = self.conv_ff_2(x)
         x = self.layer_dropout([x, residual], training=training)

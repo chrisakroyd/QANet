@@ -12,9 +12,8 @@ class QANet:
         # being used to calc the start prob + last two outputs used to calc the end prob.
         # Optionally use elmo (requires tokenized text rather than index input).
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
-                                              filters=self.hparams.filters, char_limit=self.hparams.char_limit,
-                                              word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim,
-                                              mask_zero=True)
+                                              filters=self.hparams.filters, word_dim=self.hparams.embed_dim,
+                                              char_dim=self.hparams.char_dim)
 
         self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
                                                              conv_layers=self.hparams.embed_encoder_convs,
@@ -24,7 +23,7 @@ class QANet:
                                                              dropout=self.hparams.dropout,
                                                              name='embedding_encoder')
 
-        self.context_query = ContextQueryAttention()
+        self.context_query = ContextQueryAttention(name='context_query_attention')
 
         self.input_projection = tf.keras.layers.Conv1D(self.hparams.filters,
                                                        strides=1,
@@ -98,14 +97,14 @@ class QANet:
         # Trim the input sequences to the max non-zero length in batch (speeds up training).
         self.slice_ops()
         # Embed the question + context
-        c_emb = self.embedding_block([self.context_words, self.context_chars, self.context_max])
-        q_emb = self.embedding_block([self.question_words, self.question_chars, self.question_max])
+        c_emb = self.embedding_block([self.context_words, self.context_chars])
+        q_emb = self.embedding_block([self.question_words, self.question_chars])
 
         # Encode the question + context with the embedding encoder
         c = self.embedding_encoder_blocks(c_emb, training=self.train, mask=self.context_mask)
         q = self.embedding_encoder_blocks(q_emb, training=self.train, mask=self.question_mask)
         # Run context -> query attention over the context and the query
-        inputs = self.context_query([c, q], self.context_max, self.question_max, self.context_mask, self.question_mask)
+        inputs = self.context_query([c, q], training=self.train, mask=[self.context_mask, self.question_mask])
         # Down-project for the next block.
         self.enc = self.input_projection(inputs)
 
@@ -114,8 +113,8 @@ class QANet:
         self.enc_3 = self.model_encoder_blocks(self.enc_2, training=self.train, mask=self.context_mask)
 
         # Get the start/end logits from the output layers
-        logits_start = self.start_output(self.enc_1, self.enc_2, mask=self.context_mask)
-        logits_end = self.end_output(self.enc_1, self.enc_3, mask=self.context_mask)
+        logits_start = self.start_output([self.enc_1, self.enc_2], mask=self.context_mask)
+        logits_end = self.end_output([self.enc_1, self.enc_3], mask=self.context_mask)
 
         # Prediction head
         outer = tf.matmul(tf.expand_dims(self.start_softmax(logits_start), axis=2),
