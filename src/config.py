@@ -81,6 +81,4 @@ def model_config(defaults):
     flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint.')
     flags.DEFINE_integer('save_loss_every', defaults.save_loss_every, 'After how many steps do we save the loss value.')
     flags.DEFINE_integer('run_val_every', defaults.run_val_every, 'After how many steps do we calculate EM/F1 scores.')
-    # @TODO Still to implement.
-    flags.DEFINE_integer('early_stop', defaults.early_stop, 'Early stop patience.')
     return flags

@@ -54,7 +54,7 @@ class ContextQueryAttention(Layer):
         c2q = tf.matmul(S_, x_question)
         q2c = tf.matmul(tf.matmul(S_, S_T), x_context)
 
-        return tf.concat([x_context, c2q, x_context * c2q, x_context * q2c], axis=-1)
+        return c2q, q2c
 
     def compute_output_shape(self, input_shape):
         return input_shape[0][0], input_shape[0][1], (input_shape[0][-1] * 4)

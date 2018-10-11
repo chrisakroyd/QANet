@@ -105,18 +105,21 @@ class QANet:
         # Trim the input sequences to the max non-zero length in batch (speeds up training).
         self.slice_ops()
         # Embed the question + context
-        c_emb = self.embedding_block([self.context_words, self.context_chars])
-        q_emb = self.embedding_block([self.question_words, self.question_chars])
+        context_emb = self.embedding_block([self.context_words, self.context_chars])
+        quextion_emb = self.embedding_block([self.question_words, self.question_chars])
         # Project down to hparams.filters at each position for the stacked embedding encoder blocks.
-        c_emb = self.embed_projection(c_emb)
-        q_emb = self.embed_projection(q_emb)
+        context_emb = self.embed_projection(context_emb)
+        quextion_emb = self.embed_projection(quextion_emb)
 
         # Encode the question + context with the embedding encoder
-        c = self.embedding_encoder_blocks(c_emb, training=self.train, mask=self.context_mask)
-        q = self.embedding_encoder_blocks(q_emb, training=self.train, mask=self.question_mask)
+        context_encoded = self.embedding_encoder_blocks(context_emb, training=self.train, mask=self.context_mask)
+        question_encoded = self.embedding_encoder_blocks(quextion_emb, training=self.train, mask=self.question_mask)
 
-        # Calculate the Context -> Query and Query -> Context Attention.
-        inputs = self.context_query([c, q], training=self.train, mask=[self.context_mask, self.question_mask])
+        # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
+        self.c2q, self.q2c = self.context_query([context_encoded, question_encoded], training=self.train,
+                                                mask=[self.context_mask, self.question_mask])
+        # Input for the model encoder, refer to section 2.2. of QANet paper for more details
+        inputs = tf.concat([context_encoded, self.c2q, context_encoded * self.c2q, context_encoded * self.q2c], axis=-1)
 
         # Down-project for the next block.
         self.enc = self.model_projection(inputs)

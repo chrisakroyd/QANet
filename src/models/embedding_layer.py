@@ -38,9 +38,9 @@ class EmbeddingLayer(tf.keras.Model):
                                         name='char_embedding')
 
         self.char_conv = Conv1D(char_dim,
-                                                kernel_size=kernel_size,
-                                                activation='relu',
-                                                name='char_embed_conv')
+                                kernel_size=kernel_size,
+                                activation='relu',
+                                name='char_embed_conv')
 
         self.max_pool = GlobalMaxPool1D()
 
@@ -50,8 +50,10 @@ class EmbeddingLayer(tf.keras.Model):
         self.highway_1 = HighwayLayer(word_dropout, name='highway_1')
         self.highway_2 = HighwayLayer(word_dropout, name='highway_2')
 
-        # Initialize the layers which masks the words into the range 0 to len(trainable_tokens), where 0 = Glove word,
-        # values > 0 = trainable id's. Uses Relu to put them in range 0 - len(trainable_tokens)
+        # These two layers facilitate trainable embeddings for words. During preprocessing we give trainable words the
+        # highest id's, we then subtract the number of non-trainable words at each position which means that words with
+        # positive numbers are trainable words (these are also the indexes in the trainable embedding).
+        # The relu maps the negative ids from the subtraction to 0 without changing the trainable ids.
         self.trainable_tokens_mask = Lambda(lambda x: x - self.valid_word_range)
         self.relu = Activation('relu')
 
