@@ -65,18 +65,20 @@ def train(config, hparams):
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
 
-                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run(
-                    [model.answer_id, model.loss, model.l2_loss, model.yp1, model.yp2, model.train_op],
-                    feed_dict={handle: train_handle},
-                    options=run_options,
-                    run_metadata=run_metadata)
+                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run([model.answer_id, model.loss,
+                                                                                   model.l2_loss, model.start_pointer,
+                                                                                   model.end_pointer, model.train_op],
+                                                                                  feed_dict={handle: train_handle},
+                                                                                  options=run_options,
+                                                                                  run_metadata=run_metadata)
 
                 writer.add_run_metadata(run_metadata, 'step%03d' % global_step)
                 writer.flush()
             else:
-                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run(
-                    [model.answer_id, model.loss, model.l2_loss, model.yp1, model.yp2, model.train_op],
-                    feed_dict={handle: train_handle})
+                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run([model.answer_id, model.loss,
+                                                                                   model.l2_loss, model.start_pointer,
+                                                                                   model.end_pointer, model.train_op],
+                                                                                  feed_dict={handle: train_handle})
 
             # Cache the result of the run for train evaluation.
             train_preds.append((answer_ids, loss, answer_start, answer_end,))
@@ -93,8 +95,9 @@ def train(config, hparams):
                 val_preds = []
                 # +1 for uneven batch values, +1 for the range.
                 for _ in tqdm(range(1, (len(val_answers) // hparams.batch_size + 1) + 1)):
-                    answer_ids, loss, answer_start, answer_end = sess.run(
-                        [model.answer_id, model.loss, model.yp1, model.yp2], feed_dict={handle: val_handle})
+                    answer_ids, loss, answer_start, answer_end = sess.run([model.answer_id, model.loss,
+                                                                           model.start_pointer, model.end_pointer],
+                                                                          feed_dict={handle: val_handle})
                     val_preds.append((answer_ids, loss, answer_start, answer_end,))
                 # Evaluate the predictions and reset the train result list for next eval period.
                 evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer, global_step)

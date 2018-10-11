@@ -1,12 +1,13 @@
 import tensorflow as tf
+from tensorflow.keras.layers import Layer, Softmax
 from src.models.utils import dot, batch_dot, mask_logits
 
 
-class ContextQueryAttention(tf.keras.layers.Layer):
+class ContextQueryAttention(Layer):
     def __init__(self, **kwargs):
         super(ContextQueryAttention, self).__init__(**kwargs)
-        self.query_activation = tf.keras.layers.Softmax(axis=-1)
-        self.context_activation = tf.keras.layers.Softmax(axis=1)
+        self.query_activation = Softmax(axis=-1)
+        self.context_activation = Softmax(axis=1)
 
     def compute_input_shape(self, x):
         shape = tf.shape(x)

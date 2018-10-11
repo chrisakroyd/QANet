@@ -1,10 +1,11 @@
 import tensorflow as tf
 import math
+from tensorflow.keras.layers import Activation, Conv1D, Dropout, Layer, SeparableConv1D
 from src.models.utils import split_last_dimension, combine_last_two_dimensions, mask_logits
 from src.models.layers import LayerDropout, LayerNorm
 
 
-class PositionEncoding(tf.keras.layers.Layer):
+class PositionEncoding(Layer):
     def __init__(self, min_timescale=1.0, max_timescale=1.0e4, **kwargs):
         super(PositionEncoding, self).__init__(**kwargs)
         self.min_timescale = min_timescale
@@ -40,24 +41,24 @@ class MultiHeadAttention(tf.keras.Model):
         self.num_heads = num_heads
         self.filters = filters
 
-        self.memory_conv = tf.keras.layers.Conv1D(2 * self.filters,
-                                                  kernel_size=1,
-                                                  strides=1,
-                                                  name='memory_projection',
-                                                  use_bias=False)
+        self.memory_conv = Conv1D(2 * self.filters,
+                                  kernel_size=1,
+                                  strides=1,
+                                  name='memory_projection',
+                                  use_bias=False)
 
-        self.query_conv = tf.keras.layers.Conv1D(self.filters,
-                                                 kernel_size=1,
-                                                 strides=1,
-                                                 name='query_projection',
-                                                 use_bias=False)
+        self.query_conv = Conv1D(self.filters,
+                                 kernel_size=1,
+                                 strides=1,
+                                 name='query_projection',
+                                 use_bias=False)
 
         # square root of key depth https://arxiv.org/pdf/1706.03762.pdf (Attention is all you Need)
         self.scaling_factor = (self.filters // self.num_heads) ** -0.5
 
-        self.softmax = tf.keras.layers.Activation('softmax')
+        self.softmax = Activation('softmax')
 
-        self.dropout = tf.keras.layers.Dropout(dropout)
+        self.dropout = Dropout(dropout)
 
     def call(self, queries, training=None, mask=None):
         memory = queries
@@ -106,16 +107,16 @@ class ConvBlock(tf.keras.Model):
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
 
-        self.seperable_conv = tf.keras.layers.SeparableConv1D(filters=filters,
-                                                              kernel_size=kernel_size,
-                                                              strides=1,
-                                                              padding='same',
-                                                              use_bias=True,
-                                                              activation='relu')
+        self.seperable_conv = SeparableConv1D(filters=filters,
+                                              kernel_size=kernel_size,
+                                              strides=1,
+                                              padding='same',
+                                              use_bias=True,
+                                              activation='relu')
 
         self.layer_norm = LayerNorm()
 
-        self.dropout = tf.keras.layers.Dropout(dropout)
+        self.dropout = Dropout(dropout)
         self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
@@ -138,7 +139,7 @@ class SelfAttentionBlock(tf.keras.Model):
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
         self.layer_norm = LayerNorm()
-        self.dropout = tf.keras.layers.Dropout(dropout)
+        self.dropout = Dropout(dropout)
         self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
         self.multi_head_attention = MultiHeadAttention(filters,
@@ -161,20 +162,20 @@ class FeedForwardBlock(tf.keras.Model):
         self.layer_norm = LayerNorm()
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
-        self.dropout = tf.keras.layers.Dropout(dropout)
+        self.dropout = Dropout(dropout)
         # Feed forward layers, follows Attention is all you need. (Position-wise Feed-Forward Networks)
-        self.conv_ff_1 = tf.keras.layers.Conv1D(filters,
-                                                kernel_size=1,
-                                                strides=1,
-                                                use_bias=True,
-                                                name='conv_ff_1',
-                                                activation='relu')
+        self.conv_ff_1 = Conv1D(filters,
+                                kernel_size=1,
+                                strides=1,
+                                use_bias=True,
+                                name='conv_ff_1',
+                                activation='relu')
 
-        self.conv_ff_2 = tf.keras.layers.Conv1D(filters,
-                                                kernel_size=1,
-                                                strides=1,
-                                                use_bias=True,
-                                                name='conv_ff_2')
+        self.conv_ff_2 = Conv1D(filters,
+                                kernel_size=1,
+                                strides=1,
+                                use_bias=True,
+                                name='conv_ff_2')
 
         self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 

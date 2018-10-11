@@ -1,13 +1,12 @@
 import tensorflow as tf
+from tensorflow.keras.layers import Conv1D, Layer
 from src.models.utils import mask_logits
 
 
-class OutputLayer(tf.keras.layers.Layer):
+class OutputLayer(Layer):
     def __init__(self, kernel_size=1, **kwargs):
         super(OutputLayer, self).__init__(**kwargs)
-        self.conv = tf.keras.layers.Conv1D(1,
-                                           strides=1,
-                                           kernel_size=kernel_size)
+        self.conv = Conv1D(1, strides=1, kernel_size=kernel_size)
 
     def build(self, input_shape):
         super(OutputLayer, self).build(input_shape)

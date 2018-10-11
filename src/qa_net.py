@@ -1,5 +1,6 @@
 import tensorflow as tf
-from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttention, OutputLayer
+from tensorflow.keras.layers import Conv1D
+from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttention, OutputLayer, PredictionHead
 
 
 class QANet:
@@ -12,8 +13,13 @@ class QANet:
         # being used to calc the start prob + last two outputs used to calc the end prob.
         # Optionally use elmo (requires tokenized text rather than index input).
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
-                                              filters=self.hparams.filters, word_dim=self.hparams.embed_dim,
-                                              char_dim=self.hparams.char_dim)
+                                              word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim)
+
+        # We map the (embed_dim + char_dim) dim representations to the dimension of hparams.filters.
+        self.embed_projection = Conv1D(self.hparams.filters,
+                                       kernel_size=1,
+                                       strides=1,
+                                       use_bias=False)
 
         self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
                                                              conv_layers=self.hparams.embed_encoder_convs,
@@ -22,13 +28,16 @@ class QANet:
                                                              heads=self.hparams.heads,
                                                              dropout=self.hparams.dropout,
                                                              name='embedding_encoder')
-
+        # Context Query attention layer calculates two similarity matrices, one between context and query, and another
+        # between query and context.
         self.context_query = ContextQueryAttention(name='context_query_attention')
 
-        self.input_projection = tf.keras.layers.Conv1D(self.hparams.filters,
-                                                       strides=1,
-                                                       use_bias=False,
-                                                       kernel_size=1)
+        # Context query results in a 4 * filter (512 with standard hparams) vector at each position, paper does specify
+        # that weights are shared, therefore we need to project this representation to hparams.filters.
+        self.model_projection = Conv1D(self.hparams.filters,
+                                       strides=1,
+                                       use_bias=False,
+                                       kernel_size=1)
 
         self.model_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.model_encoder_blocks,
                                                          conv_layers=self.hparams.model_encoder_convs,
@@ -41,8 +50,7 @@ class QANet:
         self.start_output = OutputLayer()
         self.end_output = OutputLayer()
 
-        self.start_softmax = tf.keras.layers.Softmax()
-        self.end_softmax = tf.keras.layers.Softmax()
+        self.predict_pointers = PredictionHead(self.hparams.answer_limit)
 
     def init(self, placeholders):
         self.context_words, self.context_chars, self.question_words, self.question_chars, \
@@ -71,9 +79,9 @@ class QANet:
         if self.hparams.gradient_clip > 0.0:
             grads = self.optimizer.compute_gradients(self.loss)
             gradients, variables = zip(*grads)
-            capped_grads, _ = tf.clip_by_global_norm(gradients, self.hparams.gradient_clip)
+            clipped_grads, _ = tf.clip_by_global_norm(gradients, self.hparams.gradient_clip)
             self.train_op = self.optimizer.apply_gradients(
-                    zip(capped_grads, variables), global_step=self.global_step)
+                    zip(clipped_grads, variables), global_step=self.global_step)
         else:
             self.train_op = self.optimizer.minimize(self.loss, self.global_step)
 
@@ -99,37 +107,37 @@ class QANet:
         # Embed the question + context
         c_emb = self.embedding_block([self.context_words, self.context_chars])
         q_emb = self.embedding_block([self.question_words, self.question_chars])
+        # Project down to hparams.filters at each position for the stacked embedding encoder blocks.
+        c_emb = self.embed_projection(c_emb)
+        q_emb = self.embed_projection(q_emb)
 
         # Encode the question + context with the embedding encoder
         c = self.embedding_encoder_blocks(c_emb, training=self.train, mask=self.context_mask)
         q = self.embedding_encoder_blocks(q_emb, training=self.train, mask=self.question_mask)
-        # Run context -> query attention over the context and the query
-        inputs = self.context_query([c, q], training=self.train, mask=[self.context_mask, self.question_mask])
-        # Down-project for the next block.
-        self.enc = self.input_projection(inputs)
 
+        # Calculate the Context -> Query and Query -> Context Attention.
+        inputs = self.context_query([c, q], training=self.train, mask=[self.context_mask, self.question_mask])
+
+        # Down-project for the next block.
+        self.enc = self.model_projection(inputs)
+        # Run through our stack of stacked model encoder blocks on this representation.
         self.enc_1 = self.model_encoder_blocks(self.enc, training=self.train, mask=self.context_mask)
         self.enc_2 = self.model_encoder_blocks(self.enc_1, training=self.train, mask=self.context_mask)
         self.enc_3 = self.model_encoder_blocks(self.enc_2, training=self.train, mask=self.context_mask)
 
         # Get the start/end logits from the output layers
-        logits_start = self.start_output([self.enc_1, self.enc_2], mask=self.context_mask)
-        logits_end = self.end_output([self.enc_1, self.enc_3], mask=self.context_mask)
+        start_logits = self.start_output([self.enc_1, self.enc_2], mask=self.context_mask)
+        end_logits = self.end_output([self.enc_1, self.enc_3], mask=self.context_mask)
 
-        # Prediction head
-        outer = tf.matmul(tf.expand_dims(self.start_softmax(logits_start), axis=2),
-                          tf.expand_dims(self.end_softmax(logits_end), axis=1))
+        # Prediction head - Returns a pointer to the start and end position of the answer segment on the context.
+        self.start_pointer, self.end_pointer = self.predict_pointers([start_logits, end_logits])
 
-        outer = tf.matrix_band_part(outer, 0, self.hparams.answer_limit)
-        self.yp1 = tf.argmax(tf.reduce_max(outer, axis=2), axis=1)
-        self.yp2 = tf.argmax(tf.reduce_max(outer, axis=1), axis=1)
-
-        # Loss calc
+        # Calc and sum losses.
         loss_start = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits_start, labels=self.y_start)
+                logits=start_logits, labels=self.y_start)
 
         loss_end = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits_end, labels=self.y_end)
+                logits=end_logits, labels=self.y_end)
 
         self.loss = tf.reduce_mean(loss_start + loss_end)
 

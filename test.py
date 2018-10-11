@@ -48,7 +48,7 @@ def test(config, hparams):
         # +1 for uneven batch values, +1 for the range.
         for _ in tqdm(range(1, (len(val_answers) // hparams.batch_size + 1) + 1)):
             answer_ids, loss, answer_starts, answer_ends = sess.run(
-                [model.answer_id, model.loss, model.yp1, model.yp2], feed_dict={handle: val_handle})
+                [model.answer_id, model.loss, model.start_pointer, model.end_pointer], feed_dict={handle: val_handle})
             preds.append((answer_ids, loss, answer_starts, answer_ends,))
         # Evaluate the predictions and reset the train result list for next eval period.
         metrics, answer_texts = evaluate_list(preds, val_spans, val_answers, val_ctxt_mapping)

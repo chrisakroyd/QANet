@@ -1,11 +1,12 @@
 import tensorflow as tf
+from tensorflow.keras.layers import Dropout, Layer
 
 
-class LayerDropout(tf.keras.layers.Layer):
+class LayerDropout(Layer):
     def __init__(self, dropout, sublayer, total_sublayers, **kwargs):
         super(LayerDropout, self).__init__(**kwargs)
         self.Pl = dropout * float(sublayer) / float(total_sublayers)
-        self.residual_dropout = tf.keras.layers.Dropout(dropout)
+        self.residual_dropout = Dropout(dropout)
 
     def build(self, input_shape):
         super(LayerDropout, self).build(input_shape)

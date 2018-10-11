@@ -1,7 +1,8 @@
 import tensorflow as tf
+from tensorflow.keras.layers import Layer
 
 
-class LayerNorm(tf.keras.layers.Layer):
+class LayerNorm(Layer):
     def __init__(self, **kwargs):
         super(LayerNorm, self).__init__(**kwargs)
         self.epsilon = 1e-6
