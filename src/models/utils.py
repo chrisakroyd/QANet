@@ -6,24 +6,6 @@ def mask_logits(inputs, mask, mask_value=-1e30):
     return inputs + mask_value * (1 - mask)
 
 
-def split_last_dimension(x, n):
-    old_shape = x.get_shape().dims
-    last = old_shape[-1]
-    new_shape = old_shape[:-1] + [n] + [last // n if last else None]
-    ret = tf.reshape(x, tf.concat([tf.shape(x)[:-1], [n, -1]], 0))
-    ret.set_shape(new_shape)
-    return tf.transpose(ret, [0, 2, 1, 3])
-
-
-def combine_last_two_dimensions(x):
-    old_shape = x.get_shape().dims
-    a, b = old_shape[-2:]
-    new_shape = old_shape[:-2] + [a * b if a and b else None]
-    ret = tf.reshape(x, tf.concat([tf.shape(x)[:-2], [-1]], 0))
-    ret.set_shape(new_shape)
-    return ret
-
-
 def ndim(x):
     dims = x.get_shape()._dims
     return len(dims) if dims is not None else dims
