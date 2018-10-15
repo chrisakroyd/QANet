@@ -8,10 +8,7 @@ class QANet:
         self.train = train
         self.hparams = hparams
         self.global_step = tf.train.get_or_create_global_step()
-        # These are the model layers, Primarily think of this as 1 embedding encoder shared between
-        # context + query -> context_attention -> 1 * encoder layers run 3 times with the first 2 outputs
-        # being used to calc the start prob + last two outputs used to calc the end prob.
-        # Optionally use elmo (requires tokenized text rather than index input).
+        # Embedding layer for word + char embedding, with support for trainable embeddings.
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                               word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim)
 
@@ -80,8 +77,7 @@ class QANet:
             grads = self.optimizer.compute_gradients(self.loss)
             gradients, variables = zip(*grads)
             clipped_grads, _ = tf.clip_by_global_norm(gradients, self.hparams.gradient_clip)
-            self.train_op = self.optimizer.apply_gradients(
-                    zip(clipped_grads, variables), global_step=self.global_step)
+            self.train_op = self.optimizer.apply_gradients(zip(clipped_grads, variables), global_step=self.global_step)
         else:
             self.train_op = self.optimizer.minimize(self.loss, self.global_step)
 

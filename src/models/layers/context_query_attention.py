@@ -29,10 +29,6 @@ class ContextQueryAttention(Layer):
                                   initializer='glorot_uniform',
                                   trainable=True)
 
-        self.bias = self.add_weight(name='linear_bias',
-                                    shape=[1],
-                                    initializer='zero',
-                                    trainable=True)
         super(ContextQueryAttention, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
@@ -47,7 +43,6 @@ class ContextQueryAttention(Layer):
         subres1 = tf.tile(tf.transpose(dot(x_question, self.W1), perm=(0, 2, 1)), multiples=[1, context_length, 1])
         subres2 = batch_dot(x_context * self.W2, tf.transpose(x_question, perm=(0, 2, 1)))
         S = subres0 + subres1 + subres2
-        S += self.bias
 
         S_ = self.query_activation(mask_logits(S, mask=mask_q))
         S_T = tf.transpose(self.context_activation(mask_logits(S, mask=mask_c)), perm=(0, 2, 1))

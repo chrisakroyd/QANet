@@ -78,10 +78,9 @@ class EmbeddingLayer(tf.keras.Model):
 
         trainable_embedding = self.trainable_embedding(self.trainable_tokens_mask(words))
         trainable_embedding = self.relu(trainable_embedding)
-
         word_embedding = tf.add(word_embedding, trainable_embedding)
+        # Concat the word + char embeddings to form a vector of embed_dim + char_dim at each position.
         embedding = tf.concat([word_embedding, char_embedding], axis=2)
-
         # Two highway layers then a projection to a lower dimensional input for the shared embedding encoder layers.
         embedding = self.highway_1(embedding, training=training)
         embedding = self.highway_2(embedding, training=training)

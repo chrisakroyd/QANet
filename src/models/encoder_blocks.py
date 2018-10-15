@@ -34,19 +34,11 @@ class ConvBlock(tf.keras.Model):
                                               activation='relu')
 
         self.layer_norm = LayerNorm()
-
-        self.dropout = Dropout(dropout)
         self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
         residual = x
-
         x = self.layer_norm(x)
-
-        # Only apply dropout every 2 positions.
-        if self.sub_layer_id % 2 == 0:
-            x = self.dropout(x, training=training)
-
         x = self.seperable_conv(x)
         x = self.layer_dropout([x, residual], training=training)
         return x
@@ -58,18 +50,15 @@ class SelfAttentionBlock(tf.keras.Model):
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
         self.layer_norm = LayerNorm()
-        self.dropout = Dropout(dropout)
-        self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
-
         self.multi_head_attention = MultiHeadAttention(filters,
                                                        num_heads=heads,
                                                        dropout=dropout,
                                                        name='multi_head_attention')
+        self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
         residual = x
         x = self.layer_norm(x)
-        x = self.dropout(x, training=training)
         x = self.multi_head_attention(x, training=training, mask=mask)
         x = self.layer_dropout([x, residual], training=training)
         return x
@@ -78,10 +67,9 @@ class SelfAttentionBlock(tf.keras.Model):
 class FeedForwardBlock(tf.keras.Model):
     def __init__(self, filters, dropout, sub_layer_id, total_sub_layers, **kwargs):
         super(FeedForwardBlock, self).__init__(name='feed_forward_%d' % sub_layer_id, **kwargs)
-        self.layer_norm = LayerNorm()
         self.sub_layer_id = sub_layer_id
         self.total_sub_layers = total_sub_layers
-        self.dropout = Dropout(dropout)
+        self.layer_norm = LayerNorm()
         # Feed forward layers, follows Attention is all you need. (Position-wise Feed-Forward Networks)
         self.conv_ff_1 = Conv1D(filters,
                                 kernel_size=1,
@@ -89,7 +77,8 @@ class FeedForwardBlock(tf.keras.Model):
                                 use_bias=True,
                                 name='conv_ff_1',
                                 activation='relu')
-
+        # Attention is all you need has dropout after the relu conv, mirroring this here.
+        self.dropout = Dropout(dropout)
         self.conv_ff_2 = Conv1D(filters,
                                 kernel_size=1,
                                 strides=1,
@@ -101,8 +90,8 @@ class FeedForwardBlock(tf.keras.Model):
     def call(self, x, training=None, mask=None):
         residual = x
         x = self.layer_norm(x)
-        x = self.dropout(x, training=training)
         x = self.conv_ff_1(x)
+        x = self.dropout(x)
         x = self.conv_ff_2(x)
         x = self.layer_dropout([x, residual], training=training)
         return x

@@ -1,20 +1,8 @@
-import re
-from ftfy import fix_text
 from tqdm import tqdm
+from .text import clean
 from src.util import raw_data_paths, processed_data_paths, embedding_paths
 from src.util import Tokenizer, generate_matrix, load_embedding, save_embeddings, save_json, load_json, \
     index_from_list, read_embeddings_file, create_vocab
-
-# Regexes
-apostrophe = re.compile(r"('')")
-apostrophe_like = re.compile(r"(``)")
-
-
-def clean(text):
-    text = fix_text(text)
-    text = apostrophe.sub('" ', text)
-    text = apostrophe_like.sub('" ', text)
-    return text
 
 
 def convert_idx(text, tokens):
