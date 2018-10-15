@@ -43,20 +43,18 @@ class MultiHeadAttention(Layer):
 
     def split_heads(self, x, batch_size, length):
         # Split the last dimension + transpose result
-        x = tf.reshape(x, [batch_size, length, self.num_heads, self.depth])
-        return tf.transpose(x, [0, 2, 1, 3])
+        x = tf.reshape(x, shape=(batch_size, length, self.num_heads, self.depth))
+        return tf.transpose(x, perm=(0, 2, 1, 3))
 
     def combine_heads(self, x, batch_size, length):
-        x = tf.transpose(x, [0, 2, 1, 3])  # --> [batch, length, num_heads, depth]
-        return tf.reshape(x, [batch_size, length, self.filters])
+        x = tf.transpose(x, perm=(0, 2, 1, 3))  # --> [batch, length, num_heads, depth]
+        return tf.reshape(x, shape=(batch_size, length, self.filters))
 
     def call(self, x, training=None, mask=None):
         batch_size, length = self.compute_input_shape(x)
         # We initially run through linear projection for keys, values and query. As this is self attention, we use the
         # same input for each projection.
-        query = self.queries_layer(x)
-        key = self.keys_layer(x)
-        values = self.values_layer(x)
+        query, key, values = (self.queries_layer(x), self.keys_layer(x), self.values_layer(x))
         # We then split these values into n heads which allows the model to jointly attend to different positions.
         query = self.split_heads(query, batch_size, length)
         key = self.split_heads(key, batch_size, length)
@@ -67,7 +65,7 @@ class MultiHeadAttention(Layer):
         logits = tf.matmul(query, key, transpose_b=True)
         # Optionally apply a mask before the softmax function
         if mask is not None:
-            mask = tf.reshape(mask, shape=[tf.shape(logits)[0], 1, 1, -1])
+            mask = tf.reshape(mask, shape=(tf.shape(logits)[0], 1, 1, -1))
             logits = mask_logits(logits, mask)
         # Calculate the attention weights and apply dropout.
         weights = self.softmax(logits)
