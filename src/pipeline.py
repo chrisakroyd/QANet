@@ -41,7 +41,7 @@ def get_padded_shapes(hparams):
             [])
 
 
-def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, prefetch=2):
+def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, prefetch=1):
     # Extract an array of all answer_ids.
     answer_ids = np.asarray(list(context_mapping.keys()), dtype=np.int32)
     # Only store answer_ids for dynamic lookup.

@@ -53,6 +53,9 @@ def model_config(defaults):
     flags.DEFINE_boolean('bucket', defaults.bucket, 'Whether to use bucketing (used in paper).')
     flags.DEFINE_list('bucket_ranges', defaults.bucket_ranges, 'Ranges for bucketing (if enabled).')
     flags.DEFINE_integer('bucket_size', defaults.bucket_size, 'Size of a bucket (If no bucket ranges given).')
+    flags.DEFINE_integer('parallel_calls', defaults.parallel_calls, 'Number of parallel calls for the pipeline.')
+    flags.DEFINE_boolean('dynamic_slice', defaults.dynamic_slice,
+                         'Controls whether we slice tensors to the max within the batch.')
     flags.DEFINE_boolean('use_elmo', defaults.use_elmo, 'Whether to use ELMo embeddings.')
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
@@ -70,11 +73,16 @@ def model_config(defaults):
                          'Number of conv layers in each block of the model encoder.')
     flags.DEFINE_integer('model_encoder_kernel_width', defaults.model_encoder_kernel_width,
                          'Kernel width of each conv layer of the model encoder.')
+    flags.DEFINE_float('feed_forward_multiplier', defaults.feed_forward_multiplier,
+                       'Multiplier for the units in the first layer of the feed forward block.')
     # Flags for train hyper params e.g. dropout, l2, gradient ema decay values (set to QANet paper values).
     flags.DEFINE_float('dropout', defaults.dropout, 'Fraction of units to drop.')
     flags.DEFINE_float('l2', defaults.l2, 'L2 weight decay.')
     flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.')
     flags.DEFINE_float('learn_rate', defaults.learning_rate, 'Learning rate.')
+    flags.DEFINE_float('beta1', defaults.beta1, 'Beta 1 parameter of adam optimizer.')
+    flags.DEFINE_float('beta2', defaults.beta2, 'Beta 2 parameter of adam optimizer.')
+    flags.DEFINE_float('epsilon', defaults.epsilon, 'Value for epsilon.')
     flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.')
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')

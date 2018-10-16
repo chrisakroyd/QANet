@@ -7,14 +7,15 @@ class StackedConvBlock(tf.keras.Sequential):
     def __init__(self, filters, kernel_size, conv_layers, block_start_id, total_sub_layers, dropout=0.1, **kwargs):
         super(StackedConvBlock, self).__init__(**kwargs)
         for i in range(conv_layers):
+            sub_layer_id = block_start_id + i
             self.add(ConvBlock(filters=filters,
                                kernel_size=kernel_size,
                                dropout=dropout,
-                               sub_layer_id=(block_start_id + 1) + i,
-                               total_sub_layers=total_sub_layers))
+                               sub_layer_id=sub_layer_id,
+                               total_sub_layers=total_sub_layers,
+                               name='conv_block_%d' % sub_layer_id))
 
-    def call(self, inputs, training=None, mask=None):
-        x = inputs
+    def call(self, x, training=None, mask=None):
         for layer in self.layers:
             x = layer(x, training=training, mask=mask)
         return x
@@ -22,9 +23,8 @@ class StackedConvBlock(tf.keras.Sequential):
 
 class ConvBlock(tf.keras.Model):
     def __init__(self, filters, kernel_size, dropout, sub_layer_id, total_sub_layers, **kwargs):
-        super(ConvBlock, self).__init__(name='conv_block_%d' % sub_layer_id, **kwargs)
-        self.sub_layer_id = sub_layer_id
-        self.total_sub_layers = total_sub_layers
+        super(ConvBlock, self).__init__(**kwargs)
+        self.layer_norm = LayerNorm()
 
         self.seperable_conv = SeparableConv1D(filters=filters,
                                               kernel_size=kernel_size,
@@ -33,7 +33,6 @@ class ConvBlock(tf.keras.Model):
                                               use_bias=True,
                                               activation='relu')
 
-        self.layer_norm = LayerNorm()
         self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
@@ -46,9 +45,7 @@ class ConvBlock(tf.keras.Model):
 
 class SelfAttentionBlock(tf.keras.Model):
     def __init__(self, filters, sub_layer_id, total_sub_layers, heads=8, dropout=0.0, **kwargs):
-        super(SelfAttentionBlock, self).__init__(name='self_attention_%d' % sub_layer_id, **kwargs)
-        self.sub_layer_id = sub_layer_id
-        self.total_sub_layers = total_sub_layers
+        super(SelfAttentionBlock, self).__init__(**kwargs)
         self.layer_norm = LayerNorm()
         self.multi_head_attention = MultiHeadAttention(filters,
                                                        num_heads=heads,
@@ -59,21 +56,21 @@ class SelfAttentionBlock(tf.keras.Model):
     def call(self, x, training=None, mask=None):
         residual = x
         x = self.layer_norm(x)
-        x = self.multi_head_attention(x, training=training, mask=mask)
+        x = self.multi_head_attention([x, x], training=training, mask=mask)
         x = self.layer_dropout([x, residual], training=training)
         return x
 
 
 class FeedForwardBlock(tf.keras.Model):
-    def __init__(self, filters, dropout, sub_layer_id, total_sub_layers, **kwargs):
-        super(FeedForwardBlock, self).__init__(name='feed_forward_%d' % sub_layer_id, **kwargs)
-        self.sub_layer_id = sub_layer_id
-        self.total_sub_layers = total_sub_layers
+    def __init__(self, filters, dropout, sub_layer_id, total_sub_layers, ff_mul=1.0, **kwargs):
+        super(FeedForwardBlock, self).__init__(**kwargs)
         self.layer_norm = LayerNorm()
-        # Feed forward layers, follows Attention is all you need. (Position-wise Feed-Forward Networks)
-        self.conv_ff_1 = Conv1D(filters,
+        # Feed forward layers, follows Attention is all you need. (Position-wise Feed-Forward Networks),
+        # optionally increase units in the first layer by a multiplier.
+        self.conv_ff_1 = Conv1D(int(filters * ff_mul),
                                 kernel_size=1,
                                 strides=1,
+                                padding='same',
                                 use_bias=True,
                                 name='conv_ff_1',
                                 activation='relu')
@@ -82,6 +79,7 @@ class FeedForwardBlock(tf.keras.Model):
         self.conv_ff_2 = Conv1D(filters,
                                 kernel_size=1,
                                 strides=1,
+                                padding='same',
                                 use_bias=True,
                                 name='conv_ff_2')
 
@@ -99,7 +97,7 @@ class FeedForwardBlock(tf.keras.Model):
 
 class EncoderBlock(tf.keras.Model):
     def __init__(self, conv_layers, kernel_size, block_number=0, total_blocks=1,
-                 filters=128, heads=8, dropout=0.1, **kwargs):
+                 filters=128, heads=8, dropout=0.1, ff_mul=1.0, **kwargs):
         super(EncoderBlock, self).__init__(**kwargs)
 
         # These Ids and counts are for determining layer dropout, higher layers == more chance of dropout
@@ -125,11 +123,14 @@ class EncoderBlock(tf.keras.Model):
                                                        heads=heads,
                                                        sub_layer_id=self.self_attention_id,
                                                        total_sub_layers=self.total_sub_layers,
-                                                       dropout=dropout)
+                                                       dropout=dropout,
+                                                       name='self_attention_%d' % self.self_attention_id)
 
         self.feed_forward_block = FeedForwardBlock(filters, dropout,
+                                                   ff_mul=ff_mul,
                                                    sub_layer_id=self.feed_forward_id,
-                                                   total_sub_layers=self.total_sub_layers)
+                                                   total_sub_layers=self.total_sub_layers,
+                                                   name='feed_forward_%d' % self.feed_forward_id)
 
     def call(self, x, training=None, mask=None):
         x = self.position_encoding(x, training=training, mask=mask)
@@ -140,19 +141,17 @@ class EncoderBlock(tf.keras.Model):
 
 
 class StackedEncoderBlocks(tf.keras.Sequential):
-    def __init__(self, blocks, conv_layers, kernel_size, filters=128, heads=8, dropout=0.1, **kwargs):
+    def __init__(self, blocks, conv_layers, kernel_size, filters=128, heads=8, dropout=0.1, ff_mul=1.0, **kwargs):
         super(StackedEncoderBlocks, self).__init__(**kwargs)
-
         for i in range(blocks):
             self.add(
                 EncoderBlock(conv_layers=conv_layers, kernel_size=kernel_size,
                              filters=filters, heads=heads,
                              dropout=dropout, block_number=i, total_blocks=blocks,
-                             name='encoder_block_%d' % i)
+                             ff_mul=ff_mul, name='encoder_block_%d' % i)
             )
 
-    def call(self, inputs, training=None, mask=None):
-        x = inputs
+    def call(self, x, training=None, mask=None):
         for layer in self.layers:
             x = layer(x, training=training, mask=mask)
         return x

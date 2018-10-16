@@ -51,10 +51,12 @@ class MultiHeadAttention(Layer):
         return tf.reshape(x, shape=(batch_size, length, self.filters))
 
     def call(self, x, training=None, mask=None):
+        # When computing self attention x = y
+        x, y = x
         batch_size, length = self.compute_input_shape(x)
         # We initially run through linear projection for keys, values and query. As this is self attention, we use the
         # same input for each projection.
-        query, key, values = (self.queries_layer(x), self.keys_layer(x), self.values_layer(x))
+        query, key, values = (self.queries_layer(x), self.keys_layer(y), self.values_layer(y))
         # We then split these values into n heads which allows the model to jointly attend to different positions.
         query = self.split_heads(query, batch_size, length)
         key = self.split_heads(key, batch_size, length)
