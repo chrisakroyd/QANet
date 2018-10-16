@@ -8,14 +8,16 @@ bucket_by_sequence_length = tf.contrib.data.bucket_by_sequence_length
 def create_placeholders(context_limit, question_limit, char_limit):
     ctxt_words = tf.placeholder(dtype=tf.int32, shape=(None, context_limit, ), name='context_words')
     ctxt_chars = tf.placeholder(dtype=tf.int32, shape=(None, context_limit, char_limit, ), name='context_chars')
+    ctxt_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='context_length')
     ques_words = tf.placeholder(dtype=tf.int32, shape=(None, question_limit, ), name='question_words')
     ques_chars = tf.placeholder(dtype=tf.int32, shape=(None, question_limit, char_limit, ), name='question_chars')
+    ques_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='question_length')
 
     y_start = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_start_index')
     y_end = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_end_index')
     answer_id = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_id')
 
-    return ctxt_words, ctxt_chars, ques_words, ques_chars, y_start, y_end, answer_id
+    return ctxt_words, ctxt_chars, ctxt_len, ques_words, ques_chars, ques_len, y_start, y_end, answer_id
 
 
 def length_fn(context_words, *args):
@@ -34,14 +36,16 @@ def create_buckets(hparams):
 def get_padded_shapes(hparams):
     return ([hparams.context_limit],
             [hparams.context_limit, hparams.char_limit],
+            [],  # context length
             [hparams.question_limit],
             [hparams.question_limit, hparams.char_limit],
-            [],
-            [],
-            [])
+            [],  # question length
+            [],  # answer_start
+            [],  # answer_end
+            [])  # answer_id
 
 
-def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, prefetch=1):
+def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True):
     # Extract an array of all answer_ids.
     answer_ids = np.asarray(list(context_mapping.keys()), dtype=np.int32)
     # Only store answer_ids for dynamic lookup.
@@ -58,10 +62,12 @@ def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, 
     def map_to_cache(answer_id):
         answer_key = str(answer_id)
         context_id = str(context_mapping[answer_key])
-        context_words, context_chars = contexts[context_id]
-        question_words, question_chars, answer_starts, answer_ends = questions[answer_key]
-        return context_words, context_chars, question_words, question_chars, answer_starts, answer_ends, answer_id
-    dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], [tf.int32] * 7)))
+        context_words, context_chars, context_length = contexts[context_id]
+        question_words, question_chars, question_length, answer_starts, answer_ends = questions[answer_key]
+        return context_words, context_chars, context_length, question_words, question_chars,\
+               question_length, answer_starts, answer_ends, answer_id
+
+    dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], [tf.int32] * 9)))
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     # Note: py_func doesn't return output shapes therefore we zero pad to the limits on each batch and slice to
     # the batch max during training. @TODO revisit and see if this can be avoided in future tf versions.
@@ -80,6 +86,6 @@ def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True, 
         )
 
     # Prefetch in theory speeds up the pipeline by overlapping the batch generation and running previous batch.
-    dataset = dataset.prefetch(prefetch)
+    dataset = dataset.prefetch(buffer_size=hparams.max_prefetch)
     iterator = dataset.make_one_shot_iterator()
     return dataset, iterator

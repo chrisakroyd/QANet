@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Conv1D
 from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttention, OutputLayer, PredictionHead
+from src.models.utils import create_mask
 
 
 class QANet:
@@ -53,22 +54,28 @@ class QANet:
         self.predict_pointers = PredictionHead(self.hparams.answer_limit)
 
     def init(self, placeholders):
-        self.context_words, self.context_chars, self.question_words, self.question_chars, \
-        self.y_start, self.y_end, self.answer_id = placeholders
-
-        self.masks()
+        self.context_words, self.context_chars, self.context_lengths, self.question_words, self.question_chars, \
+        self.question_lengths, self.y_start, self.y_end, self.answer_id = placeholders
+        # Calc the max length for the batch.
+        context_max = tf.reduce_max(self.context_lengths)
+        question_max = tf.reduce_max(self.question_lengths)
+        # Trim the input sequences to the max non-zero length in batch (speeds up training).
+        if self.hparams.dynamic_slice:
+            self.slice_ops(context_max, question_max)
+        # Init mask tensors on the trimmed input.
+        self.context_mask = create_mask(self.context_lengths, context_max)
+        self.question_mask = create_mask(self.question_lengths, question_max)
+        # Init network
         self.step()
+
+        if self.train and self.hparams.l2 > 0.0:
+            self.add_l2_loss(self.hparams.l2)
 
         if self.train:
             self.add_train_ops(self.hparams.learn_rate)
 
         if self.train and self.hparams.ema_decay > 0.0:
             self.add_ema_ops()
-
-    def masks(self):
-        # Initialize the masks
-        self.context_mask = tf.cast(self.context_words, tf.bool)
-        self.question_mask = tf.cast(self.question_words, tf.bool)
 
     def add_train_ops(self, learn_rate):
         self.lr = tf.minimum(learn_rate,  0.001 / tf.log(999.) * tf.log(tf.cast(self.global_step, tf.float32) + 1))
@@ -91,20 +98,20 @@ class QANet:
             with tf.control_dependencies([self.train_op]):
                 self.train_op = self.ema.apply(tf.trainable_variables() + tf.moving_average_variables())
 
-    def slice_ops(self):
-        context_max = tf.reduce_max(tf.count_nonzero(self.context_words, axis=1, dtype=tf.int32))
-        question_max = tf.reduce_max(tf.count_nonzero(self.question_words, axis=1, dtype=tf.int32))
+    def add_l2_loss(self, l2):
+        with tf.name_scope('l2_ops'):
+            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * l2
+            self.loss += self.l2_loss
+
+    def slice_ops(self, context_max, question_max):
         self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max))
         self.question_words = tf.slice(self.question_words, begin=(0, 0), size=(-1, question_max))
-        self.context_mask = tf.slice(self.context_mask, begin=(0, 0), size=(-1, context_max))
-        self.question_mask = tf.slice(self.question_mask, begin=(0, 0), size=(-1, question_max))
-        self.context_chars = tf.slice(self.context_chars, begin=(0, 0, 0), size=(-1, context_max, -1))
-        self.question_chars = tf.slice(self.question_chars, begin=(0, 0, 0), size=(-1, question_max, -1))
+        self.context_chars = tf.slice(self.context_chars, begin=(0, 0, 0), size=(-1, context_max,
+                                                                                 self.hparams.char_limit))
+        self.question_chars = tf.slice(self.question_chars, begin=(0, 0, 0), size=(-1, question_max,
+                                                                                   self.hparams.char_limit))
 
     def step(self):
-        # Trim the input sequences to the max non-zero length in batch (speeds up training).
-        if self.hparams.dynamic_slice:
-            self.slice_ops()
         # Embed the question + context
         context_emb = self.embedding_block([self.context_words, self.context_chars])
         quextion_emb = self.embedding_block([self.question_words, self.question_chars])
@@ -143,15 +150,3 @@ class QANet:
                 logits=end_logits, labels=self.y_end)
 
         self.loss = tf.reduce_mean(loss_start + loss_end)
-
-        # Add regularization loss over all trainable weights.
-        if self.hparams.l2 > 0.0:
-            with tf.name_scope('l2_ops'):
-                self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * self.hparams.l2
-                self.loss += self.l2_loss
-        else:
-            self.l2_loss = 0.0
-
-        # Ensures that the ops are added to the graph.
-        self.loss = tf.identity(self.loss)
-        self.l2_loss = tf.identity(self.l2_loss)

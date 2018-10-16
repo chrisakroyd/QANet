@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Conv1D, Layer
-from src.models.utils import mask_logits
+from src.models.utils import apply_mask
 
 
 class OutputLayer(Layer):
@@ -16,7 +16,7 @@ class OutputLayer(Layer):
         x = tf.concat([block_1, block_2], axis=-1)
         x = self.conv(x)
         x = tf.squeeze(x, axis=-1)
-        x = mask_logits(x, mask)
+        x = apply_mask(x, mask)
 
         return x
 

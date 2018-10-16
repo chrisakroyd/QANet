@@ -14,7 +14,7 @@ def load_contexts(contexts, char_limit):
     for key, value in contexts.items():
         context_words = np.asarray(value['context_words'], dtype=np.int32)
         context_chars = pad_chars(value['context_chars'], char_limit)
-        context_cache[key] = context_words, context_chars
+        context_cache[key] = context_words, context_chars, len(value['context_words'])
         context_spans[key] = {
             'context': value['context'],
             'word_spans': value['word_spans'],
@@ -35,7 +35,7 @@ def load_answers(answers, char_limit):
 
         answer_cache[key] = value['answers']
         context_mapping[key] = value['context_id']
-        question_cache[key] = question_words, question_chars, answer_starts, answer_ends
+        question_cache[key] = question_words, question_chars, len(value['question_words']), answer_starts, answer_ends
 
     return question_cache, answer_cache, context_mapping
 

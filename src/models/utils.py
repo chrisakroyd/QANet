@@ -1,6 +1,9 @@
 import tensorflow as tf
 
 
-def mask_logits(inputs, mask, mask_value=-1e30):
-    mask = tf.cast(mask, tf.float32)
-    return inputs + mask_value * (1 - mask)
+def create_mask(lengths, maxlen):
+    return tf.sequence_mask(lengths, maxlen=maxlen)
+
+
+def apply_mask(inputs, mask, mask_value=-1e12):
+    return inputs + (1.0 - tf.cast(mask, dtype=tf.float32)) * mask_value

@@ -29,6 +29,7 @@
   "use_elmo": false,
   "dynamic_slice": true,
   "parallel_calls": 4,
+  "max_prefetch": 5,
   "batch_size": 32,
   "filters": 128,
   "heads": 8,
