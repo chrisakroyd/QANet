@@ -19,8 +19,8 @@ def train(config, hparams):
 
     train, val = load_squad(hparams)
 
-    train_contexts, train_spans, train_questions, train_answers, train_ctxt_mapping = train
-    val_contexts, val_spans, val_questions, val_answers, val_ctxt_mapping = val
+    train_contexts, train_spans, train_queries, train_answers, train_ctxt_mapping = train
+    val_contexts, val_spans, val_queries, val_answers, val_ctxt_mapping = val
 
     # Free some memory.
     del train
@@ -34,8 +34,8 @@ def train(config, hparams):
     )
 
     with tf.device('/cpu:0'):
-        train_set, train_iter = create_dataset(train_contexts, train_questions, train_ctxt_mapping, hparams)
-        _, val_iter = create_dataset(val_contexts, val_questions, val_ctxt_mapping, hparams, shuffle=False)
+        train_set, train_iter = create_dataset(train_contexts, train_queries, train_ctxt_mapping, hparams)
+        _, val_iter = create_dataset(val_contexts, val_queries, val_ctxt_mapping, hparams, shuffle=False)
 
     with tf.Session(config=config) as sess:
         # Create the dataset iterators.

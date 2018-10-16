@@ -3,24 +3,6 @@ from tensorflow.keras.layers import Conv1D, Dropout, SeparableConv1D
 from src.models.layers import LayerDropout, LayerNorm, MultiHeadAttention, PositionEncoding
 
 
-class StackedConvBlock(tf.keras.Sequential):
-    def __init__(self, filters, kernel_size, conv_layers, block_start_id, total_sub_layers, dropout=0.1, **kwargs):
-        super(StackedConvBlock, self).__init__(**kwargs)
-        for i in range(conv_layers):
-            sub_layer_id = block_start_id + i
-            self.add(ConvBlock(filters=filters,
-                               kernel_size=kernel_size,
-                               dropout=dropout,
-                               sub_layer_id=sub_layer_id,
-                               total_sub_layers=total_sub_layers,
-                               name='conv_block_%d' % sub_layer_id))
-
-    def call(self, x, training=None, mask=None):
-        for layer in self.layers:
-            x = layer(x, training=training, mask=mask)
-        return x
-
-
 class ConvBlock(tf.keras.Model):
     def __init__(self, filters, kernel_size, dropout, sub_layer_id, total_sub_layers, **kwargs):
         super(ConvBlock, self).__init__(**kwargs)
@@ -109,49 +91,61 @@ class EncoderBlock(tf.keras.Model):
         # Each block has 4 components, Position encoding, n Conv Blocks, a self-attention block and a feed
         # forward block with residual connections between them (Implemented as part of the block)
         self.position_encoding = PositionEncoding()
-        # Can have n convs so just give the start id for this block.
-        self.stacked_conv_blocks = StackedConvBlock(filters=filters,
-                                                    kernel_size=kernel_size,
-                                                    conv_layers=conv_layers,
-                                                    dropout=dropout,
-                                                    block_start_id=self.block_start_id,
-                                                    total_sub_layers=self.total_sub_layers,
-                                                    name='%d_conv_blocks' % conv_layers)
+        # Can have n convs, create a list of conv blocks to iterate through incrementing their block_ids.
+        self.conv_layers = [ConvBlock(filters=filters,
+                                      kernel_size=kernel_size,
+                                      dropout=dropout,
+                                      sub_layer_id=(self.block_start_id + i),
+                                      total_sub_layers=self.total_sub_layers,
+                                      name='conv_block_%d' % (self.block_start_id + i)) for i in range(conv_layers)]
 
-        # Just give them a sub layer id that represents their position
-        self.self_attention_block = SelfAttentionBlock(filters,
-                                                       heads=heads,
-                                                       sub_layer_id=self.self_attention_id,
-                                                       total_sub_layers=self.total_sub_layers,
-                                                       dropout=dropout,
-                                                       name='self_attention_%d' % self.self_attention_id)
+        self.self_attention = SelfAttentionBlock(filters,
+                                                 heads=heads,
+                                                 sub_layer_id=self.self_attention_id,
+                                                 total_sub_layers=self.total_sub_layers,
+                                                 dropout=dropout,
+                                                 name='self_attention_%d' % self.self_attention_id)
 
-        self.feed_forward_block = FeedForwardBlock(filters, dropout,
-                                                   ff_mul=ff_mul,
-                                                   sub_layer_id=self.feed_forward_id,
-                                                   total_sub_layers=self.total_sub_layers,
-                                                   name='feed_forward_%d' % self.feed_forward_id)
+        self.feed_forward = FeedForwardBlock(filters, dropout,
+                                             ff_mul=ff_mul,
+                                             sub_layer_id=self.feed_forward_id,
+                                             total_sub_layers=self.total_sub_layers,
+                                             name='feed_forward_%d' % self.feed_forward_id)
 
     def call(self, x, training=None, mask=None):
         x = self.position_encoding(x, training=training, mask=mask)
-        x = self.stacked_conv_blocks(x, training=training, mask=mask)
-        x = self.self_attention_block(x, training=training, mask=mask)
-        x = self.feed_forward_block(x, training=training, mask=mask)
+        for conv in self.conv_layers:
+            x = conv(x, training=training, mask=mask)
+        x = self.self_attention(x, training=training, mask=mask)
+        x = self.feed_forward(x, training=training, mask=mask)
         return x
 
 
-class StackedEncoderBlocks(tf.keras.Sequential):
+class StackedEncoderBlocks(tf.keras.Model):
     def __init__(self, blocks, conv_layers, kernel_size, filters=128, heads=8, dropout=0.1, ff_mul=1.0, **kwargs):
         super(StackedEncoderBlocks, self).__init__(**kwargs)
-        for i in range(blocks):
-            self.add(
-                EncoderBlock(conv_layers=conv_layers, kernel_size=kernel_size,
-                             filters=filters, heads=heads,
-                             dropout=dropout, block_number=i, total_blocks=blocks,
-                             ff_mul=ff_mul, name='encoder_block_%d' % i)
-            )
+        self.hidden_size = filters
+        # Apply a linear layer to map input dimensionality to internal dimensionality.
+        self.projection = Conv1D(filters,
+                                 kernel_size=1,
+                                 strides=1,
+                                 padding='same',
+                                 activation=None)
+
+        self.blocks = [EncoderBlock(conv_layers=conv_layers, kernel_size=kernel_size,
+                                    filters=filters, heads=heads,
+                                    dropout=dropout, block_number=i, total_blocks=blocks,
+                                    ff_mul=ff_mul, name='encoder_block_%d' % i) for i in range(blocks)]
+
+        self.dropout = Dropout(dropout)
 
     def call(self, x, training=None, mask=None):
-        for layer in self.layers:
-            x = layer(x, training=training, mask=mask)
+        # Map down to internal dimensionality if input isn't already in it.
+        if not self.hidden_size == x.shape[-1]:
+            x = self.projection(x)
+
+        for block in self.blocks:
+            x = block(x, training=training, mask=mask)
+
+        x = self.dropout(x, training=training)
         return x

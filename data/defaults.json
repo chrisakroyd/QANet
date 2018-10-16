@@ -12,7 +12,7 @@
   "char_dim": 200,
   "char_limit": 16,
   "context_limit": 400,
-  "question_limit": 50,
+  "query_limit": 50,
   "answer_limit": 30,
   "max_words": 150000,
   "max_chars": 2500,

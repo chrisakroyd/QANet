@@ -12,14 +12,7 @@ class QANet:
         # Embedding layer for word + char embedding, with support for trainable embeddings.
         self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                               word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim)
-
-        # We map the (embed_dim + char_dim) dim representations to the dimension of the next block.
-        self.embed_projection = Conv1D(self.hparams.filters,
-                                       kernel_size=1,
-                                       strides=1,
-                                       padding='same',
-                                       activation=None)
-
+        # Shared embedding encoder between query + context
         self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
                                                              conv_layers=self.hparams.embed_encoder_convs,
                                                              kernel_size=self.hparams.embed_encoder_kernel_width,
@@ -31,14 +24,7 @@ class QANet:
         # Context Query attention layer calculates two similarity matrices, one between context and query, and another
         # between query and context.
         self.context_query = ContextQueryAttention(name='context_query_attention')
-
-        # Project to input size of block.
-        self.model_projection = Conv1D(self.hparams.filters,
-                                       kernel_size=1,
-                                       strides=1,
-                                       padding='same',
-                                       activation=None)
-
+        # Shared model encoder.
         self.model_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.model_encoder_blocks,
                                                          conv_layers=self.hparams.model_encoder_convs,
                                                          kernel_size=self.hparams.model_encoder_kernel_width,
@@ -54,17 +40,20 @@ class QANet:
         self.predict_pointers = PredictionHead(self.hparams.answer_limit)
 
     def init(self, placeholders):
-        self.context_words, self.context_chars, self.context_lengths, self.question_words, self.question_chars, \
-        self.question_lengths, self.y_start, self.y_end, self.answer_id = placeholders
-        # Calc the max length for the batch.
-        context_max = tf.reduce_max(self.context_lengths)
-        question_max = tf.reduce_max(self.question_lengths)
+        self.context_words, self.context_chars, self.context_lengths, self.query_words, self.query_chars, \
+        self.query_lengths, self.y_start, self.y_end, self.answer_id = placeholders
         # Trim the input sequences to the max non-zero length in batch (speeds up training).
         if self.hparams.dynamic_slice:
-            self.slice_ops(context_max, question_max)
+            # Calc the max length for the batch.
+            context_max = tf.reduce_max(self.context_lengths)
+            query_max = tf.reduce_max(self.query_lengths)
+            self.slice_ops(context_max, query_max)
+        else:
+            context_max = self.hparams.context_limit
+            query_max = self.hparams.query_limit
         # Init mask tensors on the trimmed input.
         self.context_mask = create_mask(self.context_lengths, context_max)
-        self.question_mask = create_mask(self.question_lengths, question_max)
+        self.query_mask = create_mask(self.query_lengths, query_max)
         # Init network
         self.step()
 
@@ -78,7 +67,7 @@ class QANet:
             self.add_ema_ops()
 
     def add_train_ops(self, learn_rate):
-        self.lr = tf.minimum(learn_rate,  0.001 / tf.log(999.) * tf.log(tf.cast(self.global_step, tf.float32) + 1))
+        self.lr = tf.minimum(learn_rate, 0.001 / tf.log(999.) * tf.log(tf.cast(self.global_step, tf.float32) + 1))
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr,
                                                 beta1=self.hparams.beta1,
                                                 beta2=self.hparams.beta2,
@@ -103,41 +92,36 @@ class QANet:
             self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * l2
             self.loss += self.l2_loss
 
-    def slice_ops(self, context_max, question_max):
+    def slice_ops(self, context_max, query_max):
         self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max))
-        self.question_words = tf.slice(self.question_words, begin=(0, 0), size=(-1, question_max))
+        self.query_words = tf.slice(self.query_words, begin=(0, 0), size=(-1, query_max))
         self.context_chars = tf.slice(self.context_chars, begin=(0, 0, 0), size=(-1, context_max,
                                                                                  self.hparams.char_limit))
-        self.question_chars = tf.slice(self.question_chars, begin=(0, 0, 0), size=(-1, question_max,
-                                                                                   self.hparams.char_limit))
+        self.query_chars = tf.slice(self.query_chars, begin=(0, 0, 0), size=(-1, query_max,
+                                                                             self.hparams.char_limit))
 
     def step(self):
-        # Embed the question + context
+        # Embed the query + context
         context_emb = self.embedding_block([self.context_words, self.context_chars])
-        quextion_emb = self.embedding_block([self.question_words, self.question_chars])
-        # Project down to hparams.filters at each position for the stacked embedding encoder blocks.
-        context_emb = self.embed_projection(context_emb)
-        quextion_emb = self.embed_projection(quextion_emb)
+        query_emb = self.embedding_block([self.query_words, self.query_chars])
 
-        # Encode the question + context with the embedding encoder
-        context_encoded = self.embedding_encoder_blocks(context_emb, training=self.train, mask=self.context_mask)
-        question_encoded = self.embedding_encoder_blocks(quextion_emb, training=self.train, mask=self.question_mask)
+        # Encode the query + context.
+        context_enc = self.embedding_encoder_blocks(context_emb, training=self.train, mask=self.context_mask)
+        query_enc = self.embedding_encoder_blocks(query_emb, training=self.train, mask=self.query_mask)
 
         # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
-        self.c2q, self.q2c = self.context_query([context_encoded, question_encoded], training=self.train,
-                                                mask=[self.context_mask, self.question_mask])
-        # Input for the model encoder, refer to section 2.2. of QANet paper for more details
-        inputs = tf.concat([context_encoded, self.c2q, context_encoded * self.c2q, context_encoded * self.q2c], axis=-1)
-        # Down-project for the next block.
-        inputs = self.model_projection(inputs)
-        # Run through our stack of stacked model encoder blocks on this representation.
-        self.enc_1 = self.model_encoder_blocks(inputs, training=self.train, mask=self.context_mask)
-        self.enc_2 = self.model_encoder_blocks(self.enc_1, training=self.train, mask=self.context_mask)
-        self.enc_3 = self.model_encoder_blocks(self.enc_2, training=self.train, mask=self.context_mask)
+        self.c2q, self.q2c = self.context_query([context_enc, query_enc], training=self.train,
+                                                mask=[self.context_mask, self.query_mask])
+        # Input for the first stage of the model encoder, refer to section 2.2. of QANet paper for more details
+        inputs = tf.concat([context_enc, self.c2q, context_enc * self.c2q, context_enc * self.q2c], axis=-1)
+        # Run through our stacked model encoder blocks on this representation.
+        enc_1 = self.model_encoder_blocks(inputs, training=self.train, mask=self.context_mask)
+        enc_2 = self.model_encoder_blocks(enc_1, training=self.train, mask=self.context_mask)
+        enc_3 = self.model_encoder_blocks(enc_2, training=self.train, mask=self.context_mask)
 
         # Get the start/end logits from the output layers
-        start_logits = self.start_output([self.enc_1, self.enc_2], mask=self.context_mask)
-        end_logits = self.end_output([self.enc_1, self.enc_3], mask=self.context_mask)
+        start_logits = self.start_output([enc_1, enc_2], mask=self.context_mask)
+        end_logits = self.end_output([enc_1, enc_3], mask=self.context_mask)
 
         # Prediction head - Returns a pointer to the start and end position of the answer segment on the context.
         self.start_pointer, self.end_pointer = self.predict_pointers([start_logits, end_logits])

@@ -51,29 +51,26 @@ class MultiHeadAttention(Layer):
         return tf.reshape(x, shape=(batch_size, length, self.filters))
 
     def call(self, x, training=None, mask=None):
-        # When computing self attention x = y
         x, y = x
         batch_size, length = self.compute_input_shape(x)
-        # We initially run through linear projection for keys, values and query. As this is self attention, we use the
-        # same input for each projection.
         query, key, values = (self.queries_layer(x), self.keys_layer(y), self.values_layer(y))
-        # We then split these values into n heads which allows the model to jointly attend to different positions.
+        # Split into n heads, allows model to jointly attend to different positions.
         query = self.split_heads(query, batch_size, length)
         key = self.split_heads(key, batch_size, length)
         values = self.split_heads(values, batch_size, length)
         # Query is scaled to prevent large dot products.
         query *= self.scaling_factor
-        # We then calculate the dot product attention for each head
+        # Calculate the dot product attention for each head
         logits = tf.matmul(query, key, transpose_b=True)
-        # Optionally apply a mask before the softmax function
+        # Optionally apply a mask.
         if mask is not None:
-            mask = tf.reshape(mask, shape=(batch_size, 1, 1, -1))
+            mask = tf.expand_dims(tf.expand_dims(mask, axis=1), axis=1)  # reshape mask to [bs, 1, 1, num_heads]
             logits = apply_mask(logits, mask)
-        # Calculate the attention weights and apply dropout.
+        # Calculate attention weights + apply dropout.
         weights = self.softmax(logits)
         weights = self.dropout(weights, training=training)
         attention = tf.matmul(weights, values)
-        # We then recombine the heads and run the result through another linear output projection.
+        # Recombine the heads + run result through output layer.
         attention = self.combine_heads(attention, batch_size, length)
         attention = self.output_layer(attention)
 

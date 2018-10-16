@@ -5,19 +5,19 @@ bucket_by_sequence_length = tf.contrib.data.bucket_by_sequence_length
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
-def create_placeholders(context_limit, question_limit, char_limit):
+def create_placeholders(context_limit, query_limit, char_limit):
     ctxt_words = tf.placeholder(dtype=tf.int32, shape=(None, context_limit, ), name='context_words')
     ctxt_chars = tf.placeholder(dtype=tf.int32, shape=(None, context_limit, char_limit, ), name='context_chars')
     ctxt_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='context_length')
-    ques_words = tf.placeholder(dtype=tf.int32, shape=(None, question_limit, ), name='question_words')
-    ques_chars = tf.placeholder(dtype=tf.int32, shape=(None, question_limit, char_limit, ), name='question_chars')
-    ques_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='question_length')
+    query_words = tf.placeholder(dtype=tf.int32, shape=(None, query_limit,), name='query_words')
+    query_chars = tf.placeholder(dtype=tf.int32, shape=(None, query_limit, char_limit,), name='query_chars')
+    query_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='query_length')
 
     y_start = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_start_index')
     y_end = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_end_index')
     answer_id = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_id')
 
-    return ctxt_words, ctxt_chars, ctxt_len, ques_words, ques_chars, ques_len, y_start, y_end, answer_id
+    return ctxt_words, ctxt_chars, ctxt_len, query_words, query_chars, query_len, y_start, y_end, answer_id
 
 
 def length_fn(context_words, *args):
@@ -34,18 +34,18 @@ def create_buckets(hparams):
 
 
 def get_padded_shapes(hparams):
-    return ([hparams.context_limit],
-            [hparams.context_limit, hparams.char_limit],
+    return ([hparams.context_limit],  # context words
+            [hparams.context_limit, hparams.char_limit],  # context chars
             [],  # context length
-            [hparams.question_limit],
-            [hparams.question_limit, hparams.char_limit],
-            [],  # question length
+            [hparams.query_limit],  # query words
+            [hparams.query_limit, hparams.char_limit],  # query chars
+            [],  # query length
             [],  # answer_start
             [],  # answer_end
             [])  # answer_id
 
 
-def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True):
+def create_dataset(contexts, queries, context_mapping, hparams, shuffle=True):
     # Extract an array of all answer_ids.
     answer_ids = np.asarray(list(context_mapping.keys()), dtype=np.int32)
     # Only store answer_ids for dynamic lookup.
@@ -63,9 +63,9 @@ def create_dataset(contexts, questions, context_mapping, hparams, shuffle=True):
         answer_key = str(answer_id)
         context_id = str(context_mapping[answer_key])
         context_words, context_chars, context_length = contexts[context_id]
-        question_words, question_chars, question_length, answer_starts, answer_ends = questions[answer_key]
-        return context_words, context_chars, context_length, question_words, question_chars,\
-               question_length, answer_starts, answer_ends, answer_id
+        query_words, query_chars, query_length, answer_starts, answer_ends = queries[answer_key]
+        return context_words, context_chars, context_length, query_words, query_chars,\
+               query_length, answer_starts, answer_ends, answer_id
 
     dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], [tf.int32] * 9)))
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.

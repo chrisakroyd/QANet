@@ -25,25 +25,25 @@ def load_contexts(contexts, char_limit):
 def load_answers(answers, char_limit):
     answer_cache = {}
     context_mapping = {}
-    question_cache = {}
+    query_cache = {}
 
     for key, value in answers.items():
-        question_words = np.asarray(value['question_words'], dtype=np.int32)
-        question_chars = pad_chars(value['question_chars'], char_limit)
+        query_words = np.asarray(value['query_words'], dtype=np.int32)
+        query_chars = pad_chars(value['query_chars'], char_limit)
         answer_starts = np.asarray(value['answer_starts'], dtype=np.int32)
         answer_ends = np.asarray(value['answer_ends'], dtype=np.int32)
 
         answer_cache[key] = value['answers']
         context_mapping[key] = value['context_id']
-        question_cache[key] = question_words, question_chars, len(value['question_words']), answer_starts, answer_ends
+        query_cache[key] = query_words, query_chars, len(value['query_words']), answer_starts, answer_ends
 
-    return question_cache, answer_cache, context_mapping
+    return query_cache, answer_cache, context_mapping
 
 
 def load_squad_set(contexts, answers, hparams):
     context_cache, contexts_spans = load_contexts(contexts, hparams.char_limit)
-    questions, answers, context_mapping = load_answers(answers, hparams.char_limit)
-    return context_cache, contexts_spans, questions, answers, context_mapping
+    queries, answers, context_mapping = load_answers(answers, hparams.char_limit)
+    return context_cache, contexts_spans, queries, answers, context_mapping
 
 
 def load_squad(hparams):

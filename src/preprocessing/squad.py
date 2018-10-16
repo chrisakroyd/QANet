@@ -20,7 +20,7 @@ def convert_idx(text, tokens):
 
 
 def fit_and_extract(data_set, tokenizer, hparams):
-    contexts, question_answers = {}, {}
+    contexts, queries = {}, {}
     context_id, answer_id = 1, 1
 
     for data in tqdm(data_set['data']):
@@ -36,13 +36,13 @@ def fit_and_extract(data_set, tokenizer, hparams):
             spans = convert_idx(context_clean, context_tokens)
 
             for qa in question_answer['qas']:
-                question_clean = clean(qa['question'])
-                question_tokens = tokenizer.tokenize(question_clean)
+                query_clean = clean(qa['question'])
+                query_tokens = tokenizer.tokenize(query_clean)
 
-                if len(question_tokens) > hparams.question_limit:
+                if len(query_tokens) > hparams.query_limit:
                     continue
 
-                tokenizer.fit_on_texts(question_clean)
+                tokenizer.fit_on_texts(query_clean)
 
                 answer_starts, answer_ends, answer_texts = [], [], []
 
@@ -63,12 +63,12 @@ def fit_and_extract(data_set, tokenizer, hparams):
                 if (answer_ends[-1] - answer_starts[-1]) > hparams.answer_limit:
                     continue
 
-                question_answers[answer_id] = {
+                queries[answer_id] = {
                     'id': qa['id'],
                     'answer_id': answer_id,
                     'context_id': context_id,
-                    'question': question_clean,
-                    'question_tokens': question_tokens,
+                    'query': query_clean,
+                    'query_tokens': query_tokens,
                     'answers': answer_texts,
                     'answer_starts': answer_starts[-1],
                     'answer_ends': answer_ends[-1],
@@ -85,7 +85,7 @@ def fit_and_extract(data_set, tokenizer, hparams):
 
             context_id += 1
 
-    return contexts, question_answers, tokenizer
+    return contexts, queries, tokenizer
 
 
 def text_to_sequence(data, text_key, tokenizer, max_words, max_chars):
@@ -101,8 +101,8 @@ def text_to_sequence(data, text_key, tokenizer, max_words, max_chars):
 
 def pre_process(contexts, question_answers, tokenizer, hparams):
     contexts = text_to_sequence(contexts, 'context', tokenizer, hparams.context_limit, hparams.char_limit)
-    question_answers = text_to_sequence(question_answers, 'question', tokenizer,
-                                        hparams.question_limit, hparams.char_limit)
+    question_answers = text_to_sequence(question_answers, 'query', tokenizer,
+                                        hparams.query_limit, hparams.char_limit)
     return contexts, question_answers
 
 
