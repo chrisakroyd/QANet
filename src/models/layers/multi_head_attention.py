@@ -8,28 +8,12 @@ class MultiHeadAttention(Layer):
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.num_heads = num_heads
         self.filters = filters
-
-        self.queries_layer = Conv1D(self.filters,
-                                    kernel_size=1,
-                                    strides=1,
-                                    use_bias=False)
-
-        self.keys_layer = Conv1D(self.filters,
-                                 kernel_size=1,
-                                 strides=1,
-                                 use_bias=False)
-
-        self.values_layer = Conv1D(self.filters,
-                                   kernel_size=1,
-                                   strides=1,
-                                   use_bias=False)
-
-        self.output_layer = Conv1D(self.filters,
-                                   kernel_size=1,
-                                   strides=1,
-                                   use_bias=False)
-
-        # square root of key depth https://arxiv.org/pdf/1706.03762.pdf (Attention is all you Need)
+        # Linear mappings https://arxiv.org/pdf/1706.03762.pdf (Attention is all you Need) section 3.2
+        self.queries_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
+        self.keys_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
+        self.values_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
+        self.output_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
+        # square root of key depth Attention is all you Need, 3.2.1
         self.depth = (self.filters // self.num_heads)
         self.scaling_factor = self.depth ** -0.5
 

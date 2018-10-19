@@ -13,8 +13,7 @@ from src.util import namespace_json, load_embeddings, make_dirs, train_paths, em
 def train(config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
     _, out_dir, model_dir, log_dir = train_paths(hparams)
-    word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
-    char_embedding_path = embedding_paths(hparams)
+    word_embedding_path, trainable_embedding_path, char_embedding_path = embedding_paths(hparams)
     make_dirs([out_dir, model_dir, log_dir])
 
     train, val = load_squad(hparams)
@@ -27,10 +26,7 @@ def train(config, hparams):
     del val
 
     word_matrix, trainable_matrix, character_matrix = load_embeddings(
-        index_paths=(word_index_path, trainable_index_path, char_index_path, ),
-        embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path, ),
-        embed_dim=hparams.embed_dim,
-        char_dim=hparams.char_dim
+        embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
     )
 
     with tf.device('/cpu:0'):
@@ -65,20 +61,20 @@ def train(config, hparams):
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
 
-                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run([model.answer_id, model.loss,
-                                                                                   model.l2_loss, model.start_pointer,
-                                                                                   model.end_pointer, model.train_op],
-                                                                                  feed_dict={handle: train_handle},
-                                                                                  options=run_options,
-                                                                                  run_metadata=run_metadata)
+                answer_ids, loss, answer_start, answer_end, _ = sess.run([model.answer_id, model.loss,
+                                                                          model.start_pointer, model.end_pointer,
+                                                                          model.train_op],
+                                                                         feed_dict={handle: train_handle},
+                                                                         options=run_options,
+                                                                         run_metadata=run_metadata)
 
                 writer.add_run_metadata(run_metadata, 'step%03d' % global_step)
                 writer.flush()
             else:
-                answer_ids, loss, l2_loss, answer_start, answer_end, _ = sess.run([model.answer_id, model.loss,
-                                                                                   model.l2_loss, model.start_pointer,
-                                                                                   model.end_pointer, model.train_op],
-                                                                                  feed_dict={handle: train_handle})
+                answer_ids, loss, answer_start, answer_end, _ = sess.run([model.answer_id, model.loss,
+                                                                          model.start_pointer, model.end_pointer,
+                                                                          model.train_op],
+                                                                         feed_dict={handle: train_handle})
 
             # Cache the result of the run for train evaluation.
             train_preds.append((answer_ids, loss, answer_start, answer_end,))
@@ -86,9 +82,7 @@ def train(config, hparams):
             # Save the loss + l2 loss
             if global_step % hparams.save_loss_every == 0:
                 loss_sum = tf.Summary(value=[tf.Summary.Value(tag="model/loss", simple_value=loss)])
-                reg_loss_sum = tf.Summary(value=[tf.Summary.Value(tag="model/l2_loss", simple_value=l2_loss)])
                 writer.add_summary(loss_sum, global_step)
-                writer.add_summary(reg_loss_sum, global_step)
 
             # Run the eval procedure, we use the predictions over train + eval and calculate EM + F1.
             if global_step % hparams.run_val_every == 0:

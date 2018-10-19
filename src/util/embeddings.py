@@ -1,5 +1,4 @@
 import numpy as np
-from .util import load_json
 
 
 def create_vocab(embedding_index):
@@ -47,7 +46,7 @@ def read_embeddings_file(path):
     return embedding_index
 
 
-def load_embedding_matrix(embedding_index, word_index, embedding_dimensions):
+def create_embedding_matrix(embedding_index, word_index, embedding_dimensions):
     embedding_matrix = np.zeros((len(word_index) + 1, embedding_dimensions))
 
     for word, index in word_index.items():
@@ -58,6 +57,7 @@ def load_embedding_matrix(embedding_index, word_index, embedding_dimensions):
         if embedding_vector is not None:
             # words not found in embedding index will be all-zeros.
             embedding_matrix[index] = embedding_vector
+            assert len(embedding_vector) == embedding_dimensions
 
     return embedding_matrix
 
@@ -78,43 +78,15 @@ def load_embedding(path,
     else:
         trainable_matrix = np.zeros((1, embedding_dimensions))
 
-    embedding_matrix = load_embedding_matrix(embedding_index, word_index, embedding_dimensions)
+    embedding_matrix = create_embedding_matrix(embedding_index, word_index, embedding_dimensions)
 
     return embedding_matrix, trainable_matrix
 
 
-def save_embeddings(path, embedding_matrix, word_index):
-    with open(path, 'w', encoding='utf8') as embeddings:
-        for key, value in word_index.items():
-            embed = embedding_matrix[value, :]
-            embeddings.write('%s %s\n' % (key, ' '.join(map(str, embed))))
-
-
-def merge_embeddings(embedding_matrix, trainable_embedding_matrix, word_index, trainable_words):
-    vocab_size = len(word_index) + 1
-    num_trainable = len(trainable_words) + 1
-    valid_word_range = vocab_size - num_trainable
-
-    for word in trainable_words:
-        index = word_index[word]
-        # Merge the trainable and embedding matrix
-        embedding_matrix[index] = trainable_embedding_matrix[index - valid_word_range]
-
-    return embedding_matrix
-
-
-def load_embeddings(index_paths, embedding_paths, embed_dim, char_dim):
-    word_index_path, trainable_index_path, char_index_path = index_paths
+def load_embeddings(embedding_paths):
     word_embedding_path, trainable_embedding_path, char_embedding_path = embedding_paths
-
     print('Loading Embeddings...')
-
-    word_index = load_json(word_index_path)
-    trainable_word_index = load_json(trainable_index_path)
-    char_index = load_json(char_index_path)
-
-    word_matrix, _ = load_embedding(word_embedding_path, word_index, embed_dim)
-    trainable_matrix, _ = load_embedding(trainable_embedding_path, trainable_word_index, embed_dim)
-    character_matrix, _ = load_embedding(char_embedding_path, char_index, char_dim)
-
+    word_matrix = np.load(word_embedding_path)
+    trainable_matrix = np.load(trainable_embedding_path)
+    character_matrix = np.load(char_embedding_path)
     return word_matrix, trainable_matrix, character_matrix

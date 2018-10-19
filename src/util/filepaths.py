@@ -31,12 +31,19 @@ def processed_data_paths(hparams):
     return paths
 
 
+def index_paths(hparams):
+    _, data_dir, _, _, _ = get_directories(hparams)
+    paths = []
+    for embedding_type in FileNames.embedding_types.value:
+        paths += [os.path.join(data_dir, FileNames.index.value.format(embedding_type))]
+    return paths
+
+
 def embedding_paths(hparams):
     _, data_dir, _, _, _ = get_directories(hparams)
     paths = []
     for embedding_type in FileNames.embedding_types.value:
         paths += [
-            os.path.join(data_dir, FileNames.index.value.format(embedding_type)),
             os.path.join(data_dir, FileNames.embeddings.value.format(embedding_type))
         ]
     return paths

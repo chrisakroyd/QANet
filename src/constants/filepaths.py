@@ -15,6 +15,6 @@ class FileNames(Enum):
     embedding_types = ['word', 'trainable', 'char']
     data_types = ['train', 'dev']
     index = '{}_index.json'
-    embeddings = '{}_embeddings.txt'
+    embeddings = '{}_embeddings.npy'
     context = '{}_contexts.json'
     answers = '{}_answers.json'

@@ -1,8 +1,9 @@
+import numpy as np
 from tqdm import tqdm
 from .text import clean
-from src.util import raw_data_paths, processed_data_paths, embedding_paths
-from src.util import Tokenizer, generate_matrix, load_embedding, save_embeddings, save_json, load_json, \
-    index_from_list, read_embeddings_file, create_vocab
+from src.util import raw_data_paths, processed_data_paths, embedding_paths, index_paths
+from src.util import Tokenizer, generate_matrix, load_embedding, save_json, load_json, index_from_list,\
+    read_embeddings_file, create_vocab
 
 
 def convert_idx(text, tokens):
@@ -26,24 +27,17 @@ def fit_and_extract(data_set, tokenizer, hparams):
     for data in tqdm(data_set['data']):
         for question_answer in data['paragraphs']:
             context_clean = clean(question_answer['context'])
-            context_tokens = tokenizer.tokenize(context_clean)
-
+            # Fit the tokenizer on the cleaned version of the context.
+            context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
             if len(context_tokens) > hparams.context_limit:
                 continue
-
-            # Fit the tokenizer on the cleaned version of the context.
-            tokenizer.fit_on_texts(context_clean)
             spans = convert_idx(context_clean, context_tokens)
 
             for qa in question_answer['qas']:
                 query_clean = clean(qa['question'])
-                query_tokens = tokenizer.tokenize(query_clean)
-
+                query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
                 if len(query_tokens) > hparams.query_limit:
                     continue
-
-                tokenizer.fit_on_texts(query_clean)
-
                 answer_starts, answer_ends, answer_texts = [], [], []
 
                 for answer in qa['answers']:
@@ -88,21 +82,20 @@ def fit_and_extract(data_set, tokenizer, hparams):
     return contexts, queries, tokenizer
 
 
-def text_to_sequence(data, text_key, tokenizer, max_words, max_chars):
+def text_to_sequence(data, text_key, save_key, tokenizer, max_words):
     for key, value in tqdm(data.items()):
-        words, chars, _ = tokenizer.texts_to_sequences(value[text_key],
-                                                       max_words=max_words,
-                                                       max_chars=max_chars,
-                                                       numpy=False, pad=False)
-        data[key]['{}_words'.format(text_key)] = words[-1]
-        data[key]['{}_chars'.format(text_key)] = chars[-1]
+        words, chars, _ = tokenizer.tokens_to_sequences(value[text_key],
+                                                        seq_length=max_words,
+                                                        pad=False)
+        data[key]['{}_words'.format(save_key)] = words[-1]
+        data[key]['{}_chars'.format(save_key)] = chars[-1]
     return data
 
 
 def pre_process(contexts, question_answers, tokenizer, hparams):
-    contexts = text_to_sequence(contexts, 'context', tokenizer, hparams.context_limit, hparams.char_limit)
-    question_answers = text_to_sequence(question_answers, 'query', tokenizer,
-                                        hparams.query_limit, hparams.char_limit)
+    contexts = text_to_sequence(contexts, 'context_tokens', 'context', tokenizer, hparams.context_limit)
+    question_answers = text_to_sequence(question_answers, 'query_tokens', 'query', tokenizer,
+                                        hparams.query_limit)
     return contexts, question_answers
 
 
@@ -111,8 +104,8 @@ def process(hparams):
     # Paths for dumping our processed data.
     train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path = processed_data_paths(hparams)
     # Get paths for saving embedding related info.
-    word_index_path, word_embeddings_path, trainable_index_path, trainable_embeddings_path, char_index_path,\
-    char_embeddings_path = embedding_paths(hparams)
+    word_index_path, trainable_index_path, char_index_path = index_paths(hparams)
+    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = embedding_paths(hparams)
     # Read the embedding index and create a vocab of words with embeddings.
     print('Loading Embeddings, this may take some time...')
     embedding_index = read_embeddings_file(hparams.embeddings_path)
@@ -123,6 +116,7 @@ def process(hparams):
                           vocab=vocab,
                           lower=False,
                           oov_token=hparams.oov_token,
+                          char_limit=hparams.char_limit,
                           min_word_occurrence=hparams.min_word_occur,
                           min_char_occurrence=hparams.min_char_occur,
                           trainable_words=hparams.trainable_words,
@@ -161,7 +155,7 @@ def process(hparams):
     save_json(char_index_path, char_index)
     save_json(trainable_index_path, trainable_word_index)
     # Save the trainable embeddings matrix.
-    save_embeddings(trainable_embeddings_path, trainable_matrix, trainable_word_index)
+    np.save(trainable_embeddings_path, trainable_matrix)
     # Save the full embeddings matrix
-    save_embeddings(word_embeddings_path, embedding_matrix, word_index)
-    save_embeddings(char_embeddings_path, char_matrix, char_index)
+    np.save(word_embeddings_path, embedding_matrix)
+    np.save(char_embeddings_path, char_matrix)

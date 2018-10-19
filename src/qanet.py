@@ -34,8 +34,8 @@ class QANet:
                                                          ff_mul=self.hparams.feed_forward_multiplier,
                                                          name='model_encoder')
 
-        self.start_output = OutputLayer()
-        self.end_output = OutputLayer()
+        self.start_output = OutputLayer(name='start_logits')
+        self.end_output = OutputLayer(name='end_logits')
 
         self.predict_pointers = PredictionHead(self.hparams.answer_limit)
 
@@ -83,7 +83,7 @@ class QANet:
 
     def add_ema_ops(self):
         with tf.name_scope('ema_ops'):
-            self.ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay, num_updates=self.global_step)
+            self.ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay)
             with tf.control_dependencies([self.train_op]):
                 self.train_op = self.ema.apply(tf.trainable_variables() + tf.moving_average_variables())
 
@@ -93,12 +93,11 @@ class QANet:
             self.loss += self.l2_loss
 
     def slice_ops(self, context_max, query_max):
-        self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max))
-        self.query_words = tf.slice(self.query_words, begin=(0, 0), size=(-1, query_max))
+        self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max), name='context_slice')
+        self.query_words = tf.slice(self.query_words, begin=(0, 0), size=(-1, query_max), name='query_slice')
         self.context_chars = tf.slice(self.context_chars, begin=(0, 0, 0), size=(-1, context_max,
                                                                                  self.hparams.char_limit))
-        self.query_chars = tf.slice(self.query_chars, begin=(0, 0, 0), size=(-1, query_max,
-                                                                             self.hparams.char_limit))
+        self.query_chars = tf.slice(self.query_chars, begin=(0, 0, 0), size=(-1, query_max, self.hparams.char_limit))
 
     def step(self):
         # Embed the query + context

@@ -8,7 +8,7 @@ default_punct = set(list(' !"#$%&()*+,-./:;=@[\]^_`{|}~?'))
 
 class Tokenizer:
     def __init__(self, lower=False, filters=default_punct, max_words=25000, max_chars=2500, min_word_occurrence=-1,
-                 min_char_occurrence=-1, vocab=None, word_index=None, char_index=None, oov_token='<oov>',
+                 min_char_occurrence=-1, char_limit=16, vocab=None, word_index=None, char_index=None, oov_token='<oov>',
                  trainable_words=None, tokenizer='spacy', use_chars=True):
         self.word_counter = Counter()
         self.char_counter = Counter()
@@ -23,6 +23,7 @@ class Tokenizer:
         self.lower = lower
         self.min_word_occurrence = min_word_occurrence
         self.min_char_occurrence = min_char_occurrence
+        self.char_limit = char_limit
         self.use_chars = use_chars
         self.tokenizer = tokenizer
         # Flag for if we have just run the fit_text or if we have a set vocab.
@@ -30,7 +31,8 @@ class Tokenizer:
         self.given_vocab = vocab is not None
 
         if self.tokenizer == 'spacy':
-            self.nlp = spacy.load('en_core_web_sm', disable=['tagger', 'ner', 'parser'])
+            # self.nlp = spacy.load('en_core_web_sm', disable=['tagger', 'ner', 'parser'])
+            self.nlp = spacy.blank("en")
         elif self.tokenizer == 'nltk':
             self.nlp = word_tokenize
         else:
@@ -42,6 +44,8 @@ class Tokenizer:
             self.filters = set(filters if filters else [])
         else:
             self.filters = filters
+
+        self.init()
 
     def tokenize(self, text):
         if self.lower:
@@ -55,6 +59,7 @@ class Tokenizer:
         return tokens
 
     def fit_on_texts(self, texts):
+        tokenized = []
         if not isinstance(texts, list):
             texts = [texts]
 
@@ -68,12 +73,14 @@ class Tokenizer:
                 for char in char_tokens:
                     if char not in self.filters:
                         self.char_counter[char] += 1
-
+            tokenized.append(tokens)
         self.just_fit = True
+        return tokenized
 
     # Takes in trainable words and max_features, limits word index to top features and adds the trainable words as high
     # id values to permit an add operation and trainable embeddings for selected tokens.
     def update_indexes(self):
+        print('Total Words: %d' % len(self.word_counter))
         # Create an ordered list of words + chars below the max for each.
         sorted_words = self.word_counter.most_common(self.max_words)
         sorted_chars = self.char_counter.most_common(self.max_chars)
@@ -83,8 +90,12 @@ class Tokenizer:
             if count > self.min_word_occurrence and word in self.vocab
             and word not in self.filters and word not in self.trainable_words
         ]
-        char_index = [char for (char, count) in sorted_chars
-                      if count > self.min_char_occurrence and char not in self.filters]
+
+        print('Words in vocab: %d' % len(word_index))
+
+        char_index = [char for (char, count) in sorted_chars if count > self.min_char_occurrence and
+                      char not in self.filters]
+
         # Give each word id's in continuous range 1 to index length + convert to dict.
         word_index = {word: i + 1 for i, word in enumerate(word_index)}
         char_index = {char: i + 1 for i, char in enumerate(char_index)}
@@ -107,28 +118,7 @@ class Tokenizer:
         if not self.given_vocab:
             self.vocab = set([word for _, (word, _) in enumerate(self.word_counter.items())])
 
-    def get_index_word(self, word):
-        if word in self.vocab:
-            # Find common occurrences of the word if its not in other formats.
-            for each in (word, word.lower(), word.capitalize(), word.upper()):
-                if each in self.word_index:
-                    return self.word_index[each]
-
-        return self.word_index[self.oov_token]
-
-    def get_index_char(self, char):
-        for each in (char.lower(), char.upper()):
-            if each in self.char_index:
-                return self.char_index[each]
-
-        return self.char_index[self.oov_token]
-
-    def texts_to_sequences(self, texts, max_words=15, max_chars=16, numpy=True, pad=True):
-        seq_words, seq_chars, lengths = [], [], []
-        # Wrap in list if string to avoid having to handle separately
-        if not isinstance(texts, list):
-            texts = [texts]
-
+    def init(self):
         # Word indexes haven't been initialised or need updating.
         if (len(self.word_index) == 0 or len(self.char_index)) == 0 or self.just_fit:
             # Add vocab + create indexes.
@@ -136,34 +126,72 @@ class Tokenizer:
             self.update_indexes()
             self.just_fit = False
 
-        for text in texts:
-            text = str(text)
+    def get_index_word(self, word):
+        if word in self.vocab:
+            # Find common occurrences of the word if its not in other formats.
+            for each in (word, word.lower(), word.capitalize(), word.upper()):
+                if each in self.word_index:
+                    return self.word_index[each]
+        return self.word_index[self.oov_token]
+
+    def get_index_char(self, char):
+        for each in (char.lower(), char.upper()):
+            if each in self.char_index:
+                return self.char_index[each]
+        return self.char_index[self.oov_token]
+
+    def pad_sequence(self, words, characters, seq_length):
+        if len(words) < seq_length:
+            pad_num = seq_length - len(words)
+            words += [0] * pad_num
+            characters += [[0] * self.char_limit] * pad_num
+        return words, characters
+
+    def tokens_to_sequences(self, tokens, seq_length, pad=False):
+        seq_words, seq_chars, lengths = [], [], []
+        self.init()
+        if not isinstance(tokens[-1], list):
+            tokens = [tokens]
+        # Work through our pre-tokenized text.
+        for text in tokens:
             words, characters = [], []
-
-            tokens = self.tokenize(text)
-            lengths.append(len(tokens))
-
-            for token in tokens[:max_words]:
+            lengths.append(len(text))
+            for token in text[:seq_length]:
                 words.append(self.get_index_word(token))
 
                 if self.use_chars:
                     # Get all characters
-                    index_chars = [self.get_index_char(char) for char in list(token)[:max_chars]]
+                    index_chars = [self.get_index_char(char) for char in list(token)[:self.char_limit]]
                     # Pad to max characters
-                    if len(index_chars) < max_chars and pad:
-                        index_chars += [0] * (max_chars - len(index_chars))
+                    if len(index_chars) < self.char_limit and pad:
+                        index_chars += [0] * (self.char_limit - len(index_chars))
                     characters.append(index_chars)
 
             # Pad to max words with 0.
-            if len(words) < max_words and pad:
-                pad_num = max_words - len(words)
-                words += [0] * pad_num
-                characters += [[0] * max_chars] * pad_num
+            if pad:
+                words, characters = self.pad_sequence(words, characters, seq_length)
 
             seq_words.append(words)
 
             if self.use_chars:
                 seq_chars.append(characters)
+
+        return seq_words, seq_chars, lengths
+
+    def texts_to_sequences(self, texts, seq_length, numpy=True, pad=True):
+        # Wrap in list if string to avoid having to handle separately
+        if not isinstance(texts, list):
+            texts = [texts]
+
+        self.init()
+
+        tokens = []
+
+        for text in texts:
+            text = str(text)
+            tokens.append(self.tokenize(text))
+
+        seq_words, seq_chars, lengths = self.tokens_to_sequences(tokens, seq_length, pad)
 
         if numpy:
             seq_words = np.array(seq_words, dtype=np.int32)

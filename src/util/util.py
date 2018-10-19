@@ -3,11 +3,9 @@ import os
 from types import SimpleNamespace
 
 
-def save_json(path, index, format_json=True):
+def save_json(path, index):
     with open(path, 'w', encoding='utf8') as f:
-        text = json.dumps(index, sort_keys=True, indent=4, ensure_ascii=False)\
-            if format_json else json.dumps(index, ensure_ascii=False)
-        f.write(text)
+        json.dump(index, f)
 
 
 def load_json(path):
