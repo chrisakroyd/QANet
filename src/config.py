@@ -50,6 +50,8 @@ def model_config(defaults):
     # Flags for the pre-processing pipeline.
     flags.DEFINE_integer('shuffle_buffer_size', defaults.shuffle_buffer_size,
                          'Buffer size of the dataset shuffle function.')
+    flags.DEFINE_integer('tf_record_buffer_size', defaults.tf_record_buffer_size,
+                         'Buffer size of a tf_record dataset.')
     flags.DEFINE_boolean('bucket', defaults.bucket, 'Whether to use bucketing (used in paper).')
     flags.DEFINE_list('bucket_ranges', defaults.bucket_ranges, 'Ranges for bucketing (if enabled).')
     flags.DEFINE_integer('bucket_size', defaults.bucket_size, 'Size of a bucket (If no bucket ranges given).')

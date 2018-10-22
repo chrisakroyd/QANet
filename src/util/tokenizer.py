@@ -102,12 +102,15 @@ class Tokenizer:
         # Add any trainable words to the end of the index (Therefore can exceed max_words)
         vocab_size = len(word_index)
         for i, word in enumerate(self.trainable_words):
-            word_index[word] = (vocab_size + i) + 1
+            assert (vocab_size + i + 1) not in word_index.values()
+            word_index[word] = vocab_size + i + 1
         # Add OOV token to the word + char index (Always have an OOV token).
         if self.oov_token not in word_index:
+            assert len(word_index) + 1 not in word_index.values()
             word_index[self.oov_token] = len(word_index) + 1  # Add OOV as the last character
 
         if self.oov_token not in char_index:
+            assert len(char_index) + 1 not in char_index.values()
             char_index[self.oov_token] = len(char_index) + 1  # Add OOV as the last character
 
         self.word_index = word_index
@@ -116,7 +119,7 @@ class Tokenizer:
     def update_vocab(self):
         # If we aren't given a vocab on initialisation, we update the vocab whenever called.
         if not self.given_vocab:
-            self.vocab = set([word for _, (word, _) in enumerate(self.word_counter.items())])
+            self.vocab = set([word for word, _ in self.word_counter.items()])
 
     def init(self):
         # Word indexes haven't been initialised or need updating.

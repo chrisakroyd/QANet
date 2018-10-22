@@ -20,9 +20,67 @@ def create_placeholders(context_limit, query_limit, char_limit):
     return ctxt_words, ctxt_chars, ctxt_len, query_words, query_chars, query_len, y_start, y_end, answer_id
 
 
+def tf_record_pipeline(filenames, hparams, shuffle=True):
+    int_feature = tf.FixedLenFeature([], tf.int32)
+
+    features = {
+        'context_words': tf.FixedLenSequenceFeature((hparams.context_limit, ), dtype=tf.int32),
+        'context_chars': tf.FixedLenSequenceFeature((hparams.context_limit, hparams.char_limit), dtype=tf.int32),
+        'context_length': int_feature,
+        'query_words': tf.FixedLenSequenceFeature((hparams.query_limit, ), dtype=tf.int32),
+        'query_chars': tf.FixedLenSequenceFeature((hparams.query_limit, hparams.char_limit), dtype=tf.int32),
+        'answer_starts': int_feature,
+        'answer_ends': int_feature,
+        'answer_id': int_feature,
+    }
+
+    def parse(proto):
+        return tf.parse_single_example(proto, features=features)
+
+    dataset = tf.data.TFRecordDataset(filenames,
+                                      buffer_size=hparams.tf_record_buffer_size,
+                                      num_parallel_reads=hparams.parallel_calls)
+
+    dataset = shuffle_repeat(dataset, shuffle, hparams.shuffle_buffer_size)
+
+    dataset = dataset.map(parse, num_parallel_calls=hparams.parallel_calls)
+    return dataset
+
+
+def memory_pipeline(contexts, queries, context_mapping, hparams, shuffle=True):
+    answer_ids = np.asarray((list(context_mapping.keys())), dtype=np.int32)
+    np.random.shuffle(answer_ids)
+    # Only store answer_ids for dynamic lookup.
+    dataset = tf.data.Dataset.from_tensor_slices(answer_ids)
+    dataset = shuffle_repeat(dataset, shuffle, hparams.shuffle_buffer_size)
+
+    # As we have numerous repeated contexts each of great length, instead of storing on disk/in memory multiple
+    # copies we dynamically retrieve it per batch, cuts down hard-drive usage by 2GB and RAM by 4GB with no
+    # with no performance hit.
+    def map_to_cache(answer_id):
+        answer_key = str(answer_id)
+        context_id = str(context_mapping[answer_key])
+        context_words, context_chars, context_length = contexts[context_id]
+        query_words, query_chars, query_length, answer_starts, answer_ends = queries[answer_key]
+        return context_words, context_chars, context_length, query_words, query_chars, \
+               query_length, answer_starts, answer_ends, answer_id
+
+    dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], [tf.int32] * 9)))
+    return dataset
+
+
 def length_fn(context_words, *args):
     context_words.set_shape([None])
     return tf.shape(context_words)[0]
+
+
+def shuffle_repeat(dataset, shuffle, buffer_size):
+    # Order of ops results in different shuffle per epoch.
+    dataset = dataset.repeat()
+    if shuffle:
+        # Buffer size controls the random sampling, when buffer_size = length of data, shuffling is uniform.
+        dataset = dataset.shuffle(buffer_size=buffer_size)
+    return dataset
 
 
 def create_buckets(hparams):
@@ -45,29 +103,8 @@ def get_padded_shapes(hparams):
             [])  # answer_id
 
 
-def create_dataset(contexts, queries, context_mapping, hparams, shuffle=True):
-    # Extract an array of all answer_ids.
-    answer_ids = np.asarray(list(context_mapping.keys()), dtype=np.int32)
-    # Only store answer_ids for dynamic lookup.
-    dataset = tf.data.Dataset.from_tensor_slices(answer_ids)
-    # Order of ops results in different shuffle per epoch.
-    dataset = dataset.repeat()
-    if shuffle:
-        # Buffer size controls the random sampling, when buffer_size = length of data, shuffling is uniform.
-        dataset = dataset.shuffle(buffer_size=hparams.shuffle_buffer_size)
-
-    # As we have numerous repeated contexts each of great length, instead of storing on disk/in memory multiple
-    # copies we dynamically retrieve it per batch, cuts down hard-drive usage by 2GB and RAM by 4GB with no
-    # with no performance hit.
-    def map_to_cache(answer_id):
-        answer_key = str(answer_id)
-        context_id = str(context_mapping[answer_key])
-        context_words, context_chars, context_length = contexts[context_id]
-        query_words, query_chars, query_length, answer_starts, answer_ends = queries[answer_key]
-        return context_words, context_chars, context_length, query_words, query_chars,\
-               query_length, answer_starts, answer_ends, answer_id
-
-    dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], [tf.int32] * 9)))
+def create_pipeline(contexts, queries, context_mapping, hparams, shuffle=True):
+    dataset = memory_pipeline(contexts, queries, context_mapping, hparams, shuffle)
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     # Note: py_func doesn't return output shapes therefore we zero pad to the limits on each batch and slice to
     # the batch max during training. @TODO revisit and see if this can be avoided in future tf versions.

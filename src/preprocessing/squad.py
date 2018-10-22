@@ -22,7 +22,7 @@ def convert_idx(text, tokens):
 
 def fit_and_extract(data_set, tokenizer, hparams):
     contexts, queries = {}, {}
-    context_id, answer_id = 1, 1
+    context_id, answer_id, skipped, total = 1, 1, 0, 0
 
     for data in tqdm(data_set['data']):
         for question_answer in data['paragraphs']:
@@ -36,7 +36,10 @@ def fit_and_extract(data_set, tokenizer, hparams):
             for qa in question_answer['qas']:
                 query_clean = clean(qa['question'])
                 query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
+                total += 1
+
                 if len(query_tokens) > hparams.query_limit:
+                    skipped += 1
                     continue
                 answer_starts, answer_ends, answer_texts = [], [], []
 
@@ -51,17 +54,21 @@ def fit_and_extract(data_set, tokenizer, hparams):
                         if not (answer_end <= span[0] or answer_start >= span[1]):
                             answer_span.append(i)
 
+                    assert answer_span[-1] >= answer_span[0]
+
                     answer_starts.append(answer_span[0])
                     answer_ends.append(answer_span[-1])
 
                 if (answer_ends[-1] - answer_starts[-1]) > hparams.answer_limit:
+                    skipped += 1
                     continue
+
+                assert answer_id not in queries
 
                 queries[answer_id] = {
                     'id': qa['id'],
                     'answer_id': answer_id,
                     'context_id': context_id,
-                    'query': query_clean,
                     'query_tokens': query_tokens,
                     'answers': answer_texts,
                     'answer_starts': answer_starts[-1],
@@ -69,6 +76,8 @@ def fit_and_extract(data_set, tokenizer, hparams):
                 }
 
                 answer_id += 1
+
+            assert context_id not in contexts
 
             contexts[context_id] = {
                 'id': context_id,
@@ -78,6 +87,8 @@ def fit_and_extract(data_set, tokenizer, hparams):
             }
 
             context_id += 1
+
+    assert len(queries) == (total - skipped)
 
     return contexts, queries, tokenizer
 
@@ -146,10 +157,10 @@ def process(hparams):
     char_matrix = generate_matrix(index=char_index, embedding_dimensions=hparams.char_dim)
 
     # Save the generated data
-    save_json(train_contexts_path, train_contexts, format_json=False)
-    save_json(train_answers_path, train_question_answers, format_json=False)
-    save_json(dev_contexts_path, dev_contexts, format_json=False)
-    save_json(dev_answers_path, dev_question_answers, format_json=False)
+    save_json(train_contexts_path, train_contexts)
+    save_json(train_answers_path, train_question_answers)
+    save_json(dev_contexts_path, dev_contexts)
+    save_json(dev_answers_path, dev_question_answers)
     # Save the word index mapping of word:index for both the pre-trained and trainable embeddings.
     save_json(word_index_path, word_index)
     save_json(char_index_path, char_index)

@@ -5,7 +5,7 @@ from src.config import gpu_config, model_config
 from src.constants import FilePaths
 from src.loaders import load_squad
 from src.metrics import evaluate_list
-from src.pipeline import create_dataset
+from src.pipeline import create_pipeline
 from src.qanet import QANet
 from src.util import namespace_json, load_embeddings, make_dirs, train_paths, embedding_paths
 
@@ -30,8 +30,8 @@ def train(config, hparams):
     )
 
     with tf.device('/cpu:0'):
-        train_set, train_iter = create_dataset(train_contexts, train_queries, train_ctxt_mapping, hparams)
-        _, val_iter = create_dataset(val_contexts, val_queries, val_ctxt_mapping, hparams, shuffle=False)
+        train_set, train_iter = create_pipeline(train_contexts, train_queries, train_ctxt_mapping, hparams)
+        _, val_iter = create_pipeline(val_contexts, val_queries, val_ctxt_mapping, hparams, shuffle=False)
 
     with tf.Session(config=config) as sess:
         # Create the dataset iterators.
@@ -54,7 +54,7 @@ def train(config, hparams):
         global_step = max(sess.run(model.global_step), 1)
         train_preds = []
 
-        for _ in tqdm(range(global_step, hparams.train_steps)):
+        for _ in tqdm(range(global_step, hparams.train_steps + 1)):
             global_step = sess.run(model.global_step) + 1
             # Either train + predict + save run metadata or train + predict
             if hparams.runtime_data and global_step % (hparams.checkpoint_every + 1) == 0:
@@ -98,7 +98,6 @@ def train(config, hparams):
                 evaluate_list(val_preds, val_spans, val_answers, val_ctxt_mapping, 'val', writer, global_step)
                 train_preds = []
 
-            # @TODO Add in saving embeddings separately to numpy.
             # Save the model weights.
             if global_step % hparams.checkpoint_every == 0:
                 writer.flush()

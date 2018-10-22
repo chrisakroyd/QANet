@@ -12,6 +12,7 @@ def clean(text):
     text = fix_text(text)
     text = apostrophe.sub('" ', text)
     text = apostrophe_like.sub('" ', text)
+    text = text.strip()
     return text
 
 
