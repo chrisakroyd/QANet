@@ -130,17 +130,15 @@ class Tokenizer:
             self.just_fit = False
 
     def get_index_word(self, word):
-        if word in self.vocab:
-            # Find common occurrences of the word if its not in other formats.
-            for each in (word, word.lower(), word.capitalize(), word.upper()):
-                if each in self.word_index:
-                    return self.word_index[each]
+        # Find common occurrences of the word if its not in other formats.
+        for each in (word, word.lower(), word.capitalize(), word.upper()):
+            if each in self.word_index:
+                return self.word_index[each]
         return self.word_index[self.oov_token]
 
     def get_index_char(self, char):
-        for each in (char.lower(), char.upper()):
-            if each in self.char_index:
-                return self.char_index[each]
+        if char in self.char_index:
+            return self.char_index[char]
         return self.char_index[self.oov_token]
 
     def pad_sequence(self, words, characters, seq_length):
@@ -150,7 +148,7 @@ class Tokenizer:
             characters += [[0] * self.char_limit] * pad_num
         return words, characters
 
-    def tokens_to_sequences(self, tokens, seq_length, pad=False):
+    def tokens_to_sequences(self, tokens, seq_length, pad=False, numpy=False):
         seq_words, seq_chars, lengths = [], [], []
         self.init()
         if not isinstance(tokens[-1], list):
@@ -178,6 +176,10 @@ class Tokenizer:
 
             if self.use_chars:
                 seq_chars.append(characters)
+
+        if numpy:
+            seq_words = np.array(seq_words, dtype=np.int32)
+            seq_chars = np.array(seq_chars, dtype=np.int32)
 
         return seq_words, seq_chars, lengths
 
