@@ -15,19 +15,12 @@ def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
     return matrix
 
 
-def generate_trainable_matrix(embedding_index, word_index, embedding_dimensions, trainable_words):
-    trainable_matrix = np.zeros((len(trainable_words) + 1, embedding_dimensions))
-    valid_word_range = len(word_index) - len(trainable_words)
-
+def zero_out_trainables(embedding_index, word_index, embedding_dimensions, trainable_words):
     for word in trainable_words:
-        if word in word_index:
-            # Zero out the vector for this word in the pre-trained index.
-            embedding_index[word] = np.zeros((embedding_dimensions, ))
-            # Randomly initialise the trainable word.
-            trainable_matrix[(word_index[word] - valid_word_range)] = np.random.normal(scale=0.1,
-                                                                                       size=(embedding_dimensions, ))
-
-    return trainable_matrix, embedding_index
+        assert word in word_index
+        # Zero out the vector for this word in the pre-trained index.
+        embedding_index[word] = np.zeros((embedding_dimensions, ), dtype=np.float32)
+    return embedding_index
 
 
 def read_embeddings_file(path):
@@ -40,7 +33,7 @@ def read_embeddings_file(path):
                 print('Detected FastText vector format.')
                 continue
             word = values[0]
-            coefs = np.asarray(values[1:], dtype='float32')
+            coefs = np.asarray(values[1:], dtype=np.float32)
             embedding_index[word] = coefs
 
     return embedding_index
@@ -71,16 +64,12 @@ def load_embedding(path,
     embedding_index = embedding_index if embedding_index is not None else read_embeddings_file(path)
 
     if len(trainable_embeddings) > 0:
-        trainable_matrix, embedding_index = generate_trainable_matrix(embedding_index,
-                                                                      word_index,
-                                                                      embedding_dimensions,
-                                                                      trainable_embeddings)
-    else:
-        trainable_matrix = np.zeros((1, embedding_dimensions))
+        embedding_index = zero_out_trainables(embedding_index, word_index,
+                                              embedding_dimensions, trainable_embeddings)
 
     embedding_matrix = create_embedding_matrix(embedding_index, word_index, embedding_dimensions)
 
-    return embedding_matrix, trainable_matrix
+    return embedding_matrix
 
 
 def load_embeddings(embedding_paths):

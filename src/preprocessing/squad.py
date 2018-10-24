@@ -95,9 +95,7 @@ def fit_and_extract(data_set, tokenizer, hparams):
 
 def text_to_sequence(data, text_key, save_key, tokenizer, max_words):
     for key, value in tqdm(data.items()):
-        words, chars, _ = tokenizer.tokens_to_sequences(value[text_key],
-                                                        seq_length=max_words,
-                                                        pad=False)
+        words, chars = tokenizer.tokens_to_sequences(value[text_key], seq_length=max_words, pad=False, numpy=False)
         data[key]['{}_words'.format(save_key)] = words[-1]
         data[key]['{}_chars'.format(save_key)] = chars[-1]
     return data
@@ -146,14 +144,15 @@ def process(hparams):
 
     word_index = tokenizer.word_index
     char_index = tokenizer.char_index
-    trainable_word_index = index_from_list(hparams.trainable_words)
+    trainable_index = index_from_list(hparams.trainable_words)
 
-    embedding_matrix, trainable_matrix = load_embedding(path=hparams.embeddings_path,
-                                                        word_index=word_index,
-                                                        embedding_dimensions=hparams.embed_dim,
-                                                        trainable_embeddings=hparams.trainable_words,
-                                                        embedding_index=embedding_index)
+    embedding_matrix = load_embedding(path=hparams.embeddings_path,
+                                      word_index=word_index,
+                                      embedding_dimensions=hparams.embed_dim,
+                                      trainable_embeddings=hparams.trainable_words,
+                                      embedding_index=embedding_index)
 
+    trainable_matrix = generate_matrix(index=trainable_index, embedding_dimensions=hparams.embed_dim)
     char_matrix = generate_matrix(index=char_index, embedding_dimensions=hparams.char_dim)
 
     # Save the generated data
@@ -164,7 +163,7 @@ def process(hparams):
     # Save the word index mapping of word:index for both the pre-trained and trainable embeddings.
     save_json(word_index_path, word_index)
     save_json(char_index_path, char_index)
-    save_json(trainable_index_path, trainable_word_index)
+    save_json(trainable_index_path, trainable_index)
     # Save the trainable embeddings matrix.
     np.save(trainable_embeddings_path, trainable_matrix)
     # Save the full embeddings matrix
