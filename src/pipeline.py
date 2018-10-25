@@ -103,8 +103,13 @@ def get_padded_shapes(hparams):
             [])  # answer_id
 
 
-def create_pipeline(contexts, queries, context_mapping, hparams, shuffle=True):
-    dataset = memory_pipeline(contexts, queries, context_mapping, hparams, shuffle)
+def create_pipeline(hparams, args, shuffle=True):
+    if hparams.use_tf_record:
+        record_paths = args
+        dataset = tf_record_pipeline(record_paths, hparams, shuffle)
+    else:
+        contexts, queries, context_mapping = args
+        dataset = memory_pipeline(contexts, queries, context_mapping, hparams, shuffle)
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     # Note: py_func doesn't return output shapes therefore we zero pad to the limits on each batch and slice to
     # the batch max during training. @TODO revisit and see if this can be avoided in future tf versions.

@@ -7,7 +7,7 @@ from src.loaders import load_squad
 from src.metrics import evaluate_list
 from src.pipeline import create_pipeline
 from src.qanet import QANet
-from src.util import namespace_json, load_embeddings, make_dirs, train_paths, embedding_paths
+from src.util import namespace_json, load_embeddings, make_dirs, train_paths, embedding_paths, tf_record_paths
 
 
 def train(config, hparams):
@@ -30,8 +30,15 @@ def train(config, hparams):
     )
 
     with tf.device('/cpu:0'):
-        train_set, train_iter = create_pipeline(train_contexts, train_queries, train_ctxt_mapping, hparams)
-        _, val_iter = create_pipeline(val_contexts, val_queries, val_ctxt_mapping, hparams, shuffle=False)
+        if hparams.use_tf_record:
+            train_args = tf_record_paths(hparams, train=True)
+            val_args = tf_record_paths(hparams, train=False)
+        else:
+            train_args = train_contexts, train_queries, train_ctxt_mapping
+            val_args = val_contexts, val_queries, val_ctxt_mapping
+
+        train_set, train_iter = create_pipeline(hparams, train_args)
+        _, val_iter = create_pipeline(hparams, val_args, shuffle=False)
 
     with tf.Session(config=config) as sess:
         # Create the dataset iterators.

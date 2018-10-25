@@ -10,11 +10,9 @@ class FilePaths(Enum):
 
 
 class FileNames(Enum):
-    train_squad_1 = 'train-v1.1.json'
-    dev_squad_1 = 'dev-v1.1.json'
-    embedding_types = ['word', 'trainable', 'char']
-    data_types = ['train', 'dev']
-    index = '{}_index.json'
-    embeddings = '{}_embeddings.npy'
-    context = '{}_contexts.json'
-    answers = '{}_answers.json'
+    TRAIN_SQUAD_1 = 'train-v1.1.json'
+    DEV_SQUAD_1 = 'dev-v1.1.json'
+    INDEX = '{}_index.json'
+    EMBEDDINGS = '{}_embeddings.npy'
+    CONTEXT = '{}_contexts.json'
+    ANSWERS = '{}_answers.json'

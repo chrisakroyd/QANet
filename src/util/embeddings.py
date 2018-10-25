@@ -6,7 +6,10 @@ def create_vocab(embedding_index):
 
 
 def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
-    rows = len(index) + 1 if skip_zero else len(index)
+    if skip_zero:
+        rows = len(index) + 1
+    else:
+        rows = len(index)
     matrix = np.random.normal(scale=0.1, size=(rows, embedding_dimensions))
 
     if skip_zero:
