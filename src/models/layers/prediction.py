@@ -14,8 +14,12 @@ class PredictionHead(Layer):
 
     def call(self, x, training=None, mask=None):
         start_logits, end_logits = x
-        outer = tf.matmul(tf.expand_dims(self.start_softmax(start_logits), axis=2),
-                          tf.expand_dims(self.end_softmax(end_logits), axis=1))
+
+        p_start = self.start_softmax(start_logits)
+        p_end = self.end_softmax(end_logits)
+
+        outer = tf.matmul(tf.expand_dims(p_start, axis=2),
+                          tf.expand_dims(p_end, axis=1))
 
         outer = tf.matrix_band_part(outer, 0, self.answer_limit)
         start_pointer = tf.argmax(tf.reduce_max(outer, axis=2), axis=1)

@@ -37,6 +37,10 @@ def load_answers(answers, char_limit):
         context_mapping[key] = value['context_id']
         query_cache[key] = query_words, query_chars, len(value['query_words']), answer_starts, answer_ends
 
+    assert len(answer_cache) == len(answers)
+    assert len(answer_cache) == len(query_cache)
+    assert len(answer_cache) == len(context_mapping)
+
     return query_cache, answer_cache, context_mapping
 
 

@@ -103,18 +103,18 @@ def get_padded_shapes(hparams):
             [])  # answer_id
 
 
-def create_pipeline(hparams, args, shuffle=True):
+def create_pipeline(hparams, args, train=True):
     if hparams.use_tf_record:
         record_paths = args
-        dataset = tf_record_pipeline(record_paths, hparams, shuffle)
+        dataset = tf_record_pipeline(record_paths, hparams, train)
     else:
         contexts, queries, context_mapping = args
-        dataset = memory_pipeline(contexts, queries, context_mapping, hparams, shuffle)
+        dataset = memory_pipeline(contexts, queries, context_mapping, hparams, train)
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     # Note: py_func doesn't return output shapes therefore we zero pad to the limits on each batch and slice to
     # the batch max during training. @TODO revisit and see if this can be avoided in future tf versions.
     padded_shapes = get_padded_shapes(hparams)
-    if hparams.bucket:
+    if hparams.bucket and train:
         buckets = create_buckets(hparams)
         dataset = dataset.apply(
             bucket_by_sequence_length(element_length_func=length_fn,
@@ -124,7 +124,8 @@ def create_pipeline(hparams, args, shuffle=True):
     else:
         dataset = dataset.padded_batch(
             batch_size=hparams.batch_size,
-            padded_shapes=padded_shapes
+            padded_shapes=padded_shapes,
+            drop_remainder=train
         )
 
     # Prefetch in theory speeds up the pipeline by overlapping the batch generation and running previous batch.

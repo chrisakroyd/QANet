@@ -6,7 +6,7 @@ from src.models.utils import apply_mask
 class OutputLayer(Layer):
     def __init__(self, kernel_size=1, **kwargs):
         super(OutputLayer, self).__init__(**kwargs)
-        self.conv = Conv1D(1, strides=1, kernel_size=kernel_size)
+        self.conv = Conv1D(1, strides=1, kernel_size=kernel_size, use_bias=False)
 
     def build(self, input_shape):
         super(OutputLayer, self).build(input_shape)

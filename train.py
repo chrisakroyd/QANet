@@ -37,8 +37,8 @@ def train(config, hparams):
             train_args = train_contexts, train_queries, train_ctxt_mapping
             val_args = val_contexts, val_queries, val_ctxt_mapping
 
-        train_set, train_iter = create_pipeline(hparams, train_args)
-        _, val_iter = create_pipeline(hparams, val_args, shuffle=False)
+        train_set, train_iter = create_pipeline(hparams, train_args, train=True)
+        _, val_iter = create_pipeline(hparams, val_args, train=False)
 
     with tf.Session(config=config) as sess:
         # Create the dataset iterators.
@@ -86,7 +86,6 @@ def train(config, hparams):
             # Cache the result of the run for train evaluation.
             train_preds.append((answer_ids, loss, answer_start, answer_end,))
 
-            # Save the loss + l2 loss
             if global_step % hparams.save_loss_every == 0:
                 loss_sum = tf.Summary(value=[tf.Summary.Value(tag="model/loss", simple_value=loss)])
                 writer.add_summary(loss_sum, global_step)
