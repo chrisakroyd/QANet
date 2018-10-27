@@ -4,8 +4,9 @@ from src.models.utils import apply_mask
 
 
 class ContextQueryAttention(Layer):
-    def __init__(self, **kwargs):
+    def __init__(self, use_bias=True, **kwargs):
         super(ContextQueryAttention, self).__init__(**kwargs)
+        self.use_bias = use_bias
         self.query_activation = Softmax(axis=-1)
         self.context_activation = Softmax(axis=1)
 
@@ -31,6 +32,12 @@ class ContextQueryAttention(Layer):
                                   initializer='glorot_uniform',
                                   trainable=True)
 
+        if self.use_bias:
+            self.bias = self.add_weight(name='bias',
+                                        shape=[1],
+                                        initializer='zero',
+                                        trainable=True)
+
         super(ContextQueryAttention, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
@@ -51,6 +58,10 @@ class ContextQueryAttention(Layer):
         sub_mat_2 = tf.matmul(x_query * self.W2, tf.transpose(x_context, perm=(0, 2, 1)))
         # Add the matrices together and transpose to form a matrix of shape [bs, context_length, query_length]
         S = sub_mat_0 + sub_mat_1 + sub_mat_2
+
+        if self.bias:
+            S += self.bias
+
         S = tf.transpose(S, perm=(0, 2, 1))
         # Standard context to query attention.
         S_ = self.query_activation(apply_mask(S, mask=mask_query))
