@@ -1,22 +1,17 @@
 import tensorflow as tf
 import os
 from tqdm import tqdm
-from src.config import gpu_config, model_config
-from src.constants import FilePaths
-from src.loaders import load_squad
-from src.metrics import evaluate_list
-from src.pipeline import create_pipeline
+from src import config, constants, loaders, metrics, pipeline, util
 from src.qanet import QANet
-from src.util import namespace_json, load_embeddings, make_dirs, train_paths, embedding_paths, tf_record_paths
 
 
-def train(config, hparams):
+def train(sess_config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
-    _, out_dir, model_dir, log_dir = train_paths(hparams)
-    word_embedding_path, trainable_embedding_path, char_embedding_path = embedding_paths(hparams)
-    make_dirs([out_dir, model_dir, log_dir])
+    _, out_dir, model_dir, log_dir = util.train_paths(hparams)
+    word_embedding_path, trainable_embedding_path, char_embedding_path = util.embedding_paths(hparams)
+    util.make_dirs([out_dir, model_dir, log_dir])
 
-    train, val = load_squad(hparams)
+    train, val = loaders.load_squad(hparams)
 
     train_contexts, train_spans, train_queries, train_answers, train_ctxt_mapping = train
     val_contexts, val_spans, val_queries, val_answers, val_ctxt_mapping = val
@@ -25,22 +20,22 @@ def train(config, hparams):
     del train
     del val
 
-    word_matrix, trainable_matrix, character_matrix = load_embeddings(
+    word_matrix, trainable_matrix, character_matrix = util.load_embeddings(
         embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
     )
 
     with tf.device('/cpu:0'):
         if hparams.use_tf_record:
-            train_args = tf_record_paths(hparams, train=True)
-            val_args = tf_record_paths(hparams, train=False)
+            train_args = util.tf_record_paths(hparams, train=True)
+            val_args = util.tf_record_paths(hparams, train=False)
         else:
             train_args = train_contexts, train_queries, train_ctxt_mapping
             val_args = val_contexts, val_queries, val_ctxt_mapping
 
-        train_set, train_iter = create_pipeline(hparams, train_args, train=True)
-        _, val_iter = create_pipeline(hparams, val_args, train=False)
+        train_set, train_iter = pipeline.create_pipeline(hparams, train_args, train=True)
+        _, val_iter = pipeline.create_pipeline(hparams, val_args, train=False)
 
-    with tf.Session(config=config) as sess:
+    with tf.Session(config=sess_config) as sess:
         # Create the dataset iterators.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
@@ -100,8 +95,10 @@ def train(config, hparams):
                                                                           feed_dict={handle: val_handle})
                     val_preds.append((answer_ids, loss, answer_start, answer_end,))
                 # Evaluate the predictions and reset the train result list for next eval period.
-                evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer, global_step)
-                evaluate_list(val_preds, val_spans, val_answers, val_ctxt_mapping, 'val', writer, global_step)
+                metrics.evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer,
+                                      global_step)
+                metrics.evaluate_list(val_preds, val_spans, val_answers, val_ctxt_mapping, 'val', writer,
+                                      global_step)
                 train_preds = []
 
             # Save the model weights.
@@ -113,5 +110,5 @@ def train(config, hparams):
 
 
 if __name__ == '__main__':
-    defaults = namespace_json(path=FilePaths.defaults.value)
-    train(gpu_config(), model_config(defaults).FLAGS)
+    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    train(config.gpu_config(), config.model_config(defaults).FLAGS)

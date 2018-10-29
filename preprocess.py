@@ -1,19 +1,16 @@
-from src.config import model_config
-from src.constants import FilePaths
-from src.preprocessing import squad_process
-from src.util import namespace_json, get_directories, make_dirs
+from src import config, constants, preprocessing, util
 
 
 def preprocess(hparams):
     dataset = hparams.dataset.lower()
-    make_dirs(get_directories(hparams))
+    util.make_dirs(util.get_directories(hparams))
 
     if dataset == 'squad':
-        squad_process(hparams)
+        preprocessing.squad_process(hparams)
     else:
         raise NotImplementedError('Unsupported dataset: Valid datasets are {}.'.format('squad'))
 
 
 if __name__ == '__main__':
-    defaults = namespace_json(path=FilePaths.defaults.value)
-    preprocess(model_config(defaults))
+    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    preprocess(config.model_config(defaults))

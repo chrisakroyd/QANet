@@ -1,6 +1,4 @@
-from src.constants import FilePaths
-from src.util import namespace_json
-from src.config import gpu_config, model_config
+from src import config, constants, util
 from train import train
 from preprocess import preprocess
 from test import test
@@ -25,5 +23,5 @@ def main(config, flags):
 
 
 if __name__ == '__main__':
-    defaults = namespace_json(path=FilePaths.defaults.value)
-    main(gpu_config(), model_config(defaults))
+    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    main(config.gpu_config(), config.model_config(defaults))

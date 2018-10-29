@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 from collections import Counter
-from src.preprocessing import normalize_answer
+from src import preprocessing
 
 
 def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, step=0):
@@ -14,7 +14,6 @@ def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, wri
                                       answer_starts.tolist(), answer_ends.tolist())
         answer_texts.update(answer_data)
         losses.append(loss)
-
     metrics = evaluate(answer_texts)
     metrics["loss"] = np.mean(losses)
     add_metric_summaries(metrics, data_type, writer, step)
@@ -54,8 +53,8 @@ def evaluate(answers):
     for key, value in answers.items():
         total += 1
         # Normalize the answers
-        ground_truths = [normalize_answer(answer) for answer in answers[key]['ground_truth']]
-        prediction = normalize_answer(answers[key]['prediction'])
+        ground_truths = [preprocessing.normalize_answer(answer) for answer in answers[key]['ground_truth']]
+        prediction = preprocessing.normalize_answer(answers[key]['prediction'])
 
         exact_match += metric_max_over_ground_truths(exact_match_score, prediction, ground_truths)
         f1 += metric_max_over_ground_truths(f1_score, prediction, ground_truths)

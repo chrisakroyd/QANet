@@ -1,6 +1,6 @@
+from collections import Counter
 import numpy as np
 import spacy
-from collections import Counter
 from nltk import word_tokenize
 
 default_punct = set(list(' !"#$%&()*+,-./:;=@[\]^_`{|}~?'))

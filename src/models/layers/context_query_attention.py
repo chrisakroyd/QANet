@@ -59,7 +59,7 @@ class ContextQueryAttention(Layer):
         # Add the matrices together and transpose to form a matrix of shape [bs, context_length, query_length]
         S = sub_mat_0 + sub_mat_1 + sub_mat_2
 
-        if self.bias:
+        if self.use_bias:
             S += self.bias
 
         S = tf.transpose(S, perm=(0, 2, 1))

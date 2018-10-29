@@ -1,33 +1,29 @@
 import tensorflow as tf
 from tqdm import tqdm
-from src.config import gpu_config, model_config
-from src.constants import FilePaths
-from src.loaders import load_squad
-from src.metrics import evaluate_list
-from src.pipeline import create_dataset
 from src.qanet import QANet
-from src.util import namespace_json, load_embeddings, train_paths, embedding_paths
+from src import config, constants, loaders, metrics, pipeline, util
 
 
-def test(config, hparams):
-    _, out_dir, model_dir, log_dir = train_paths(hparams)
+def test(sess_config, hparams):
+    _, out_dir, model_dir, log_dir = util.train_paths(hparams)
     word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
-    char_embedding_path = embedding_paths(hparams)
+    char_embedding_path = util.embedding_paths(hparams)
 
-    _, val = load_squad(hparams)
-    val_contexts, val_spans, val_questions, val_answers, val_ctxt_mapping = val
+    _, val = loaders.load_squad(hparams)
+    val_contexts, val_spans, val_queries, val_answers, val_ctxt_mapping = val
 
-    word_matrix, trainable_matrix, character_matrix = load_embeddings(
-        index_paths=(word_index_path, trainable_index_path, char_index_path,),
+    word_matrix, trainable_matrix, character_matrix = util.load_embeddings(
         embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
-        embed_dim=hparams.embed_dim,
-        char_dim=hparams.char_dim
     )
 
     with tf.device('/cpu:0'):
-        val_set, val_iter = create_dataset(val_contexts, val_questions, val_ctxt_mapping, hparams, shuffle=False)
+        if hparams.use_tf_record:
+            val_args = util.tf_record_paths(hparams, train=False)
+        else:
+            val_args = val_contexts, val_queries, val_ctxt_mapping
+        val_set, val_iter = pipeline.create_pipeline(hparams, val_args, train=False)
 
-    with tf.Session(config=config) as sess:
+    with tf.Session(config=sess_config) as sess:
         # Create the dataset iterators.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, val_set.output_types, val_set.output_shapes)
@@ -51,8 +47,8 @@ def test(config, hparams):
                 [model.answer_id, model.loss, model.start_pointer, model.end_pointer], feed_dict={handle: val_handle})
             preds.append((answer_ids, loss, answer_starts, answer_ends,))
         # Evaluate the predictions and reset the train result list for next eval period.
-        metrics, answer_texts = evaluate_list(preds, val_spans, val_answers, val_ctxt_mapping)
-        print("Exact Match: {}, F1: {}".format(metrics['exact_match'], metrics['f1']))
+        eval_metrics, answer_texts = metrics.evaluate_list(preds, val_spans, val_answers, val_ctxt_mapping)
+        print("Exact Match: {}, F1: {}".format(eval_metrics['exact_match'], eval_metrics['f1']))
 
         if hparams.write_answer_file:
             out_file = {}
@@ -62,5 +58,5 @@ def test(config, hparams):
 
 
 if __name__ == '__main__':
-    defaults = namespace_json(path=FilePaths.defaults.value)
-    test(gpu_config(), model_config(defaults))
+    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    test(config.gpu_config(), config.model_config(defaults))

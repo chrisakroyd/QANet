@@ -1,5 +1,5 @@
 import os
-from src.constants import FileNames, Modes, EmbeddingTypes
+from src import constants
 
 
 def get_directories(hparams):
@@ -14,20 +14,20 @@ def get_directories(hparams):
 def raw_data_paths(hparams):
     squad_dir, _, _, _, _ = get_directories(hparams)
     # Where we find the data
-    train_path = os.path.join(squad_dir, FileNames.TRAIN_SQUAD_1.value)
-    dev_path = os.path.join(squad_dir, FileNames.DEV_SQUAD_1.value)
+    train_path = os.path.join(squad_dir, constants.FileNames.TRAIN_SQUAD_1.value)
+    dev_path = os.path.join(squad_dir, constants.FileNames.DEV_SQUAD_1.value)
 
     return train_path, dev_path
 
 
 def processed_data_paths(hparams):
     _, data_dir, _, _, _ = get_directories(hparams)
-    train, dev = Modes.TRAIN.value, Modes.DEV.value
+    train, dev = constants.Modes.TRAIN.value, constants.Modes.DEV.value
     paths = (
-        os.path.join(data_dir, FileNames.CONTEXT.value.format(train)),
-        os.path.join(data_dir, FileNames.ANSWERS.value.format(train)),
-        os.path.join(data_dir, FileNames.CONTEXT.value.format(dev)),
-        os.path.join(data_dir, FileNames.ANSWERS.value.format(dev)),
+        os.path.join(data_dir, constants.FileNames.CONTEXT.value.format(train)),
+        os.path.join(data_dir, constants.FileNames.ANSWERS.value.format(train)),
+        os.path.join(data_dir, constants.FileNames.CONTEXT.value.format(dev)),
+        os.path.join(data_dir, constants.FileNames.ANSWERS.value.format(dev)),
     )
     return paths
 
@@ -35,17 +35,17 @@ def processed_data_paths(hparams):
 def index_paths(hparams):
     _, data_dir, _, _, _ = get_directories(hparams)
     paths = []
-    for _, embed_type in EmbeddingTypes.__members__.items():
-        paths += [os.path.join(data_dir, FileNames.INDEX.value.format(embed_type.value))]
+    for _, embed_type in constants.EmbeddingTypes.__members__.items():
+        paths += [os.path.join(data_dir, constants.FileNames.INDEX.value.format(embed_type.value))]
     return paths
 
 
 def embedding_paths(hparams):
     _, data_dir, _, _, _ = get_directories(hparams)
     paths = []
-    for _, embed_type in EmbeddingTypes.__members__.items():
+    for _, embed_type in constants.EmbeddingTypes.__members__.items():
         paths += [
-            os.path.join(data_dir, FileNames.EMBEDDINGS.value.format(embed_type.value))
+            os.path.join(data_dir, constants.FileNames.EMBEDDINGS.value.format(embed_type.value))
         ]
     return paths
 
@@ -63,9 +63,9 @@ def tf_record_paths(hparams, train):
     _, data_dir, _, _, _ = get_directories(hparams)
     out_dir = os.path.join(data_dir, 'records')
     if train:
-        name = Modes.TRAIN.value
+        name = constants.Modes.TRAIN.value
     else:
-        name = Modes.DEV.value
+        name = constants.Modes.DEV.value
 
     paths = os.path.join(out_dir, '{name}_{shards}.tfrecord'.format(
             name=name, shards=str(hparams.num_shards).zfill(4)))

@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.keras.layers import Conv1D
 from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttention, OutputLayer, PredictionHead
 from src.models.utils import create_mask
 
@@ -90,7 +89,7 @@ class QANet:
     def add_l2_loss(self, l2):
         with tf.name_scope('l2_ops'):
             self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * l2
-            self.loss += self.l2_loss
+        self.loss += self.l2_loss
 
     def slice_ops(self, context_max, query_max):
         self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max), name='context_slice')

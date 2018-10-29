@@ -4,14 +4,13 @@ from types import SimpleNamespace
 
 
 def save_json(path, index):
-    with open(path, 'w', encoding='utf8') as f:
+    with open(path, 'w') as f:
         json.dump(index, f)
 
 
 def load_json(path):
-    with open(path, encoding='utf8') as f:
-        index = json.load(f)
-        return index
+    with open(path) as f:
+        return json.load(f)
 
 
 def namespace_json(path):
