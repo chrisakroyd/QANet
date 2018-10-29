@@ -57,7 +57,7 @@ class EmbeddingLayer(tf.keras.Model):
         num_words, num_chars = char_shape[1], char_shape[2]
         word_embedding = self.word_embedding(words)  # [bs, len_words, embed_dim]
         char_embedding = self.char_embedding(chars)  # [bs, len_words, len_chars, char_dim]
-        char_embedding = tf.reshape(char_embedding, shape=(-1, 16, self.char_dim,))
+        char_embedding = tf.reshape(char_embedding, shape=(-1, num_chars, self.char_dim,))
         word_embedding = self.word_dropout(word_embedding, training=training)
         char_embedding = self.char_dropout(char_embedding, training=training)
         # Treat each character as a channel + reduce to the max representation.
