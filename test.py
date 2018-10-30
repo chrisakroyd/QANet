@@ -43,9 +43,9 @@ def test(sess_config, hparams):
         preds = []
         # +1 for uneven batch values, +1 for the range.
         for _ in tqdm(range(1, (len(val_answers) // hparams.batch_size + 1) + 1)):
-            answer_ids, loss, answer_starts, answer_ends = sess.run(
-                [model.answer_id, model.loss, model.start_pointer, model.end_pointer], feed_dict={handle: val_handle})
-            preds.append((answer_ids, loss, answer_starts, answer_ends,))
+            answer_ids, answer_starts, answer_ends = sess.run([model.answer_id, model.start_pointer, model.end_pointer],
+                                                              feed_dict={handle: val_handle})
+            preds.append((answer_ids, 0.0, answer_starts, answer_ends,))
         # Evaluate the predictions and reset the train result list for next eval period.
         eval_metrics, answer_texts = metrics.evaluate_list(preds, val_spans, val_answers, val_ctxt_mapping)
         print("Exact Match: {}, F1: {}".format(eval_metrics['exact_match'], eval_metrics['f1']))

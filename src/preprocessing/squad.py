@@ -34,6 +34,10 @@ def fit_and_extract(data_set, tokenizer, hparams):
                 query_clean = prepro.clean(qa['question'])
                 query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
                 total += 1
+
+                if len(query_tokens) > hparams.query_limit:
+                    skipped += 1
+                    continue
                 answer_starts, answer_ends, answer_texts = [], [], []
 
                 for answer in qa['answers']:

@@ -44,11 +44,7 @@ class EmbeddingLayer(tf.keras.Model):
 
         self.highway_1 = HighwayLayer(word_dropout, name='highway_1')
         self.highway_2 = HighwayLayer(word_dropout, name='highway_2')
-
-        # These two layers facilitate trainable embeddings for words. During preprocessing we give trainable words the
-        # highest id's, we then subtract the number of non-trainable words at each position which means that words with
-        # positive numbers are trainable words (these are also the indexes in the trainable embedding).
-        # The relu maps the negative ids from the subtraction to 0 without changing the trainable ids.
+        # This relu is for facilitating the trainable embeddings.
         self.relu = Activation('relu')
 
     def call(self, x, training=None, mask=None):

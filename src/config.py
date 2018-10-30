@@ -91,6 +91,7 @@ def model_config(defaults):
     flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.')
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')
+    flags.DEFINE_integer('warmup_steps', defaults.warmup_steps, 'Number of warmup steps.')
     flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint.')
     flags.DEFINE_integer('save_loss_every', defaults.save_loss_every, 'After how many steps do we save the loss value.')
     flags.DEFINE_integer('run_val_every', defaults.run_val_every, 'After how many steps do we calculate EM/F1 scores.')

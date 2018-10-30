@@ -1,6 +1,7 @@
 import tensorflow as tf
 from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttention, OutputLayer, PredictionHead
 from src.models.utils import create_mask
+from src import train_utils
 
 
 class QANet:
@@ -41,32 +42,21 @@ class QANet:
     def init(self, placeholders):
         self.context_words, self.context_chars, self.context_lengths, self.query_words, self.query_chars, \
         self.query_lengths, self.y_start, self.y_end, self.answer_id = placeholders
-        # Trim the input sequences to the max non-zero length in batch (speeds up training).
-        if self.hparams.dynamic_slice:
-            # Calc the max length for the batch.
-            context_max = tf.reduce_max(self.context_lengths)
-            query_max = tf.reduce_max(self.query_lengths)
-            self.slice_ops(context_max, query_max)
-        else:
-            context_max = self.hparams.context_limit
-            query_max = self.hparams.query_limit
-        # Init mask tensors on the trimmed input.
-        self.context_mask = create_mask(self.context_lengths, context_max)
-        self.query_mask = create_mask(self.query_lengths, query_max)
-        # Init network
-        self.step()
 
-        if self.train and self.hparams.l2 > 0.0:
-            self.add_l2_loss(self.hparams.l2)
+        # Init network
+        self.start_logits, self.end_logits, self.start_pointer, self.end_pointer = self.call(placeholders, self.train)
+
+        self.loss, self.l2_loss = self.compute_loss(self.start_logits, self.end_logits, self.y_start, self.y_end,
+                                                    self.hparams.l2)
 
         if self.train:
-            self.add_train_ops(self.hparams.learn_rate)
+            self.train_op = self.add_train_ops(self.hparams.learn_rate, self.hparams.gradient_clip)
 
-        if self.train and self.hparams.ema_decay > 0.0:
-            self.add_ema_ops()
+        if self.train and 0.0 < self.hparams.ema_decay < 1.0:
+            self.train_op, self.ema = train_utils.ema_ops(self.train_op, self.hparams.ema_decay)
 
-    def add_train_ops(self, learn_rate):
-        self.lr = tf.minimum(learn_rate, 0.001 / tf.log(999.) * tf.log(tf.cast(self.global_step, tf.float32) + 1))
+    def add_train_ops(self, learn_rate, warmup_steps=1000, gradient_clip=5.0):
+        self.lr = train_utils.inverse_exponential_warmup(learn_rate, warmup_steps)
         self.optimizer = tf.train.AdamOptimizer(learning_rate=self.lr,
                                                 beta1=self.hparams.beta1,
                                                 beta2=self.hparams.beta2,
@@ -74,61 +64,66 @@ class QANet:
 
         if self.hparams.gradient_clip > 0.0:
             grads = self.optimizer.compute_gradients(self.loss)
-            gradients, variables = zip(*grads)
-            clipped_grads, _ = tf.clip_by_global_norm(gradients, self.hparams.gradient_clip)
-            self.train_op = self.optimizer.apply_gradients(zip(clipped_grads, variables), global_step=self.global_step)
+            grads_and_vars = train_utils.clip_by_global_norm(grads, gradient_clip)
+            train_op = self.optimizer.apply_gradients(grads_and_vars, global_step=self.global_step)
         else:
-            self.train_op = self.optimizer.minimize(self.loss, self.global_step)
+            train_op = self.optimizer.minimize(self.loss, self.global_step)
+        return train_op
 
-    def add_ema_ops(self):
-        with tf.name_scope('ema_ops'):
-            self.ema = tf.train.ExponentialMovingAverage(self.hparams.ema_decay)
-            with tf.control_dependencies([self.train_op]):
-                self.train_op = self.ema.apply(tf.trainable_variables() + tf.moving_average_variables())
+    def slice_ops(self, context_max, query_max, char_max):
+        self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max))
+        self.query_words = tf.slice(self.query_words, begin=(0, 0), size=(-1, query_max))
+        self.context_chars = tf.slice(self.context_chars, begin=(0, 0, 0), size=(-1, context_max, char_max))
+        self.query_chars = tf.slice(self.query_chars, begin=(0, 0, 0), size=(-1, query_max, char_max))
 
-    def add_l2_loss(self, l2):
-        with tf.name_scope('l2_ops'):
-            self.l2_loss = tf.add_n([tf.nn.l2_loss(v) for v in tf.trainable_variables()]) * l2
-        self.loss += self.l2_loss
-
-    def slice_ops(self, context_max, query_max):
-        self.context_words = tf.slice(self.context_words, begin=(0, 0), size=(-1, context_max), name='context_slice')
-        self.query_words = tf.slice(self.query_words, begin=(0, 0), size=(-1, query_max), name='query_slice')
-        self.context_chars = tf.slice(self.context_chars, begin=(0, 0, 0), size=(-1, context_max,
-                                                                                 self.hparams.char_limit))
-        self.query_chars = tf.slice(self.query_chars, begin=(0, 0, 0), size=(-1, query_max, self.hparams.char_limit))
-
-    def step(self):
+    def call(self, x, training=True):
+        # Trim the input sequences to the max non-zero length in batch (speeds up training).
+        if self.hparams.dynamic_slice:
+            # Calc the max length for the batch.
+            context_max = tf.reduce_max(self.context_lengths)
+            query_max = tf.reduce_max(self.query_lengths)
+            self.slice_ops(context_max, query_max, self.hparams.char_limit)
+        else:
+            context_max = self.hparams.context_limit
+            query_max = self.hparams.query_limit
+        # Init mask tensors on the trimmed input.
+        context_mask = create_mask(self.context_lengths, context_max)
+        query_mask = create_mask(self.query_lengths, query_max)
         # Embed the query + context
         context_emb = self.embedding_block([self.context_words, self.context_chars])
         query_emb = self.embedding_block([self.query_words, self.query_chars])
 
         # Encode the query + context.
-        context_enc = self.embedding_encoder_blocks(context_emb, training=self.train, mask=self.context_mask)
-        query_enc = self.embedding_encoder_blocks(query_emb, training=self.train, mask=self.query_mask)
+        context_enc = self.embedding_encoder_blocks(context_emb, training=training, mask=context_mask)
+        query_enc = self.embedding_encoder_blocks(query_emb, training=training, mask=query_mask)
 
         # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
-        self.c2q, self.q2c = self.context_query([context_enc, query_enc], training=self.train,
-                                                mask=[self.context_mask, self.query_mask])
+        self.c2q, self.q2c = self.context_query([context_enc, query_enc], training=training,
+                                                mask=[context_mask, query_mask])
         # Input for the first stage of the model encoder, refer to section 2.2. of QANet paper for more details
         inputs = tf.concat([context_enc, self.c2q, context_enc * self.c2q, context_enc * self.q2c], axis=-1)
         # Run through our stacked model encoder blocks on this representation.
-        enc_1 = self.model_encoder_blocks(inputs, training=self.train, mask=self.context_mask)
-        enc_2 = self.model_encoder_blocks(enc_1, training=self.train, mask=self.context_mask)
-        enc_3 = self.model_encoder_blocks(enc_2, training=self.train, mask=self.context_mask)
+        enc_1 = self.model_encoder_blocks(inputs, training=training, mask=context_mask)
+        enc_2 = self.model_encoder_blocks(enc_1, training=training, mask=context_mask)
+        enc_3 = self.model_encoder_blocks(enc_2, training=training, mask=context_mask)
 
         # Get the start/end logits from the output layers
-        start_logits = self.start_output([enc_1, enc_2], mask=self.context_mask)
-        end_logits = self.end_output([enc_1, enc_3], mask=self.context_mask)
-
+        start_logits = self.start_output([enc_1, enc_2], training=training, mask=context_mask)
+        end_logits = self.end_output([enc_1, enc_3], training=training, mask=context_mask)
         # Prediction head - Returns a pointer to the start and end position of the answer segment on the context.
-        self.start_pointer, self.end_pointer = self.predict_pointers([start_logits, end_logits])
+        start_pointer, end_pointer = self.predict_pointers([start_logits, end_logits])
+        return start_logits, end_logits, start_pointer, end_pointer
 
+    def compute_loss(self, start_logits, end_logits, y_start, y_end, l2):
         # Calc and sum losses.
         loss_start = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=start_logits, labels=self.y_start)
+                logits=start_logits, labels=y_start)
 
         loss_end = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=end_logits, labels=self.y_end)
+                logits=end_logits, labels=y_end)
 
-        self.loss = tf.reduce_mean(loss_start + loss_end)
+        loss = tf.reduce_mean(loss_start) + tf.reduce_mean(loss_end)
+        l2_loss = train_utils.l2_ops(l2)
+        loss = loss + l2_loss
+
+        return loss, l2_loss
