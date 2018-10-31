@@ -8,6 +8,7 @@ from src.qanet import QANet
 def train(sess_config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
     _, out_dir, model_dir, log_dir = util.train_paths(hparams)
+    word_index_path, _, char_index_path = util.index_paths(hparams)
     word_embedding_path, trainable_embedding_path, char_embedding_path = util.embedding_paths(hparams)
     util.make_dirs([out_dir, model_dir, log_dir])
 
@@ -19,6 +20,9 @@ def train(sess_config, hparams):
     # Free some memory.
     del train
     del val
+
+    word_vocab = util.load_vocab(path=word_index_path)
+    char_vocab = util.load_vocab(path=char_index_path)
 
     word_matrix, trainable_matrix, character_matrix = util.load_embeddings(
         embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
@@ -32,10 +36,13 @@ def train(sess_config, hparams):
             train_args = train_contexts, train_queries, train_ctxt_mapping
             val_args = val_contexts, val_queries, val_ctxt_mapping
 
-        train_set, train_iter = pipeline.create_pipeline(hparams, train_args, train=True)
-        _, val_iter = pipeline.create_pipeline(hparams, val_args, train=False)
+        train_set, train_iter = pipeline.create_pipeline(hparams, word_vocab, char_vocab, train_args, train=True)
+        _, val_iter = pipeline.create_pipeline(hparams, word_vocab, char_vocab, val_args, train=False)
 
     with tf.Session(config=sess_config) as sess:
+        sess.run(train_iter.initializer)
+        sess.run(val_iter.initializer)
+        sess.run(tf.tables_initializer())
         # Create the dataset iterators.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)

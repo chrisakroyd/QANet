@@ -90,21 +90,6 @@ def fit_and_extract(data_set, tokenizer, hparams):
     return contexts, queries, tokenizer
 
 
-def text_to_sequence(data, text_key, save_key, tokenizer, max_words):
-    for key, value in tqdm(data.items()):
-        words, chars = tokenizer.tokens_to_sequences(value[text_key], seq_length=max_words, pad=False, numpy=False)
-        data[key]['{}_words'.format(save_key)] = words[-1]
-        data[key]['{}_chars'.format(save_key)] = chars[-1]
-    return data
-
-
-def pre_process(contexts, question_answers, tokenizer, hparams):
-    contexts = text_to_sequence(contexts, 'context_tokens', 'context', tokenizer, hparams.context_limit)
-    question_answers = text_to_sequence(question_answers, 'query_tokens', 'query', tokenizer,
-                                        hparams.query_limit)
-    return contexts, question_answers
-
-
 def process(hparams):
     train_path, dev_path = util.raw_data_paths(hparams)
     # Paths for dumping our processed data.
@@ -131,13 +116,9 @@ def process(hparams):
     train = util.load_json(train_path)
     dev = util.load_json(dev_path)
 
-    print('Fitting...')
+    print('Processing...')
     train_contexts, train_question_answers, tokenizer = fit_and_extract(train, tokenizer, hparams)
     dev_contexts, dev_question_answers, tokenizer = fit_and_extract(dev, tokenizer, hparams)
-
-    print('Processing...')
-    train_contexts, train_question_answers = pre_process(train_contexts, train_question_answers, tokenizer, hparams)
-    dev_contexts, dev_question_answers = pre_process(dev_contexts, dev_question_answers, tokenizer, hparams)
 
     word_index = tokenizer.word_index
     char_index = tokenizer.char_index

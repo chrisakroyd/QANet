@@ -47,3 +47,8 @@ def make_dirs(directories):
 
 def reverse_dict(dictionary):
     return {v: k for k, v in dictionary.items()}
+
+
+def load_vocab(path):
+    index = load_json(path)
+    return sorted(index, key=index.get)
