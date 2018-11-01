@@ -7,8 +7,9 @@ def load_contexts(contexts):
     context_spans = {}
 
     for key, value in contexts.items():
-        context_words = value['context_tokens']
-        context_cache[key] = context_words, len(value['context_words'])
+        context_tokens = value['context_tokens']
+        context_length = value['context_length']
+        context_cache[key] = context_tokens, context_length
         context_spans[key] = {
             'context': value['context'],
             'word_spans': value['word_spans'],
@@ -22,13 +23,14 @@ def load_answers(answers):
     query_cache = {}
 
     for key, value in answers.items():
-        query_words = value['query_tokens']
+        query_tokens = value['query_tokens']
+        query_length = value['query_length']
         answer_starts = np.asarray(value['answer_starts'], dtype=np.int32)
         answer_ends = np.asarray(value['answer_ends'], dtype=np.int32)
 
         answer_cache[key] = value['answers']
         context_mapping[key] = value['context_id']
-        query_cache[key] = query_words, len(value['query_words']), answer_starts, answer_ends
+        query_cache[key] = query_tokens, query_length, answer_starts, answer_ends
 
     assert len(answer_cache) == len(answers)
     assert len(answer_cache) == len(query_cache)

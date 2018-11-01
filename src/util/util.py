@@ -4,12 +4,12 @@ from types import SimpleNamespace
 
 
 def save_json(path, index):
-    with open(path, 'w') as f:
+    with open(path, 'w', encoding='utf-8') as f:
         json.dump(index, f)
 
 
 def load_json(path):
-    with open(path) as f:
+    with open(path, encoding='utf-8') as f:
         return json.load(f)
 
 

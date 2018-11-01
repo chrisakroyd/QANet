@@ -5,19 +5,6 @@ bucket_by_sequence_length = tf.contrib.data.bucket_by_sequence_length
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
-def create_placeholders(context_limit, query_limit):
-    ctxt_words = tf.placeholder(dtype=tf.string, shape=(None, context_limit, ), name='context_tokens')
-    ctxt_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='context_length')
-    query_words = tf.placeholder(dtype=tf.string, shape=(None, query_limit,), name='query_tokens')
-    query_len = tf.placeholder(dtype=tf.int32, shape=(None, ), name='query_length')
-
-    y_start = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_start_index')
-    y_end = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_end_index')
-    answer_id = tf.placeholder(dtype=tf.int32, shape=(None, ), name='answer_id')
-
-    return ctxt_words, ctxt_len, query_words, query_len, y_start, y_end, answer_id
-
-
 def tf_record_pipeline(filenames, hparams, shuffle=True):
     int_feature = tf.FixedLenFeature([], tf.int32)
 
@@ -57,22 +44,16 @@ def memory_pipeline(contexts, queries, context_mapping, hparams, shuffle=True):
     def map_to_cache(answer_id):
         answer_key = str(answer_id)
         context_id = str(context_mapping[answer_key])
-        context_words, context_length = contexts[context_id]
-        query_words, query_length, answer_starts, answer_ends = queries[answer_key]
-        return context_words, context_length, query_words, query_length, answer_starts, answer_ends, answer_id
+        context_tokens, context_length = contexts[context_id]
+        query_tokens, query_length, answer_starts, answer_ends = queries[answer_key]
+        return context_tokens, context_length, query_tokens, query_length, answer_starts, answer_ends, answer_id
 
     out_types = [tf.string, tf.int32, tf.string, tf.int32, tf.int32, tf.int32, tf.int32]
     dataset = dataset.map(lambda answer_id: tuple(tf.py_func(map_to_cache, [answer_id], out_types)))
     return dataset
 
 
-def index_lookup(dataset, word_vocab, char_vocab, char_limit=16, num_parallel_calls=4):
-    # default value is highest in the vocab as this is the OOV embedding.
-    word_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(word_vocab, dtype=tf.string),
-                                                           default_value=len(word_vocab) - 1)
-    char_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(char_vocab, dtype=tf.string),
-                                                           default_value=len(char_vocab) - 1)
-
+def index_lookup(dataset, word_table, char_table, char_limit=16, num_parallel_calls=4):
     def _lookup(context_tokens, context_length, query_tokens, query_length,
                 answer_starts, answer_ends, answer_id):
         # +1 allows us to use 0 as a padding character without explicitly mapping it.
@@ -129,7 +110,16 @@ def get_padded_shapes(hparams):
             [])  # answer_id
 
 
-def create_pipeline(hparams, word_vocab, char_vocab, args, train=True):
+def create_lookup_tables(word_vocab, char_vocab):
+    # default value is highest in the vocab as this is the OOV embedding, we generate non-zero indexed therefore -1.
+    word_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(word_vocab, dtype=tf.string),
+                                                           default_value=len(word_vocab) - 1)
+    char_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(char_vocab, dtype=tf.string),
+                                                           default_value=len(char_vocab) - 1)
+    return word_table, char_table
+
+
+def create_pipeline(hparams, word_table, char_table, args, train=True):
     if hparams.use_tf_record:
         record_paths = args
         dataset = tf_record_pipeline(record_paths, hparams, train)
@@ -137,7 +127,7 @@ def create_pipeline(hparams, word_vocab, char_vocab, args, train=True):
         contexts, queries, context_mapping = args
         dataset = memory_pipeline(contexts, queries, context_mapping, hparams, train)
     # Perform word -> index mapping.
-    dataset = index_lookup(dataset, word_vocab, char_vocab, char_limit=hparams.char_limit,
+    dataset = index_lookup(dataset, word_table, char_table, char_limit=hparams.char_limit,
                            num_parallel_calls=hparams.parallel_calls)
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     # Note: py_func doesn't return output shapes therefore we zero pad to the limits on each batch and slice to

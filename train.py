@@ -23,12 +23,13 @@ def train(sess_config, hparams):
 
     word_vocab = util.load_vocab(path=word_index_path)
     char_vocab = util.load_vocab(path=char_index_path)
-
     word_matrix, trainable_matrix, character_matrix = util.load_embeddings(
         embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
     )
 
     with tf.device('/cpu:0'):
+        word_table, char_table = pipeline.create_lookup_tables(word_vocab, char_vocab)
+
         if hparams.use_tf_record:
             train_args = util.tf_record_paths(hparams, train=True)
             val_args = util.tf_record_paths(hparams, train=False)
@@ -36,8 +37,8 @@ def train(sess_config, hparams):
             train_args = train_contexts, train_queries, train_ctxt_mapping
             val_args = val_contexts, val_queries, val_ctxt_mapping
 
-        train_set, train_iter = pipeline.create_pipeline(hparams, word_vocab, char_vocab, train_args, train=True)
-        _, val_iter = pipeline.create_pipeline(hparams, word_vocab, char_vocab, val_args, train=False)
+        train_set, train_iter = pipeline.create_pipeline(hparams, word_table, char_table, train_args, train=True)
+        _, val_iter = pipeline.create_pipeline(hparams, word_table, char_table, val_args, train=False)
 
     with tf.Session(config=sess_config) as sess:
         sess.run(train_iter.initializer)

@@ -67,6 +67,7 @@ def fit_and_extract(data_set, tokenizer, hparams):
                     'answer_id': answer_id,
                     'context_id': context_id,
                     'query_tokens': query_tokens,
+                    'query_length': len(query_tokens),
                     'answers': answer_texts,
                     'answer_starts': answer_starts[-1],
                     'answer_ends': answer_ends[-1],
@@ -80,6 +81,7 @@ def fit_and_extract(data_set, tokenizer, hparams):
                 'id': context_id,
                 'context': context_clean,
                 'context_tokens': context_tokens,
+                'context_length': len(context_tokens),
                 'word_spans': spans,
             }
 
@@ -119,7 +121,7 @@ def process(hparams):
     print('Processing...')
     train_contexts, train_question_answers, tokenizer = fit_and_extract(train, tokenizer, hparams)
     dev_contexts, dev_question_answers, tokenizer = fit_and_extract(dev, tokenizer, hparams)
-
+    tokenizer.init()
     word_index = tokenizer.word_index
     char_index = tokenizer.char_index
     trainable_index = util.index_from_list(hparams.trainable_words)
