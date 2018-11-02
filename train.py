@@ -1,13 +1,12 @@
 import tensorflow as tf
 import os
 from tqdm import tqdm
-from src import config, constants, loaders, metrics, pipeline, util
-from src.qanet import QANet
+from src import config, constants, loaders, metrics, pipeline, qanet, util
 
 
 def train(sess_config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
-    _, out_dir, model_dir, log_dir = util.train_paths(hparams)
+    _, out_dir, model_dir, log_dir, _ = util.train_paths(hparams)
     word_index_path, _, char_index_path = util.index_paths(hparams)
     word_embedding_path, trainable_embedding_path, char_embedding_path = util.embedding_paths(hparams)
     util.make_dirs([out_dir, model_dir, log_dir])
@@ -48,7 +47,7 @@ def train(sess_config, hparams):
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
         # Create and initialize the model
-        model = QANet(word_matrix, character_matrix, trainable_matrix, hparams)
+        model = qanet.QANet(word_matrix, character_matrix, trainable_matrix, hparams)
         model.init(iterator.get_next())
         sess.run(tf.global_variables_initializer())
         # saver boilerplate

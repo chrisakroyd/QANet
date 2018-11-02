@@ -6,12 +6,13 @@ bucket_by_sequence_length = tf.contrib.data.bucket_by_sequence_length
 
 
 def tf_record_pipeline(filenames, hparams, shuffle=True):
-    int_feature = tf.FixedLenFeature([], tf.int32)
+    int_feature = tf.FixedLenFeature([], tf.int64)
+    str_feature = tf.FixedLenFeature([], tf.string)
 
     features = {
-        'context_tokens': tf.FixedLenSequenceFeature((hparams.context_limit, ), dtype=tf.int32),
+        'context_tokens': str_feature,
         'context_length': int_feature,
-        'query_tokens': tf.FixedLenSequenceFeature((hparams.query_limit, ), dtype=tf.int32),
+        'query_tokens': str_feature,
         'query_length': int_feature,
         'answer_starts': int_feature,
         'answer_ends': int_feature,
@@ -68,7 +69,6 @@ def index_lookup(dataset, word_table, char_table, char_limit=16, num_parallel_ca
         query_chars = tf.sparse_tensor_to_dense(char_table.lookup(query_chars), default_value=-1) + 1
         context_chars = context_chars[:, :char_limit]
         query_chars = query_chars[:, :char_limit]
-
         return context_words, context_chars, context_length, query_words, query_chars, query_length, \
                answer_starts, answer_ends, answer_id
 

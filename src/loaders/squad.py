@@ -14,6 +14,7 @@ def load_contexts(contexts):
             'context': value['context'],
             'word_spans': value['word_spans'],
         }
+
     return context_cache, context_spans
 
 
@@ -32,9 +33,7 @@ def load_answers(answers):
         context_mapping[key] = value['context_id']
         query_cache[key] = query_tokens, query_length, answer_starts, answer_ends
 
-    assert len(answer_cache) == len(answers)
-    assert len(answer_cache) == len(query_cache)
-    assert len(answer_cache) == len(context_mapping)
+    assert len(answer_cache) == len(answers) == len(query_cache) == len(context_mapping)
 
     return query_cache, answer_cache, context_mapping
 
