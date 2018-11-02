@@ -60,7 +60,6 @@ def model_config(defaults):
     flags.DEFINE_boolean('dynamic_slice', defaults.dynamic_slice,
                          'Controls whether we slice tensors to the max within the batch.')
     flags.DEFINE_boolean('use_elmo', defaults.use_elmo, 'Whether to use ELMo embeddings.')
-    flags.DEFINE_boolean('use_tf_record', defaults.use_tf_record, 'Whether to use a in memory or tf-record pipeline.')
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
     flags.DEFINE_integer('filters', defaults.filters, 'Number of filters on all layers.')

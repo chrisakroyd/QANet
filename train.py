@@ -4,17 +4,23 @@ from tqdm import tqdm
 from src import config, constants, loaders, metrics, pipeline, qanet, util
 
 
+def get_inputs(placeholders):
+    return placeholders['context_words'], placeholders['context_chars'], placeholders['context_length'], \
+    placeholders['query_words'], placeholders['query_chars'], placeholders['query_length'], \
+    placeholders['answer_starts'], placeholders['answer_ends'], placeholders['answer_id']
+
+
 def train(sess_config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
-    _, out_dir, model_dir, log_dir, _ = util.train_paths(hparams)
+    _, out_dir, model_dir, log_dir = util.train_paths(hparams)
     word_index_path, _, char_index_path = util.index_paths(hparams)
     word_embedding_path, trainable_embedding_path, char_embedding_path = util.embedding_paths(hparams)
     util.make_dirs([out_dir, model_dir, log_dir])
 
     train, val = loaders.load_squad(hparams)
 
-    train_contexts, train_spans, train_queries, train_answers, train_ctxt_mapping = train
-    val_contexts, val_spans, val_queries, val_answers, val_ctxt_mapping = val
+    train_spans, train_answers, train_ctxt_mapping = train
+    val_spans, val_answers, val_ctxt_mapping = val
 
     # Free some memory.
     del train
@@ -29,13 +35,8 @@ def train(sess_config, hparams):
     with tf.device('/cpu:0'):
         word_table, char_table = pipeline.create_lookup_tables(word_vocab, char_vocab)
 
-        if hparams.use_tf_record:
-            train_args = util.tf_record_paths(hparams, train=True)
-            val_args = util.tf_record_paths(hparams, train=False)
-        else:
-            train_args = train_contexts, train_queries, train_ctxt_mapping
-            val_args = val_contexts, val_queries, val_ctxt_mapping
-
+        train_args = util.tf_record_paths(hparams, train=True)
+        val_args = util.tf_record_paths(hparams, train=False)
         train_set, train_iter = pipeline.create_pipeline(hparams, word_table, char_table, train_args, train=True)
         _, val_iter = pipeline.create_pipeline(hparams, word_table, char_table, val_args, train=False)
 
@@ -48,7 +49,7 @@ def train(sess_config, hparams):
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
         # Create and initialize the model
         model = qanet.QANet(word_matrix, character_matrix, trainable_matrix, hparams)
-        model.init(iterator.get_next())
+        model.init(get_inputs(iterator.get_next()), train=True)
         sess.run(tf.global_variables_initializer())
         # saver boilerplate
         writer = tf.summary.FileWriter(log_dir, graph=sess.graph)

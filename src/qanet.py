@@ -39,17 +39,17 @@ class QANet(tf.keras.Model):
 
         self.predict_pointers = PredictionHead(self.hparams.answer_limit)
 
-    def init(self, placeholders):
+    def init(self, placeholders, train):
         _, _, context_lengths, _, _, _, y_start, y_end, self.answer_id = placeholders
         # Init network
         start_logits, end_logits, self.start_pointer, self.end_pointer, _, _ = self.call(placeholders)
 
         self.loss = self.compute_loss(start_logits, end_logits, y_start, y_end, self.hparams.l2)
 
-        if self.train:
+        if train:
             self.train_op = self.add_train_ops(self.hparams.learn_rate, self.hparams.gradient_clip)
 
-        if self.train and 0.0 < self.hparams.ema_decay < 1.0:
+        if train and 0.0 < self.hparams.ema_decay < 1.0:
             self.train_op, self.ema = train_utils.ema_ops(self.train_op, self.hparams.ema_decay)
 
     def add_train_ops(self, learn_rate, warmup_steps=1000, gradient_clip=5.0):
@@ -99,7 +99,7 @@ class QANet(tf.keras.Model):
         # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
         c2q, q2c = self.context_query([context_enc, query_enc], training=training, mask=[context_mask, query_mask])
         # Input for the first stage of the model encoder, refer to section 2.2. of QANet paper for more details
-        inputs = tf.concat([context_enc, self.c2q, context_enc * self.c2q, context_enc * self.q2c], axis=-1)
+        inputs = tf.concat([context_enc, c2q, context_enc * c2q, context_enc * q2c], axis=-1)
         # Run through our stacked model encoder blocks on this representation.
         enc_1 = self.model_encoder_blocks(inputs, training=training, mask=context_mask)
         enc_2 = self.model_encoder_blocks(enc_1, training=training, mask=context_mask)
