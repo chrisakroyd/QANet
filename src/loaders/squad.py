@@ -10,6 +10,8 @@ def load_contexts(contexts):
             'word_spans': value['word_spans'],
         }
 
+    assert len(contexts) == len(context_spans)
+
     return context_spans
 
 

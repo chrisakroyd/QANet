@@ -1,12 +1,12 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Conv1D, Dropout, SeparableConv1D
-from src.models.layers import LayerDropout, LayerNorm, MultiHeadAttention, PositionEncoding
+from src import layers
 
 
 class ConvBlock(tf.keras.Model):
     def __init__(self, filters, kernel_size, dropout, sub_layer_id, total_sub_layers, **kwargs):
         super(ConvBlock, self).__init__(**kwargs)
-        self.layer_norm = LayerNorm()
+        self.layer_norm = layers.LayerNorm()
 
         self.seperable_conv = SeparableConv1D(filters=filters,
                                               kernel_size=kernel_size,
@@ -15,7 +15,7 @@ class ConvBlock(tf.keras.Model):
                                               use_bias=True,
                                               activation='relu')
 
-        self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
+        self.layer_dropout = layers.LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
         residual = x
@@ -28,12 +28,12 @@ class ConvBlock(tf.keras.Model):
 class SelfAttentionBlock(tf.keras.Model):
     def __init__(self, filters, sub_layer_id, total_sub_layers, heads=8, dropout=0.0, **kwargs):
         super(SelfAttentionBlock, self).__init__(**kwargs)
-        self.layer_norm = LayerNorm()
-        self.multi_head_attention = MultiHeadAttention(filters,
-                                                       num_heads=heads,
-                                                       dropout=dropout,
-                                                       name='multi_head_attention')
-        self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
+        self.layer_norm = layers.LayerNorm()
+        self.multi_head_attention = layers.MultiHeadAttention(filters,
+                                                              num_heads=heads,
+                                                              dropout=dropout,
+                                                              name='multi_head_attention')
+        self.layer_dropout = layers.LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
         residual = x
@@ -46,7 +46,7 @@ class SelfAttentionBlock(tf.keras.Model):
 class FeedForwardBlock(tf.keras.Model):
     def __init__(self, filters, dropout, sub_layer_id, total_sub_layers, ff_mul=1.0, **kwargs):
         super(FeedForwardBlock, self).__init__(**kwargs)
-        self.layer_norm = LayerNorm()
+        self.layer_norm = layers.LayerNorm()
         # Feed forward layers, follows Attention is all you need. (Position-wise Feed-Forward Networks),
         # optionally increase units in the first layer by a multiplier.
         self.conv_ff_1 = Conv1D(int(filters * ff_mul),
@@ -65,7 +65,7 @@ class FeedForwardBlock(tf.keras.Model):
                                 use_bias=True,
                                 name='conv_ff_2')
 
-        self.layer_dropout = LayerDropout(dropout, sub_layer_id, total_sub_layers)
+        self.layer_dropout = layers.LayerDropout(dropout, sub_layer_id, total_sub_layers)
 
     def call(self, x, training=None, mask=None):
         residual = x
@@ -90,7 +90,7 @@ class EncoderBlock(tf.keras.Model):
 
         # Each block has 4 components, Position encoding, n Conv Blocks, a self-attention block and a feed
         # forward block with residual connections between them (Implemented as part of the block)
-        self.position_encoding = PositionEncoding()
+        self.position_encoding = layers.PositionEncoding()
         # Can have n convs, create a list of conv blocks to iterate through incrementing their block_ids.
         self.conv_layers = [ConvBlock(filters=filters,
                                       kernel_size=kernel_size,

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Activation, Conv1D, Dropout, Embedding
-from src.models.layers import HighwayLayer
+from src import layers
 
 
 class EmbeddingLayer(tf.keras.Model):
@@ -42,8 +42,8 @@ class EmbeddingLayer(tf.keras.Model):
         self.word_dropout = Dropout(word_dropout)
         self.char_dropout = Dropout(char_dropout)
 
-        self.highway_1 = HighwayLayer(word_dropout, name='highway_1')
-        self.highway_2 = HighwayLayer(word_dropout, name='highway_2')
+        self.highway_1 = layers.HighwayLayer(word_dropout, name='highway_1')
+        self.highway_2 = layers.HighwayLayer(word_dropout, name='highway_2')
         # This relu is for facilitating the trainable embeddings.
         self.relu = Activation('relu')
 

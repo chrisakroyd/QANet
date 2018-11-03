@@ -120,6 +120,7 @@ class QANet(tf.keras.Model):
                 logits=end_logits, labels=end_labels)
 
         loss = tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)
+
         if l2 > 0.0:
             l2_loss = train_utils.l2_ops(l2)
             loss = loss + l2_loss
