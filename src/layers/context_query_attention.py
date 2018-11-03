@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Layer, Softmax
-from src.models.utils import apply_mask
+from src import layers
 
 
 class ContextQueryAttention(Layer):
@@ -64,10 +64,10 @@ class ContextQueryAttention(Layer):
 
         S = tf.transpose(S, perm=(0, 2, 1))
         # Standard context to query attention.
-        S_ = self.query_activation(apply_mask(S, mask=mask_query))
+        S_ = self.query_activation(layers.apply_mask(S, mask=mask_query))
         c2q = tf.matmul(S_, x_query)
         # DCN style query to context attention.
-        S_T = tf.transpose(self.context_activation(apply_mask(S, mask=mask_context)), perm=(0, 2, 1))
+        S_T = tf.transpose(self.context_activation(layers.apply_mask(S, mask=mask_context)), perm=(0, 2, 1))
         q2c = tf.matmul(tf.matmul(S_, S_T), x_context)
 
         return c2q, q2c

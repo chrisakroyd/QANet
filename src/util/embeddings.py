@@ -1,10 +1,6 @@
 import numpy as np
 
 
-def create_vocab(embedding_index):
-    return set([e for e, _ in embedding_index.items()])
-
-
 def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
     if skip_zero:
         rows = len(index) + 1

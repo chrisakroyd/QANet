@@ -1,4 +1,4 @@
-from .embeddings import generate_matrix, load_embeddings, load_embedding, read_embeddings_file, create_vocab
+from .embeddings import generate_matrix, load_embeddings, load_embedding, read_embeddings_file
 from .filepaths import raw_data_paths, processed_data_paths, index_paths, embedding_paths, train_paths, \
     get_directories, tf_record_paths
 from .tokenizer import Tokenizer

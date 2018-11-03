@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Activation, Conv1D, Dropout, Layer
-from src.models.utils import apply_mask
+from src import layers
 
 
 class MultiHeadAttention(Layer):
@@ -49,7 +49,7 @@ class MultiHeadAttention(Layer):
         # Optionally apply a mask.
         if mask is not None:
             mask = tf.expand_dims(tf.expand_dims(mask, axis=1), axis=1)  # reshape mask to [bs, 1, 1, num_heads]
-            logits = apply_mask(logits, mask)
+            logits = layers.apply_mask(logits, mask)
         # Calculate attention weights + apply dropout.
         weights = self.softmax(logits)
         weights = self.dropout(weights, training=training)

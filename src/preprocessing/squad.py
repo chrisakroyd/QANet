@@ -142,7 +142,7 @@ def process(hparams):
     # Read the embedding index and create a vocab of words with embeddings.
     print('Loading Embeddings, this may take some time...')
     embedding_index = util.read_embeddings_file(hparams.embeddings_path)
-    vocab = util.create_vocab(embedding_index)
+    vocab = set([e for e, _ in embedding_index.items()])
 
     tokenizer = util.Tokenizer(max_words=hparams.max_words + 1,
                                max_chars=hparams.max_chars + 1,

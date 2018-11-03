@@ -6,3 +6,4 @@ from .multi_head_attention import MultiHeadAttention
 from .output_layer import OutputLayer
 from .position_encoding import PositionEncoding
 from .prediction import PredictionHead
+from .utils import apply_mask, create_mask, slice_ops

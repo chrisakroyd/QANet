@@ -1,7 +1,5 @@
 import tensorflow as tf
-from src.models import EmbeddingLayer, StackedEncoderBlocks, ContextQueryAttention, OutputLayer, PredictionHead
-from src.models.utils import create_mask
-from src import train_utils
+from src import layers, models, train_utils
 
 
 class QANet(tf.keras.Model):
@@ -10,34 +8,34 @@ class QANet(tf.keras.Model):
         self.hparams = hparams
         self.global_step = tf.train.get_or_create_global_step()
         # Embedding layer for word + char embedding, with support for trainable embeddings.
-        self.embedding_block = EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
-                                              word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim)
+        self.embedding_block = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
+                                                     word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim)
         # Shared embedding encoder between query + context
-        self.embedding_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
-                                                             conv_layers=self.hparams.embed_encoder_convs,
-                                                             kernel_size=self.hparams.embed_encoder_kernel_width,
-                                                             filters=self.hparams.filters,
-                                                             heads=self.hparams.heads,
-                                                             dropout=self.hparams.dropout,
-                                                             ff_mul=self.hparams.feed_forward_multiplier,
-                                                             name='embedding_encoder')
+        self.embedding_encoder_blocks = models.StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
+                                                                    conv_layers=self.hparams.embed_encoder_convs,
+                                                                    kernel_size=self.hparams.embed_encoder_kernel_width,
+                                                                    filters=self.hparams.filters,
+                                                                    heads=self.hparams.heads,
+                                                                    dropout=self.hparams.dropout,
+                                                                    ff_mul=self.hparams.feed_forward_multiplier,
+                                                                    name='embedding_encoder')
         # Context Query attention layer calculates two similarity matrices, one between context and query, and another
         # between query and context.
-        self.context_query = ContextQueryAttention(name='context_query_attention')
+        self.context_query = layers.ContextQueryAttention(name='context_query_attention')
         # Shared model encoder.
-        self.model_encoder_blocks = StackedEncoderBlocks(blocks=self.hparams.model_encoder_blocks,
-                                                         conv_layers=self.hparams.model_encoder_convs,
-                                                         kernel_size=self.hparams.model_encoder_kernel_width,
-                                                         filters=self.hparams.filters,
-                                                         heads=self.hparams.heads,
-                                                         dropout=self.hparams.dropout,
-                                                         ff_mul=self.hparams.feed_forward_multiplier,
-                                                         name='model_encoder')
+        self.model_encoder_blocks = models.StackedEncoderBlocks(blocks=self.hparams.model_encoder_blocks,
+                                                                conv_layers=self.hparams.model_encoder_convs,
+                                                                kernel_size=self.hparams.model_encoder_kernel_width,
+                                                                filters=self.hparams.filters,
+                                                                heads=self.hparams.heads,
+                                                                dropout=self.hparams.dropout,
+                                                                ff_mul=self.hparams.feed_forward_multiplier,
+                                                                name='model_encoder')
 
-        self.start_output = OutputLayer(name='start_logits')
-        self.end_output = OutputLayer(name='end_logits')
+        self.start_output = layers.OutputLayer(name='start_logits')
+        self.end_output = layers.OutputLayer(name='end_logits')
 
-        self.predict_pointers = PredictionHead(self.hparams.answer_limit)
+        self.predict_pointers = layers.PredictionHead(self.hparams.answer_limit)
 
     def init(self, placeholders, train):
         _, _, context_lengths, _, _, _, y_start, y_end, self.answer_id = placeholders
@@ -67,11 +65,6 @@ class QANet(tf.keras.Model):
             train_op = self.optimizer.minimize(self.loss, self.global_step)
         return train_op
 
-    def slice_ops(self, words, chars, max):
-        words = tf.slice(words, begin=(0, 0), size=(-1, max))
-        chars = tf.slice(chars, begin=(0, 0, 0), size=(-1, max, self.hparams.char_limit))
-        return words, chars
-
     def call(self, x, training=True):
         context_words, context_chars, context_lengths, query_words, query_chars, query_lengths, \
         y_start, y_end, answer_id = x
@@ -80,14 +73,15 @@ class QANet(tf.keras.Model):
             # Calc the max length for the batch.
             context_max = tf.reduce_max(context_lengths)
             query_max = tf.reduce_max(query_lengths)
-            context_words, context_chars = self.slice_ops(context_words, context_chars, context_max)
-            query_words, query_chars = self.slice_ops(query_words, query_chars, query_max)
+            char_max = self.hparams.char_limit
+            context_words, context_chars = layers.slice_ops(context_words, context_chars, context_max, char_max)
+            query_words, query_chars = layers.slice_ops(query_words, query_chars, query_max, char_max)
         else:
             context_max = self.hparams.context_limit
             query_max = self.hparams.query_limit
         # Init mask tensors on the trimmed input.
-        context_mask = create_mask(context_lengths, context_max)
-        query_mask = create_mask(query_lengths, query_max)
+        context_mask = layers.create_mask(context_lengths, context_max)
+        query_mask = layers.create_mask(query_lengths, query_max)
         # Embed the query + context
         context_emb = self.embedding_block([context_words, context_chars])
         query_emb = self.embedding_block([query_words, query_chars])
@@ -112,7 +106,7 @@ class QANet(tf.keras.Model):
         start_pointer, end_pointer = self.predict_pointers([start_logits, end_logits])
         return start_logits, end_logits, start_pointer, end_pointer, c2q, q2c
 
-    def compute_loss(self, start_logits, end_logits, start_labels, end_labels, l2):
+    def compute_loss(self, start_logits, end_logits, start_labels, end_labels, l2=None):
         start_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
                 logits=start_logits, labels=start_labels)
 
@@ -121,7 +115,7 @@ class QANet(tf.keras.Model):
 
         loss = tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)
 
-        if l2 > 0.0:
+        if l2 is not None and l2 > 0.0:
             l2_loss = train_utils.l2_ops(l2)
             loss = loss + l2_loss
 
