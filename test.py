@@ -6,17 +6,14 @@ from src import config, constants, loaders, metrics, pipeline, qanet, util
 def test(sess_config, hparams):
     _, out_dir, model_dir, log_dir = util.train_paths(hparams)
     word_index_path, _, char_index_path = util.index_paths(hparams)
-    word_index_path, word_embedding_path, trainable_index_path, trainable_embedding_path, char_index_path, \
-    char_embedding_path = util.embedding_paths(hparams)
+    embedding_paths = util.embedding_paths(hparams)
 
     _, val = loaders.load_squad(hparams)
     val_spans, val_answers, val_ctxt_mapping = val
 
     word_vocab = util.load_vocab(path=word_index_path)
     char_vocab = util.load_vocab(path=char_index_path)
-    word_matrix, trainable_matrix, character_matrix = util.load_embeddings(
-        embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
-    )
+    word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
 
     with tf.device('/cpu:0'):
         word_table, char_table = pipeline.create_lookup_tables(word_vocab, char_vocab)
@@ -29,7 +26,7 @@ def test(sess_config, hparams):
         iterator = tf.data.Iterator.from_string_handle(handle, val_set.output_types, val_set.output_shapes)
         # Create and initialize the model
         model = qanet.QANet(word_matrix, character_matrix, trainable_matrix, hparams)
-        model.init(iterator.get_next(), train=True)
+        model.init(util.inputs_as_tuple(iterator.get_next()), train=True)
         sess.run(tf.global_variables_initializer())
         val_handle = sess.run(val_iter.string_handle())
         # Restore the moving average version of the learned variables for eval.

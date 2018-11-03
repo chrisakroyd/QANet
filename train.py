@@ -4,17 +4,11 @@ from tqdm import tqdm
 from src import config, constants, loaders, metrics, pipeline, qanet, util
 
 
-def get_inputs(placeholders):
-    return placeholders['context_words'], placeholders['context_chars'], placeholders['context_length'], \
-    placeholders['query_words'], placeholders['query_chars'], placeholders['query_length'], \
-    placeholders['answer_starts'], placeholders['answer_ends'], placeholders['answer_id']
-
-
 def train(sess_config, hparams):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
     _, out_dir, model_dir, log_dir = util.train_paths(hparams)
     word_index_path, _, char_index_path = util.index_paths(hparams)
-    word_embedding_path, trainable_embedding_path, char_embedding_path = util.embedding_paths(hparams)
+    embedding_paths = util.embedding_paths(hparams)
     util.make_dirs([out_dir, model_dir, log_dir])
 
     train, val = loaders.load_squad(hparams)
@@ -28,9 +22,7 @@ def train(sess_config, hparams):
 
     word_vocab = util.load_vocab(path=word_index_path)
     char_vocab = util.load_vocab(path=char_index_path)
-    word_matrix, trainable_matrix, character_matrix = util.load_embeddings(
-        embedding_paths=(word_embedding_path, trainable_embedding_path, char_embedding_path),
-    )
+    word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
 
     with tf.device('/cpu:0'):
         word_table, char_table = pipeline.create_lookup_tables(word_vocab, char_vocab)
@@ -49,7 +41,7 @@ def train(sess_config, hparams):
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
         # Create and initialize the model
         model = qanet.QANet(word_matrix, character_matrix, trainable_matrix, hparams)
-        model.init(get_inputs(iterator.get_next()), train=True)
+        model.init(util.inputs_as_tuple(iterator.get_next()), train=True)
         sess.run(tf.global_variables_initializer())
         # saver boilerplate
         writer = tf.summary.FileWriter(log_dir, graph=sess.graph)

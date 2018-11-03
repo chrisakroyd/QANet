@@ -123,13 +123,6 @@ def write_as_tf_record(path, contexts, queries):
             writer.write(record.SerializeToString())
 
 
-def remove_unneeded_keys(data, keys=[]):
-    for _, value in data.items():
-        for key in keys:
-            value.pop(key, None)
-    return data
-
-
 def process(hparams):
     train_path, dev_path = util.raw_data_paths(hparams)
     directories = util.get_directories(hparams)
@@ -166,11 +159,11 @@ def process(hparams):
     char_index = tokenizer.char_index
     trainable_index = util.index_from_list(hparams.trainable_words)
 
-    embedding_matrix = util.load_embedding(path=hparams.embeddings_path,
-                                           word_index=word_index,
-                                           embedding_dimensions=hparams.embed_dim,
-                                           trainable_embeddings=hparams.trainable_words,
-                                           embedding_index=embedding_index)
+    embedding_matrix = util.load_embedding_file(path=hparams.embeddings_path,
+                                                word_index=word_index,
+                                                embedding_dimensions=hparams.embed_dim,
+                                                trainable_embeddings=hparams.trainable_words,
+                                                embedding_index=embedding_index)
 
     trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=hparams.embed_dim)
     char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=hparams.char_dim)
@@ -181,10 +174,10 @@ def process(hparams):
     write_as_tf_record(train_path, train_contexts, train_answers)
     write_as_tf_record(dev_path, dev_contexts, dev_answers)
 
-    train_contexts = remove_unneeded_keys(train_contexts, ['context_tokens', 'context_length'])
-    dev_contexts = remove_unneeded_keys(dev_contexts, ['context_tokens', 'context_length'])
-    train_answers = remove_unneeded_keys(train_answers, ['query_tokens', 'query_length'])
-    dev_answers = remove_unneeded_keys(dev_answers, ['query_tokens', 'query_length'])
+    train_contexts = util.remove_keys(train_contexts, ['context_tokens', 'context_length'])
+    dev_contexts = util.remove_keys(dev_contexts, ['context_tokens', 'context_length'])
+    train_answers = util.remove_keys(train_answers, ['query_tokens', 'query_length'])
+    dev_answers = util.remove_keys(dev_answers, ['query_tokens', 'query_length'])
 
     # Save the generated data
     util.save_json(train_contexts_path, train_contexts)
