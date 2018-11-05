@@ -19,6 +19,14 @@ def convert_idx(text, tokens):
 
 
 def fit_and_extract(data_set, tokenizer, hparams):
+    """ Extracts context + query tokens and flattens squad data structure.
+        Args:
+            data_set: Either train/dev squad dict.
+            tokenizer: A Tokenizer instance.
+            hparams: A dictionary of parameters.
+        Returns:
+            Contexts, Queries and the tokenizer.
+    """
     contexts, queries = {}, {}
     context_id, answer_id, skipped, total = 1, 1, 0, 0
 
@@ -92,6 +100,13 @@ def fit_and_extract(data_set, tokenizer, hparams):
 
 
 def write_as_tf_record(path, contexts, queries):
+    """ Writes out the context + queries as a .tfrecord file.
+
+        Args:
+            path: Output path for the .tfrecord file.
+            contexts: Dict mapping of context_id: words, spans + length (Context output from fit_and_extract)
+            queries: Dict mapping of answer_id: words, answers, +start/end (Queries output from fit_and_extract)
+    """
     records = []
     for data in queries.values():
         context = contexts[data['context_id']]

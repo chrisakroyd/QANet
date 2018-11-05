@@ -9,6 +9,12 @@ apostrophe_like = re.compile(r'(``)')
 
 
 def clean(text):
+    """ Cleans text, fixing unicode errors, normalising quotes and stripping stray whitespace.
+        Args:
+            text: String text to be cleaned.
+        Returns:
+            Cleaned string.
+    """
     text = fix_text(text)
     text = apostrophe.sub('" ', text)
     text = apostrophe_like.sub('" ', text)

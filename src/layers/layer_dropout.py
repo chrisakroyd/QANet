@@ -4,6 +4,10 @@ from tensorflow.keras.layers import Dropout, Layer
 
 class LayerDropout(Layer):
     def __init__(self, dropout, sublayer, total_sublayers, **kwargs):
+        """ Layer Dropout implementation
+            Adds a Layer Dropout layer, based on the paper
+            "Deep Networks with Stochastic Depth" (https://arxiv.org/abs/1603.09382).
+        """
         super(LayerDropout, self).__init__(**kwargs)
         self.Pl = dropout * float(sublayer) / float(total_sublayers)
         self.dropout = Dropout(dropout)
@@ -12,6 +16,12 @@ class LayerDropout(Layer):
         super(LayerDropout, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
+        """ Call function detailing this layers ops.
+            Args:
+                x: List of two input tensors, x and a residual.
+                training: Boolean flag for training mode.
+                mask: A boolean mask tensor.
+        """
         x, residual = x
 
         if training:

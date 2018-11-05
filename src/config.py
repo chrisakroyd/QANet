@@ -2,6 +2,10 @@ import tensorflow as tf
 
 
 def gpu_config():
+    """ Function that creates a GPU config.
+        Returns:
+            A `tf.ConfigProto` instance.
+    """
     config = tf.ConfigProto(
         allow_soft_placement=True,
     )
@@ -12,6 +16,12 @@ def gpu_config():
 
 
 def model_config(defaults):
+    """ Function that creates all the flags for this project, defaults are filled from defaults.json .
+        Args:
+            defaults: An object containing the default parameters.
+        Returns:
+            A `tf.flags` instance.
+    """
     flags = tf.flags
     # Mode to run in, e.g. train, test.
     flags.DEFINE_string('mode', defaults.mode, 'Train/test/demo.')

@@ -5,16 +5,33 @@ from src import layers
 
 class ContextQueryAttention(Layer):
     def __init__(self, use_bias=True, **kwargs):
+        """ Context-Query Attention implementation, also referred to as Attention-Flow layer.
+
+            The Attention flow layer was introduced within "Bi-Directional Attention Flow for
+            Machine Comprehension" (https://arxiv.org/pdf/1611.01603.pdf section 2.4) and
+            is responsible for linking and fusing information both the context and query.
+            This implementation uses DCN attention (https://arxiv.org/pdf/1611.01604.pdf) for
+            calculating the context to query and query to context attention.
+
+            We use a more memory efficient method to calculate the similarity matrix S than
+            in the original implementation where S = W0[q, c, q*c], instead we break this down
+            into 3 ops: W0[q], W1[c], W2[q*c] and S = W0[q] + W1[c] + W2[q*c].
+
+            Args:
+                use_bias: Whether or not to add a bias vector to the result.
+        """
         super(ContextQueryAttention, self).__init__(**kwargs)
         self.use_bias = use_bias
         self.query_activation = Softmax(axis=-1)
         self.context_activation = Softmax(axis=1)
 
     def compute_input_shape(self, x):
+        """ Gets the first three dimensions of the input (batch_size, sequence length, hidden_units) """
         shape = tf.shape(x)
         return shape[0], shape[1], shape[2]
 
     def build(self, input_shape):
+        """ Adds the necessary weights and an optional bias variable """
         hidden_size = int(input_shape[0][-1])
 
         self.W0 = self.add_weight(name='W0',
@@ -41,6 +58,12 @@ class ContextQueryAttention(Layer):
         super(ContextQueryAttention, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
+        """ Call function detailing this layers ops.
+            Args:
+                x: List of two input tensors for the encoded context + query.
+                training: Boolean flag for training mode.
+                mask: Two boolean mask tensors, first for the context, second for query.
+        """
         x_context, x_query = x
         context_mask, query_mask = mask
         batch_size, context_length, hidden_size = self.compute_input_shape(x_context)

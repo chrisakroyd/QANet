@@ -4,6 +4,14 @@ from tensorflow.keras.layers import Layer, Softmax
 
 class PredictionHead(Layer):
     def __init__(self, answer_limit, **kwargs):
+        """ Prediction Head
+
+            The prediction head simply computes the 'best' valid start and end pointer using an upper trainglular
+            matrix.
+
+            Args:
+                answer_limit: Maximum answer length.
+        """
         super(PredictionHead, self).__init__(**kwargs)
         self.answer_limit = answer_limit
         self.start_softmax = Softmax()

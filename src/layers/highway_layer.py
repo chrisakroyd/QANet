@@ -3,6 +3,16 @@ from tensorflow.keras.layers import Conv1D, Dropout, Layer
 
 class HighwayLayer(Layer):
     def __init__(self, dropout=0.1, use_bias=True, **kwargs):
+        """ Highway Layer Implementation
+
+            Highway layers consist of two gates that control information flow and function in a similar way to LSTMS.
+            The `transform` gate controls information flow and the carry gate controls how much unchanged input
+            influences the result.
+
+            Args:
+                dropout: Fraction of units to drop
+                use_bias: Whether or not to use a bias variable.
+        """
         super(HighwayLayer, self).__init__(**kwargs)
         self.use_bias = use_bias
         self.gate_dropout = Dropout(dropout)
@@ -32,7 +42,7 @@ class HighwayLayer(Layer):
         gate_out = self.gate_dropout(gate_out, training=training)
         trans_out = self.trans(x)
         trans_out = self.trans_dropout(trans_out, training=training)
-        out = gate_out * trans_out + (1.0 - gate_out) * x
+        out = (gate_out * trans_out) + ((1.0 - gate_out) * x)
         return out
 
     def compute_output_shape(self, input_shape):

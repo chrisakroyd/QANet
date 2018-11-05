@@ -4,6 +4,10 @@ from tensorflow.keras.layers import Layer
 
 class LayerNorm(Layer):
     def __init__(self, **kwargs):
+        """ Layer Normalization implementation
+            Adds a Layer Normalization layer, based on the paper
+            "Layer Normalization" (https://arxiv.org/abs/1607.06450).
+        """
         super(LayerNorm, self).__init__(**kwargs)
         self.epsilon = 1e-6
 

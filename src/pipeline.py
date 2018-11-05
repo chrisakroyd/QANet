@@ -5,6 +5,13 @@ bucket_by_sequence_length = tf.contrib.data.bucket_by_sequence_length
 
 
 def tf_record_pipeline(filenames, hparams):
+    """ Creates a dataset from a TFRecord file.
+        Args:
+            filenames: A list of paths to .tfrecord files.
+            hparams: A dictionary of parameters.
+        Returns:
+            A `tf.data.Dataset` object.
+    """
     int_feature = tf.FixedLenFeature([], tf.int64)
     str_feature = tf.FixedLenSequenceFeature([], tf.string, allow_missing=True)
 
@@ -30,6 +37,21 @@ def tf_record_pipeline(filenames, hparams):
 
 
 def index_lookup(dataset, word_table, char_table, char_limit=16, num_parallel_calls=4):
+    """ Adds a map function to the dataset that maps strings to indices.
+
+        To save memory + hard drive space we store contexts and queries as tokenised strings. Therefore we need
+        to perform two tasks; Extract characters and map words + chars to an index for the embedding layer.
+
+        Args:
+            dataset: A `tf.data.Dataset` object.
+            word_table: A lookup table of string words to indices.
+            char_table: A lookup table of string characters to indices.
+            char_limit: Max number of characters per word.
+            num_parallel_calls: An int for how many parallel lookups we perform.
+        Returns:
+            A `tf.data.Dataset` object.
+    """
+
     def _lookup(fields):
         # +1 allows us to use 0 as a padding character without explicitly mapping it.
         context_words = word_table.lookup(fields['context_tokens']) + 1
@@ -60,11 +82,13 @@ def index_lookup(dataset, word_table, char_table, char_limit=16, num_parallel_ca
     return dataset
 
 
-def length_fn(fields):
-    return tf.cast(fields['context_length'], dtype=tf.int32)
-
-
 def create_buckets(hparams):
+    """ Optionally generates bucket ranges if they aren't specified in the hparams.
+        Args:
+            hparams: A dictionary of parameters.
+        Returns:
+            A list of integers for the start of buckets.
+    """
     # If no bucket ranges are explicitly defined, create using the bucket_size parameter
     if len(hparams.bucket_ranges) == 0:
         # Plus 1 as the bucket excludes the high number.
@@ -73,18 +97,31 @@ def create_buckets(hparams):
 
 
 def get_padded_shapes(hparams):
-    return {'context_words': [hparams.context_limit],  # context words
-            'context_chars': [hparams.context_limit, hparams.char_limit],  # context chars
-            'context_length': [],  # context length
-            'query_words': [hparams.query_limit],  # query words
-            'query_chars': [hparams.query_limit, hparams.char_limit],  # query chars
-            'query_length': [],  # query length
-            'answer_starts': [],  # answer_start
-            'answer_ends': [],  # answer_end
-            'answer_id': []}  # answer_id
+    """ Creates a dict of key: shape mappings for padding batches.
+        Args:
+            hparams: A dictionary of parameters.
+        Returns:
+            A dict mapping of key: shape
+    """
+    return {'context_words': [hparams.context_limit],
+            'context_chars': [hparams.context_limit, hparams.char_limit],
+            'context_length': [],
+            'query_words': [hparams.query_limit],
+            'query_chars': [hparams.query_limit, hparams.char_limit],
+            'query_length': [],
+            'answer_starts': [],
+            'answer_ends': [],
+            'answer_id': []}
 
 
 def create_lookup_tables(word_vocab, char_vocab):
+    """ Function that creates an index table for a word and character vocab.
+        Args:
+            word_vocab: A list of string words.
+            char_vocab: A list of string characters.
+        Returns:
+            A lookup table for both the words and characters.
+    """
     # default value is highest in the vocab as this is the OOV embedding, we generate non-zero indexed therefore -1.
     word_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(word_vocab, dtype=tf.string),
                                                            default_value=len(word_vocab) - 1)
@@ -94,6 +131,21 @@ def create_lookup_tables(word_vocab, char_vocab):
 
 
 def create_pipeline(hparams, word_table, char_table, record_paths, train=True):
+    """ Function that creates an input pipeline for train/eval.
+
+        Optionally uses bucketing to generate batches of a similar length. Output tensors
+        will always be padded to their limit. e.g. Context word tensor will always have
+        shape [batch_size, context_limit]
+
+        Args:
+            hparams: A dictionary of parameters.
+            word_table: A lookup table of string words to indices.
+            char_table: A lookup table of string characters to indices.
+            record_paths: A list of string filepaths for .tfrecord files.
+            train: Boolean value signifying whether we are in train mode.
+        Returns:
+            A `tf.data.Dataset` object and an initializable iterator.
+    """
     dataset = tf_record_pipeline(record_paths, hparams)
     dataset = dataset.cache().repeat()
     if train:
@@ -107,6 +159,10 @@ def create_pipeline(hparams, word_table, char_table, record_paths, train=True):
     padded_shapes = get_padded_shapes(hparams)
     if hparams.bucket and train:
         buckets = create_buckets(hparams)
+
+        def length_fn(fields):
+            return tf.cast(fields['context_length'], dtype=tf.int32)
+
         dataset = dataset.apply(
             bucket_by_sequence_length(element_length_func=length_fn,
                                       bucket_batch_sizes=[hparams.batch_size] * (len(buckets) + 1),

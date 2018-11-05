@@ -3,6 +3,12 @@ from src import constants
 
 
 def get_directories(hparams):
+    """ Generates directory paths.
+        Args:
+            hparams: A dictionary of parameters.
+        returns:
+            String paths for directories containing unprocessed, processed, models and logs.
+    """
     squad_dir = os.path.abspath(hparams.squad_dir)
     data_dir = os.path.abspath(hparams.data_dir)
     out_dir = os.path.abspath(hparams.out_dir)
@@ -13,6 +19,12 @@ def get_directories(hparams):
 
 
 def raw_data_paths(hparams):
+    """ Generates paths to raw data.
+        Args:
+            hparams: A dictionary of parameters.
+        returns:
+            String paths for raw squad train + dev sets.
+    """
     squad_dir, _, _, _, _, _ = get_directories(hparams)
     # Where we find the data
     train_path = os.path.join(squad_dir, constants.FileNames.TRAIN_SQUAD_1.value)
@@ -22,6 +34,12 @@ def raw_data_paths(hparams):
 
 
 def processed_data_paths(hparams):
+    """ Generates paths to processed data.
+        Args:
+            hparams: A dictionary of parameters.
+        returns:
+            String paths for processed answers and contexts for train and dev sets.
+    """
     _, data_dir, _, _, _, _ = get_directories(hparams)
     train, dev = constants.Modes.TRAIN.value, constants.Modes.DEV.value
     paths = (
@@ -34,6 +52,12 @@ def processed_data_paths(hparams):
 
 
 def index_paths(hparams):
+    """ Generates paths to word indexes.
+            Args:
+                hparams: A dictionary of parameters.
+        returns:
+            String paths for loading word, character and trainable indexes.
+    """
     _, data_dir, _, _, _, _ = get_directories(hparams)
     paths = []
     for _, embed_type in constants.EmbeddingTypes.__members__.items():
@@ -42,6 +66,12 @@ def index_paths(hparams):
 
 
 def embedding_paths(hparams):
+    """ Generates paths to saved embedding files.
+        Args:
+            hparams: A dictionary of parameters.
+        returns:
+            String paths for loading word, character and trainable embeddings.
+    """
     _, data_dir, _, _, _, _ = get_directories(hparams)
     paths = []
     for _, embed_type in constants.EmbeddingTypes.__members__.items():
@@ -52,6 +82,12 @@ def embedding_paths(hparams):
 
 
 def train_paths(hparams):
+    """ Generates paths to save trained models and logs for each run.
+        Args:
+            hparams: A dictionary of parameters.
+        returns:
+            String paths for loading data, saved models and saved logs.
+    """
     _, data_dir, out_dir, model_dir, logs_dir, _ = get_directories(hparams)
 
     model_path = os.path.join(out_dir, model_dir, hparams.run_name)
@@ -61,6 +97,13 @@ def train_paths(hparams):
 
 
 def tf_record_paths(hparams, train):
+    """ Generates a path to a .tfrecord file.
+        Args:
+            hparams: A dictionary of parameters.
+            train: Boolean value for whether we are training or not.
+        returns:
+            A string path to .tfrecord file.
+    """
     _, _, _, _, _, tf_record_dir = get_directories(hparams)
     if train:
         name = constants.Modes.TRAIN.value
