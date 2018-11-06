@@ -1,6 +1,4 @@
 import tensorflow as tf
-
-bucket_by_sequence_length = tf.contrib.data.bucket_by_sequence_length
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
@@ -163,10 +161,9 @@ def create_pipeline(hparams, word_table, char_table, record_paths, train=True):
             return tf.cast(fields['context_length'], dtype=tf.int32)
 
         dataset = dataset.apply(
-            bucket_by_sequence_length(element_length_func=length_fn,
-                                      bucket_batch_sizes=[hparams.batch_size] * (len(buckets) + 1),
-                                      bucket_boundaries=buckets,
-                                      padded_shapes=None))
+            tf.contrib.data.bucket_by_sequence_length(element_length_func=length_fn,
+                                                      bucket_batch_sizes=[hparams.batch_size] * (len(buckets) + 1),
+                                                      bucket_boundaries=buckets))
     else:
         dataset = dataset.padded_batch(
             batch_size=hparams.batch_size,

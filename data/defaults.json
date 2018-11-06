@@ -28,7 +28,6 @@
   "shuffle_buffer_size": 15000,
   "tf_record_buffer_size": 1024,
   "use_elmo": false,
-  "dynamic_slice": true,
   "parallel_calls": 4,
   "max_prefetch": 5,
   "batch_size": 32,

@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tqdm import tqdm
-from src import config, constants, loaders, metrics, pipeline, qanet, util
+from src import config, constants, loaders, metrics, models, pipeline, util
 
 
 def test(sess_config, hparams):
@@ -25,12 +25,12 @@ def test(sess_config, hparams):
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, val_set.output_types, val_set.output_shapes)
         # Create and initialize the model
-        model = qanet.QANet(word_matrix, character_matrix, trainable_matrix, hparams)
+        model = models.QANet(word_matrix, character_matrix, trainable_matrix, hparams)
         model.init(util.inputs_as_tuple(iterator.get_next()), train=True)
         sess.run(tf.global_variables_initializer())
         val_handle = sess.run(val_iter.string_handle())
         # Restore the moving average version of the learned variables for eval.
-        if hparams.ema_decay > 0.0:
+        if 0.0 < hparams.ema_decay < 1.0:
             variable_averages = tf.train.ExponentialMovingAverage(0.)
             saver = tf.train.Saver(variable_averages.variables_to_restore())
         else:
