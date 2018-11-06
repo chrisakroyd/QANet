@@ -105,6 +105,23 @@ def get_warmup_scheme(name, learn_rate, warmup_steps=1000, global_step=None):
 
 def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warmup_steps=1000, clip_norm=5.0,
                        ema_decay=0.999, beta1=0.8, beta2=0.999, epsilon=1e-7, global_step=None):
+    """ Constructs a training op with options for warmup schemes, gradient clipping and
+        exponential moving average weight decay.
+
+        Args:
+            loss: A tensor full of loss values.
+            learn_rate: Learn rate.
+            warmup_scheme: Name of the warmup scheme to utilise, if None or invalid just uses learn_rate.
+            warmup_steps: Number of steps till we reach the given learn_rate.
+            clip_norm: A scalar float.
+            ema_decay: Decay rate to use.
+            beta1: beta1 param for the adam optimizer.
+            beta2: beta2 param for the adam optimizer.
+            epsilon: A small constant for numerical stability.
+            global_step: Global step variable.
+        Returns:
+
+    """
     if global_step is None:
         global_step = tf.train.get_global_step()
 

@@ -103,11 +103,11 @@ def get_padded_shapes(hparams):
         Returns:
             A dict mapping of key: shape
     """
-    return {'context_words': [hparams.context_limit],
-            'context_chars': [hparams.context_limit, hparams.char_limit],
+    return {'context_words': [-1],
+            'context_chars': [-1, hparams.char_limit],
             'context_length': [],
-            'query_words': [hparams.query_limit],
-            'query_chars': [hparams.query_limit, hparams.char_limit],
+            'query_words': [-1],
+            'query_chars': [-1, hparams.char_limit],
             'query_length': [],
             'answer_starts': [],
             'answer_ends': [],
@@ -134,8 +134,7 @@ def create_pipeline(hparams, word_table, char_table, record_paths, train=True):
     """ Function that creates an input pipeline for train/eval.
 
         Optionally uses bucketing to generate batches of a similar length. Output tensors
-        will always be padded to their limit. e.g. Context word tensor will always have
-        shape [batch_size, context_limit]
+        are padded to the max within the batch.
 
         Args:
             hparams: A dictionary of parameters.
@@ -167,7 +166,7 @@ def create_pipeline(hparams, word_table, char_table, record_paths, train=True):
             bucket_by_sequence_length(element_length_func=length_fn,
                                       bucket_batch_sizes=[hparams.batch_size] * (len(buckets) + 1),
                                       bucket_boundaries=buckets,
-                                      padded_shapes=padded_shapes))
+                                      padded_shapes=None))
     else:
         dataset = dataset.padded_batch(
             batch_size=hparams.batch_size,
