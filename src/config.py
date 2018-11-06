@@ -92,7 +92,7 @@ def model_config(defaults):
     flags.DEFINE_float('dropout', defaults.dropout, 'Fraction of units to drop.')
     flags.DEFINE_float('l2', defaults.l2, 'L2 weight decay.')
     flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.')
-    flags.DEFINE_float('learn_rate', defaults.learning_rate, 'Learning rate.')
+    flags.DEFINE_float('learn_rate', defaults.learn_rate, 'Learning rate.')
     flags.DEFINE_float('beta1', defaults.beta1, 'Beta 1 parameter of adam optimizer.')
     flags.DEFINE_float('beta2', defaults.beta2, 'Beta 2 parameter of adam optimizer.')
     flags.DEFINE_float('epsilon', defaults.epsilon, 'Value for epsilon.')
@@ -100,7 +100,7 @@ def model_config(defaults):
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')
     flags.DEFINE_integer('warmup_steps', defaults.warmup_steps, 'Number of warmup steps.')
+    flags.DEFINE_string('warmup_scheme', defaults.warmup_scheme, 'Learning rate warmup scheme.')
     flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint.')
-    flags.DEFINE_integer('save_loss_every', defaults.save_loss_every, 'After how many steps do we save the loss value.')
     flags.DEFINE_integer('run_val_every', defaults.run_val_every, 'After how many steps do we calculate EM/F1 scores.')
     return flags

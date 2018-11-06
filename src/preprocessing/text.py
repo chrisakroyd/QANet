@@ -23,6 +23,7 @@ def clean(text):
 
 
 def normalize_answer(s):
+    """ Normalizes answers, borrowed from SQuAD eval script. """
     def remove_articles(text):
         return articles.sub(' ', text)
 

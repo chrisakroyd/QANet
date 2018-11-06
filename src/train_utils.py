@@ -1,4 +1,5 @@
 import tensorflow as tf
+import warnings
 
 
 def ema_ops(train_op, decay):
@@ -82,7 +83,7 @@ def linear_warmup(learn_rate, warmup_steps=1000, global_step=None):
     return lr_decay * learn_rate
 
 
-def lr_warmup(name, learn_rate, warmup_steps=1000, global_step=None):
+def get_warmup_scheme(name, learn_rate, warmup_steps=1000, global_step=None):
     """ Gets and returns the named warmup scheme.
         Args:
             name: Name of the warmup scheme, either linear or inverse_exp otherwise simply returns learn rate.
@@ -98,4 +99,29 @@ def lr_warmup(name, learn_rate, warmup_steps=1000, global_step=None):
     elif name == 'inverse_exp':
         return inverse_exponential_warmup(learn_rate, warmup_steps, global_step)
     else:
+        warnings.warn('Invalid warmup scheme specified, using learn rate.')
         return learn_rate
+
+
+def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warmup_steps=1000, clip_norm=5.0,
+                       ema_decay=0.999, beta1=0.8, beta2=0.999, epsilon=1e-7, global_step=None):
+    if global_step is None:
+        global_step = tf.train.get_global_step()
+
+    learning_rate = get_warmup_scheme(warmup_scheme, learn_rate, warmup_steps, global_step)
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
+                                       beta1=beta1,
+                                       beta2=beta2,
+                                       epsilon=epsilon)
+
+    if clip_norm > 0.0:
+        grads = optimizer.compute_gradients(loss)
+        grads_and_vars = clip_by_global_norm(grads, clip_norm)
+        train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+    else:
+        train_op = optimizer.minimize(loss, global_step=global_step)
+
+    if 0.0 < ema_decay < 1.0:
+        train_op, _ = ema_ops(train_op, ema_decay)
+
+    return train_op

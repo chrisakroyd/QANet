@@ -4,6 +4,15 @@ from tensorflow.keras.layers import Layer
 
 class PositionEncoding(Layer):
     def __init__(self, min_timescale=1.0, max_timescale=1.0e4, **kwargs):
+        """ Position Encoding
+
+            Follows paper "Attention is all you need" (https://arxiv.org/pdf/1706.03762.pdf, section 3.3) and encodes
+            each position in a sequence with unique sin/cosine wave to make up for the lack of recurrence.
+
+            Args:
+                min_timescale: Min value
+                max_timescale: Max value
+        """
         super(PositionEncoding, self).__init__(**kwargs)
         self.min_timescale = float(min_timescale)
         self.max_timescale = float(max_timescale)

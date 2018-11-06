@@ -5,8 +5,20 @@ from tensorflow.keras.layers import Dropout, Layer
 class LayerDropout(Layer):
     def __init__(self, dropout, sublayer, total_sublayers, **kwargs):
         """ Layer Dropout implementation
-            Adds a Layer Dropout layer, based on the paper
-            "Deep Networks with Stochastic Depth" (https://arxiv.org/abs/1603.09382).
+            Adds a Layer Dropout layer, based on the paper "Deep Networks with Stochastic Depth"
+            (https://arxiv.org/abs/1603.09382). Functions by dropping out entire layers with
+            probability P that increases for layers deeper within the network.
+
+            This layer is also responsible for the residual connection between layers, when
+            P is great enough and we opt to dropout the layer, we simply return the
+            residual.
+
+            @TODO Ensure that sublayer + total_sublayers generation isn't skipping values.
+
+            Args:
+                dropout: P of dropping a layer.
+                sublayer: Integer or float value representing this layers position.
+                total_sublayers: The total number of layers.
         """
         super(LayerDropout, self).__init__(**kwargs)
         self.Pl = dropout * float(sublayer) / float(total_sublayers)

@@ -12,6 +12,7 @@ class LayerNorm(Layer):
         self.epsilon = 1e-6
 
     def build(self, input_shape):
+        """ Adds the necessary weights. """
         self.scale = self.add_weight(shape=(input_shape[-1], ),
                                      initializer=tf.ones_initializer(),
                                      trainable=True,
@@ -24,6 +25,12 @@ class LayerNorm(Layer):
         super(LayerNorm, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
+        """ Call function detailing this layers ops.
+            Args:
+                x: An input tensor.
+                training: Boolean flag for training mode.
+                mask: A boolean mask tensor.
+        """
         mean = tf.reduce_mean(x, axis=-1, keepdims=True)
         variance = tf.reduce_mean(tf.square(x - mean), axis=-1, keepdims=True)
         norm = (x - mean) * tf.rsqrt(variance + self.epsilon)

@@ -44,7 +44,8 @@
   "dropout": 0.1,
   "l2": 3e-7,
   "gradient_clip": 5.0,
-  "learning_rate": 0.001,
+  "learn_rate": 0.001,
+  "warmup_scheme": "inverse_exp",
   "warmup_steps": 1000,
   "beta1": 0.8,
   "beta2": 0.999,
@@ -53,7 +54,6 @@
   "train_steps": 60000,
   "run_val_every": 1000,
   "checkpoint_every": 1000,
-  "save_loss_every": 100,
   "write_answer_file": false,
   "runtime_data": false
 }

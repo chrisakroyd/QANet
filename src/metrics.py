@@ -4,7 +4,17 @@ from collections import Counter
 from src import preprocessing
 
 
-def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, step=0):
+def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, global_step=0):
+    """ Calculates F1, EM and loss over a list of predictions.
+        Args:
+            preds: list of tuples containing start + end pointers, answer ids and loss.
+            contexts: Context texts + word spans
+            answers: answer_id: Ground truth mapping.
+            context_mapping: answer_id: context_id mapping.
+            data_type: String for whether we are in train/val.
+            writer: Summary Writer object.
+            global_step: Current step.
+    """
     answer_texts = {}
     losses = []
 
@@ -15,23 +25,36 @@ def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, wri
         answer_texts.update(answer_data)
         losses.append(loss)
     metrics = evaluate(answer_texts)
-    metrics["loss"] = np.mean(losses)
-    add_metric_summaries(metrics, data_type, writer, step)
+    metrics['loss'] = np.mean(losses)
+    add_metric_summaries(metrics, data_type, writer, global_step)
 
     return metrics, answer_texts
 
 
-def add_metric_summaries(metrics, data_type=None, writer=None, step=0):
+def add_metric_summaries(metrics, data_type=None, writer=None, global_step=0):
+    """ Adds summaries for various metric functions.
+        Args:
+            metrics: dict of metric_name: value.
+            data_type: String for whether we are in train/val.
+            writer: Summary Writer object.
+            global_step: Current step.
+    """
     if writer is not None and data_type is not None:
-        writer.add_summary(tf.Summary(value=[tf.Summary.Value(tag="{}/loss".format(data_type),
-                                                              simple_value=metrics["loss"]), ]), step)
-        writer.add_summary(tf.Summary(value=[tf.Summary.Value(
-            tag="{}/f1".format(data_type), simple_value=metrics["f1"]), ]), step)
-        writer.add_summary(tf.Summary(value=[tf.Summary.Value(
-            tag="{}/em".format(data_type), simple_value=metrics["exact_match"]), ]), step)
+        for key, value in metrics.items():
+            summ = tf.Summary(value=[tf.Summary.Value(tag='{}/{}'.format(data_type, key), simple_value=value)])
+            writer.add_summary(summ, global_step)
 
 
 def get_answer_data(contexts, answers, context_mapping, answer_ids, answer_starts, answer_ends):
+    """ Constructs a mapping of answer_ids to their answers and predictions.
+        Args:
+            contexts: Context texts + word spans
+            answers: answer_id: Ground truth mapping.
+            context_mapping: answer_id: context_id mapping.
+            answer_ids:
+            answer_starts: int start pointers.
+            answer_ends: Int end pointers.
+    """
     answer_texts = {}
 
     for answer_id, start, end in zip(answer_ids, answer_starts, answer_ends):
@@ -49,6 +72,7 @@ def get_answer_data(contexts, answers, context_mapping, answer_ids, answer_start
 
 
 def evaluate(answers):
+    """ Calculates all eval metrics taking the best over all answers. """
     f1 = exact_match = total = 0
     for key, value in answers.items():
         total += 1
@@ -65,6 +89,7 @@ def evaluate(answers):
 
 
 def f1_score(prediction, ground_truth):
+    """ Calculates F1 score, borrowed from SQuAD eval script. """
     prediction_tokens = prediction.split()
     ground_truth_tokens = ground_truth.split()
     common = Counter(prediction_tokens) & Counter(ground_truth_tokens)
@@ -78,10 +103,12 @@ def f1_score(prediction, ground_truth):
 
 
 def exact_match_score(prediction, ground_truth):
+    """ Exact match is a simple as it sounds. """
     return prediction == ground_truth
 
 
 def metric_max_over_ground_truths(metric_fn, prediction, ground_truths):
+    """ Can have multiple answers - We therefore take the best. """
     scores_for_ground_truths = []
     for ground_truth in ground_truths:
         score = metric_fn(prediction, ground_truth)
