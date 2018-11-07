@@ -16,16 +16,16 @@ def train(sess_config, params):
     train_spans, train_answers, train_ctxt_mapping = train
     val_spans, val_answers, val_ctxt_mapping = val
 
-    word_vocab, char_vocab = util.load_vocab_files(paths=(word_index_path, char_index_path))
+    vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
 
     with tf.device('/cpu:0'):
-        word_table, char_table = pipeline.create_lookup_tables(word_vocab, char_vocab)
+        tables = pipeline.create_lookup_tables(vocabs)
 
-        train_args = util.tf_record_paths(params, training=True)
-        val_args = util.tf_record_paths(params, training=False)
-        train_set, train_iter = pipeline.create_pipeline(params, word_table, char_table, train_args, training=True)
-        _, val_iter = pipeline.create_pipeline(params, word_table, char_table, val_args, training=False)
+        train_tfrecords = util.tf_record_paths(params, training=True)
+        val_tfrecords = util.tf_record_paths(params, training=False)
+        train_set, train_iter = pipeline.create_pipeline(params, tables, train_tfrecords, training=True)
+        _, val_iter = pipeline.create_pipeline(params, tables, val_tfrecords, training=False)
 
     with tf.Session(config=sess_config) as sess:
         sess.run(train_iter.initializer)
