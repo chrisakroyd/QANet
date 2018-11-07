@@ -35,14 +35,14 @@ def load_squad_set(context_path, answer_path):
     return contexts, answers, context_mapping
 
 
-def load_squad(hparams):
+def load_squad(params):
     """ Loads the processed train and dev squad sets.
         Args:
-            hparams: A dictionary of parameters.
+            params: A dictionary of parameters.
         Returns:
             Tuple of contexts, answers and context_mapping for both train and val.
     """
-    train_context_path, train_answer_path, val_context_path, val_answer_path = util.processed_data_paths(hparams)
+    train_context_path, train_answer_path, val_context_path, val_answer_path = util.processed_data_paths(params)
     train_set = load_squad_set(train_context_path, train_answer_path)
     val_set = load_squad_set(val_context_path, val_answer_path)
 

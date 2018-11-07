@@ -2,7 +2,7 @@
 from src import config, constants, util
 
 
-def demo(sess_config, hparams):
+def demo(sess_config, params):
     return
 
 

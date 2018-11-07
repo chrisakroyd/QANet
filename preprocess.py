@@ -1,12 +1,12 @@
 from src import config, constants, preprocessing, util
 
 
-def preprocess(hparams):
-    dataset = hparams.dataset.lower()
-    util.make_dirs(util.get_directories(hparams))
+def preprocess(params):
+    dataset = params.dataset.lower()
+    util.make_dirs(util.get_directories(params))
 
     if dataset == 'squad':
-        preprocessing.squad_process(hparams)
+        preprocessing.squad_process(params)
     else:
         raise NotImplementedError('Unsupported dataset: Valid datasets are {}.'.format('squad'))
 

@@ -121,9 +121,10 @@ def load_embedding_file(path, word_index, embedding_dimensions=300, trainable_em
 def load_numpy_files(paths):
     """ Function for reading embedding matrices saved with numpy.
         Args:
-            paths: An iterable of string paths.
+            paths: A string or iterable of string paths.
         Returns:
             A list of numpy matrices (In order of paths)
     """
-    print('Loading Embeddings...')
+    if isinstance(paths, str):
+        paths = [paths]
     return [np.load(path) for path in paths]

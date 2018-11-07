@@ -18,12 +18,12 @@ def convert_idx(text, tokens):
     return spans
 
 
-def fit_and_extract(data_set, tokenizer, hparams):
+def fit_and_extract(data_set, tokenizer, params):
     """ Extracts context + query tokens and flattens squad data structure.
         Args:
             data_set: Either train/dev squad dict.
             tokenizer: A Tokenizer instance.
-            hparams: A dictionary of parameters.
+            params: A dictionary of parameters.
         Returns:
             Contexts, Queries and the tokenizer.
     """
@@ -35,7 +35,7 @@ def fit_and_extract(data_set, tokenizer, hparams):
             context_clean = prepro.clean(question_answer['context'])
             # Fit the tokenizer on the cleaned version of the context.
             context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
-            if len(context_tokens) > hparams.context_limit:
+            if len(context_tokens) > params.context_limit:
                 continue
             spans = convert_idx(context_clean, context_tokens)
 
@@ -44,7 +44,7 @@ def fit_and_extract(data_set, tokenizer, hparams):
                 query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
                 total += 1
 
-                if len(query_tokens) > hparams.query_limit:
+                if len(query_tokens) > params.query_limit:
                     skipped += 1
                     continue
                 answer_starts, answer_ends, answer_texts = [], [], []
@@ -138,54 +138,54 @@ def write_as_tf_record(path, contexts, queries):
             writer.write(record.SerializeToString())
 
 
-def process(hparams):
-    train_path, dev_path = util.raw_data_paths(hparams)
-    directories = util.get_directories(hparams)
+def process(params):
+    train_path, dev_path = util.raw_data_paths(params)
+    directories = util.get_directories(params)
     util.make_dirs(directories)
     # Paths for dumping our processed data.
-    train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path = util.processed_data_paths(hparams)
+    train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path = util.processed_data_paths(params)
     # Get paths for saving embedding related info.
-    word_index_path, trainable_index_path, char_index_path = util.index_paths(hparams)
-    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(hparams)
+    word_index_path, trainable_index_path, char_index_path = util.index_paths(params)
+    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params)
     # Read the embedding index and create a vocab of words with embeddings.
     print('Loading Embeddings, this may take some time...')
-    embedding_index = util.read_embeddings_file(hparams.embeddings_path)
+    embedding_index = util.read_embeddings_file(params.embeddings_path)
     vocab = set([e for e, _ in embedding_index.items()])
 
-    tokenizer = util.Tokenizer(max_words=hparams.max_words + 1,
-                               max_chars=hparams.max_chars + 1,
+    tokenizer = util.Tokenizer(max_words=params.max_words + 1,
+                               max_chars=params.max_chars + 1,
                                vocab=vocab,
                                lower=False,
-                               oov_token=hparams.oov_token,
-                               char_limit=hparams.char_limit,
-                               min_word_occurrence=hparams.min_word_occur,
-                               min_char_occurrence=hparams.min_char_occur,
-                               trainable_words=hparams.trainable_words,
+                               oov_token=params.oov_token,
+                               char_limit=params.char_limit,
+                               min_word_occurrence=params.min_word_occur,
+                               min_char_occurrence=params.min_char_occur,
+                               trainable_words=params.trainable_words,
                                filters=None)
 
     train = util.load_json(train_path)
     dev = util.load_json(dev_path)
 
     print('Processing...')
-    train_contexts, train_answers, tokenizer = fit_and_extract(train, tokenizer, hparams)
-    dev_contexts, dev_answers, tokenizer = fit_and_extract(dev, tokenizer, hparams)
+    train_contexts, train_answers, tokenizer = fit_and_extract(train, tokenizer, params)
+    dev_contexts, dev_answers, tokenizer = fit_and_extract(dev, tokenizer, params)
     tokenizer.init()
     word_index = tokenizer.word_index
     char_index = tokenizer.char_index
-    trainable_index = util.index_from_list(hparams.trainable_words)
+    trainable_index = util.index_from_list(params.trainable_words)
 
-    embedding_matrix = util.load_embedding_file(path=hparams.embeddings_path,
+    embedding_matrix = util.load_embedding_file(path=params.embeddings_path,
                                                 word_index=word_index,
-                                                embedding_dimensions=hparams.embed_dim,
-                                                trainable_embeddings=hparams.trainable_words,
+                                                embedding_dimensions=params.embed_dim,
+                                                trainable_embeddings=params.trainable_words,
                                                 embedding_index=embedding_index)
 
-    trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=hparams.embed_dim)
-    char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=hparams.char_dim)
+    trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=params.embed_dim)
+    char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim)
 
     print('Saving to TF Records...')
-    train_path = util.tf_record_paths(hparams, train=True)
-    dev_path = util.tf_record_paths(hparams, train=False)
+    train_path = util.tf_record_paths(params, training=True)
+    dev_path = util.tf_record_paths(params, training=False)
     write_as_tf_record(train_path, train_contexts, train_answers)
     write_as_tf_record(dev_path, dev_contexts, dev_answers)
 

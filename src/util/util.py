@@ -58,15 +58,21 @@ def make_dirs(directories):
             os.makedirs(directory)
 
 
-def load_vocab(path):
+def load_vocab_files(paths):
     """ Loads a .json index as a list of words where each words position is its index.
         Args:
-            path: String filepath pointing to a .json word index file.
+            paths: Iterable of string paths or string path pointing to .json word index file.
         Returns:
             A list of strings.
     """
-    index = load_json(path)
-    return sorted(index, key=index.get)
+    if isinstance(paths, str):
+        paths = [paths]
+
+    vocabs = []
+    for path in paths:
+        index = load_json(path)
+        vocabs.append(sorted(index, key=index.get))
+    return vocabs
 
 
 def inputs_as_tuple(placeholders):

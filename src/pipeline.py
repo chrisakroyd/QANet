@@ -2,11 +2,11 @@ import tensorflow as tf
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
-def tf_record_pipeline(filenames, hparams):
+def tf_record_pipeline(filenames, params):
     """ Creates a dataset from a TFRecord file.
         Args:
             filenames: A list of paths to .tfrecord files.
-            hparams: A dictionary of parameters.
+            params: A dictionary of parameters.
         Returns:
             A `tf.data.Dataset` object.
     """
@@ -27,10 +27,10 @@ def tf_record_pipeline(filenames, hparams):
         return tf.parse_single_example(proto, features=features)
 
     dataset = tf.data.TFRecordDataset(filenames,
-                                      buffer_size=hparams.tf_record_buffer_size,
-                                      num_parallel_reads=hparams.parallel_calls)
+                                      buffer_size=params.tf_record_buffer_size,
+                                      num_parallel_reads=params.parallel_calls)
 
-    dataset = dataset.map(parse, num_parallel_calls=hparams.parallel_calls)
+    dataset = dataset.map(parse, num_parallel_calls=params.parallel_calls)
     return dataset
 
 
@@ -80,32 +80,32 @@ def index_lookup(dataset, word_table, char_table, char_limit=16, num_parallel_ca
     return dataset
 
 
-def create_buckets(hparams):
+def create_buckets(params):
     """ Optionally generates bucket ranges if they aren't specified in the hparams.
         Args:
-            hparams: A dictionary of parameters.
+            params: A dictionary of parameters.
         Returns:
             A list of integers for the start of buckets.
     """
     # If no bucket ranges are explicitly defined, create using the bucket_size parameter
-    if len(hparams.bucket_ranges) == 0:
+    if len(params.bucket_ranges) == 0:
         # Plus 1 as the bucket excludes the high number.
-        return [i for i in range(0, hparams.context_limit + 1, hparams.bucket_size)]
-    return hparams.bucket_ranges
+        return [i for i in range(0, params.context_limit + 1, params.bucket_size)]
+    return params.bucket_ranges
 
 
-def get_padded_shapes(hparams):
+def get_padded_shapes(params):
     """ Creates a dict of key: shape mappings for padding batches.
         Args:
-            hparams: A dictionary of parameters.
+            params: A dictionary of parameters.
         Returns:
             A dict mapping of key: shape
     """
     return {'context_words': [-1],
-            'context_chars': [-1, hparams.char_limit],
+            'context_chars': [-1, params.char_limit],
             'context_length': [],
             'query_words': [-1],
-            'query_chars': [-1, hparams.char_limit],
+            'query_chars': [-1, params.char_limit],
             'query_length': [],
             'answer_starts': [],
             'answer_ends': [],
@@ -128,49 +128,49 @@ def create_lookup_tables(word_vocab, char_vocab):
     return word_table, char_table
 
 
-def create_pipeline(hparams, word_table, char_table, record_paths, train=True):
+def create_pipeline(params, word_table, char_table, record_paths, training=True):
     """ Function that creates an input pipeline for train/eval.
 
         Optionally uses bucketing to generate batches of a similar length. Output tensors
         are padded to the max within the batch.
 
         Args:
-            hparams: A dictionary of parameters.
+            params: A dictionary of parameters.
             word_table: A lookup table of string words to indices.
             char_table: A lookup table of string characters to indices.
             record_paths: A list of string filepaths for .tfrecord files.
-            train: Boolean value signifying whether we are in train mode.
+            training: Boolean value signifying whether we are in train mode.
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
-    dataset = tf_record_pipeline(record_paths, hparams)
+    dataset = tf_record_pipeline(record_paths, params)
     dataset = dataset.cache().repeat()
-    if train:
-        dataset = dataset.shuffle(buffer_size=hparams.shuffle_buffer_size)
+    if training:
+        dataset = dataset.shuffle(buffer_size=params.shuffle_buffer_size)
     # Perform word -> index mapping.
-    dataset = index_lookup(dataset, word_table, char_table, char_limit=hparams.char_limit,
-                           num_parallel_calls=hparams.parallel_calls)
+    dataset = index_lookup(dataset, word_table, char_table, char_limit=params.char_limit,
+                           num_parallel_calls=params.parallel_calls)
     # We either bucket (used in paper, faster train speed) or just form batches padded to max.
     # Note: py_func doesn't return output shapes therefore we zero pad to the limits on each batch and slice to
     # the batch max during training. @TODO revisit and see if this can be avoided.
-    padded_shapes = get_padded_shapes(hparams)
-    if hparams.bucket and train:
-        buckets = create_buckets(hparams)
+    padded_shapes = get_padded_shapes(params)
+    if params.bucket and training:
+        buckets = create_buckets(params)
 
         def length_fn(fields):
             return tf.cast(fields['context_length'], dtype=tf.int32)
 
         dataset = dataset.apply(
             tf.contrib.data.bucket_by_sequence_length(element_length_func=length_fn,
-                                                      bucket_batch_sizes=[hparams.batch_size] * (len(buckets) + 1),
+                                                      bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
                                                       bucket_boundaries=buckets))
     else:
         dataset = dataset.padded_batch(
-            batch_size=hparams.batch_size,
+            batch_size=params.batch_size,
             padded_shapes=padded_shapes,
-            drop_remainder=train
+            drop_remainder=training
         )
 
-    dataset = dataset.prefetch(buffer_size=hparams.max_prefetch)
+    dataset = dataset.prefetch(buffer_size=params.max_prefetch)
     iterator = dataset.make_initializable_iterator()
     return dataset, iterator
