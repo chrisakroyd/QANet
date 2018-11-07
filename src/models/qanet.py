@@ -3,57 +3,37 @@ from src import layers, models, train_utils
 
 
 class QANet(tf.keras.Model):
-    def __init__(self, embedding_matrix, char_matrix, trainable_matrix, hparams):
+    def __init__(self, embedding_matrix, char_matrix, trainable_matrix, params):
         super(QANet, self).__init__()
-        self.hparams = hparams
         self.global_step = tf.train.get_or_create_global_step()
 
         self.embedding_block = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
-                                                     word_dim=self.hparams.embed_dim, char_dim=self.hparams.char_dim)
+                                                     word_dim=params.embed_dim, char_dim=params.char_dim)
 
-        self.embedding_encoder_blocks = models.StackedEncoderBlocks(blocks=self.hparams.embed_encoder_blocks,
-                                                                    conv_layers=self.hparams.embed_encoder_convs,
-                                                                    kernel_size=self.hparams.embed_encoder_kernel_width,
-                                                                    filters=self.hparams.filters,
-                                                                    heads=self.hparams.heads,
-                                                                    dropout=self.hparams.dropout,
-                                                                    ff_mul=self.hparams.feed_forward_multiplier,
+        self.embedding_encoder_blocks = models.StackedEncoderBlocks(blocks=params.embed_encoder_blocks,
+                                                                    conv_layers=params.embed_encoder_convs,
+                                                                    kernel_size=params.embed_encoder_kernel_width,
+                                                                    filters=params.filters,
+                                                                    heads=params.heads,
+                                                                    dropout=params.dropout,
+                                                                    ff_mul=params.feed_forward_multiplier,
                                                                     name='embedding_encoder')
 
         self.context_query = layers.ContextQueryAttention(name='context_query_attention')
 
-        self.model_encoder_blocks = models.StackedEncoderBlocks(blocks=self.hparams.model_encoder_blocks,
-                                                                conv_layers=self.hparams.model_encoder_convs,
-                                                                kernel_size=self.hparams.model_encoder_kernel_width,
-                                                                filters=self.hparams.filters,
-                                                                heads=self.hparams.heads,
-                                                                dropout=self.hparams.dropout,
-                                                                ff_mul=self.hparams.feed_forward_multiplier,
+        self.model_encoder_blocks = models.StackedEncoderBlocks(blocks=params.model_encoder_blocks,
+                                                                conv_layers=params.model_encoder_convs,
+                                                                kernel_size=params.model_encoder_kernel_width,
+                                                                filters=params.filters,
+                                                                heads=params.heads,
+                                                                dropout=params.dropout,
+                                                                ff_mul=params.feed_forward_multiplier,
                                                                 name='model_encoder')
 
         self.start_output = layers.OutputLayer(name='start_logits')
         self.end_output = layers.OutputLayer(name='end_logits')
 
-        self.predict_pointers = layers.PredictionHead(self.hparams.answer_limit)
-
-    def init(self, placeholders, train):
-        _, _, context_lengths, _, _, _, y_start, y_end, answer_ids = placeholders
-        # Init network
-        start_logits, end_logits, start_pointer, end_pointer, _, _, _, _, _ = self.call(placeholders, training=train)
-
-        loss = self.compute_loss(start_logits, end_logits, y_start, y_end, self.hparams.l2)
-        train_op = train_utils.construct_train_op(loss,
-                                                  learn_rate=self.hparams.learn_rate,
-                                                  warmup_scheme=self.hparams.warmup_scheme,
-                                                  warmup_steps=self.hparams.warmup_steps,
-                                                  clip_norm=self.hparams.gradient_clip,
-                                                  ema_decay=self.hparams.ema_decay,
-                                                  beta1=self.hparams.beta1,
-                                                  beta2=self.hparams.beta2,
-                                                  epsilon=self.hparams.epsilon)
-
-        self.answer_ids, self.loss, self.start_pointer, self.end_pointer, self.train_op\
-            = answer_ids, loss, start_pointer, end_pointer, train_op
+        self.predict_pointers = layers.PredictionHead(params.answer_limit)
 
     def call(self, x, training=True, mask=None):
         context_words, context_chars, context_lengths, query_words, query_chars, query_lengths, \
