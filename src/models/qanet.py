@@ -10,25 +10,25 @@ class QANet(tf.keras.Model):
         self.embedding_block = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                      word_dim=params.embed_dim, char_dim=params.char_dim)
 
-        self.embedding_encoder_blocks = models.StackedEncoderBlocks(blocks=params.embed_encoder_blocks,
-                                                                    conv_layers=params.embed_encoder_convs,
-                                                                    kernel_size=params.embed_encoder_kernel_width,
-                                                                    filters=params.filters,
-                                                                    heads=params.heads,
-                                                                    dropout=params.dropout,
-                                                                    ff_mul=params.feed_forward_multiplier,
-                                                                    name='embedding_encoder')
+        self.embedding_encoder = models.EncoderBlockStack(blocks=params.embed_encoder_blocks,
+                                                          conv_layers=params.embed_encoder_convs,
+                                                          kernel_size=params.embed_encoder_kernel_width,
+                                                          filters=params.filters,
+                                                          heads=params.heads,
+                                                          dropout=params.dropout,
+                                                          ff_mul=params.feed_forward_multiplier,
+                                                          name='embedding_encoder')
 
         self.context_query = layers.ContextQueryAttention(name='context_query_attention')
 
-        self.model_encoder_blocks = models.StackedEncoderBlocks(blocks=params.model_encoder_blocks,
-                                                                conv_layers=params.model_encoder_convs,
-                                                                kernel_size=params.model_encoder_kernel_width,
-                                                                filters=params.filters,
-                                                                heads=params.heads,
-                                                                dropout=params.dropout,
-                                                                ff_mul=params.feed_forward_multiplier,
-                                                                name='model_encoder')
+        self.model_encoder = models.EncoderBlockStack(blocks=params.model_encoder_blocks,
+                                                      conv_layers=params.model_encoder_convs,
+                                                      kernel_size=params.model_encoder_kernel_width,
+                                                      filters=params.filters,
+                                                      heads=params.heads,
+                                                      dropout=params.dropout,
+                                                      ff_mul=params.feed_forward_multiplier,
+                                                      name='model_encoder')
 
         self.start_output = layers.OutputLayer(name='start_logits')
         self.end_output = layers.OutputLayer(name='end_logits')
@@ -49,8 +49,8 @@ class QANet(tf.keras.Model):
         query_emb = self.embedding_block([query_words, query_chars])
 
         # Encode the query + context.
-        context_enc = self.embedding_encoder_blocks(context_emb, training=training, mask=context_mask)
-        query_enc = self.embedding_encoder_blocks(query_emb, training=training, mask=query_mask)
+        context_enc = self.embedding_encoder(context_emb, training=training, mask=context_mask)
+        query_enc = self.embedding_encoder(query_emb, training=training, mask=query_mask)
 
         # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
         c2q, q2c = self.context_query([context_enc, query_enc], training=training, mask=[context_mask, query_mask])
@@ -58,9 +58,9 @@ class QANet(tf.keras.Model):
         inputs = tf.concat([context_enc, c2q, context_enc * c2q, context_enc * q2c], axis=-1)
 
         # Run through our stacked model encoder blocks on this representation.
-        enc_1 = self.model_encoder_blocks(inputs, training=training, mask=context_mask)
-        enc_2 = self.model_encoder_blocks(enc_1, training=training, mask=context_mask)
-        enc_3 = self.model_encoder_blocks(enc_2, training=training, mask=context_mask)
+        enc_1 = self.model_encoder(inputs, training=training, mask=context_mask)
+        enc_2 = self.model_encoder(enc_1, training=training, mask=context_mask)
+        enc_3 = self.model_encoder(enc_2, training=training, mask=context_mask)
 
         # Get the start/end logits from the output layers
         start_logits = self.start_output([enc_1, enc_2], training=training, mask=context_mask)

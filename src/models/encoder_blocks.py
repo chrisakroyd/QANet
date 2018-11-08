@@ -24,12 +24,10 @@ class ConvBlock(tf.keras.Model):
 
         self.seperable_conv = SeparableConv1D(filters=filters,
                                               kernel_size=kernel_size,
-                                              strides=1,
                                               padding='same',
-                                              use_bias=True,
                                               activation='relu')
 
-        self.layer_dropout = layers.LayerDropout(dropout, sublayer, total_sublayers)
+        self.layer_dropout = layers.SublayerConnection(dropout, sublayer, total_sublayers)
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
@@ -65,7 +63,7 @@ class SelfAttentionBlock(tf.keras.Model):
                                                               num_heads=heads,
                                                               dropout=dropout,
                                                               name='multi_head_attention')
-        self.layer_dropout = layers.LayerDropout(dropout, sublayer, total_sublayers)
+        self.layer_dropout = layers.SublayerConnection(dropout, sublayer, total_sublayers)
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
@@ -98,24 +96,8 @@ class FeedForwardBlock(tf.keras.Model):
         """
         super(FeedForwardBlock, self).__init__(**kwargs)
         self.layer_norm = layers.LayerNorm()
-
-        # Optionally increase units in the first layer by a multiplier.
-        self.conv_ff_1 = Conv1D(int(filters * ff_mul),
-                                kernel_size=1,
-                                strides=1,
-                                padding='same',
-                                use_bias=True,
-                                name='conv_ff_1',
-                                activation='relu')
-        self.dropout = Dropout(dropout)
-        self.conv_ff_2 = Conv1D(filters,
-                                kernel_size=1,
-                                strides=1,
-                                padding='same',
-                                use_bias=True,
-                                name='conv_ff_2')
-
-        self.layer_dropout = layers.LayerDropout(dropout, sublayer, total_sublayers)
+        self.feed_forward = layers.FeedForwardLayer(filters, ff_mul=ff_mul, dropout=dropout)
+        self.layer_dropout = layers.SublayerConnection(dropout, sublayer, total_sublayers)
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
@@ -126,9 +108,7 @@ class FeedForwardBlock(tf.keras.Model):
         """
         residual = x
         x = self.layer_norm(x)
-        x = self.conv_ff_1(x)
-        x = self.dropout(x)
-        x = self.conv_ff_2(x)
+        x = self.feed_forward(x)
         x = self.layer_dropout([x, residual], training=training)
         return x
 
@@ -155,11 +135,9 @@ class EncoderBlock(tf.keras.Model):
                         layer of the FeedForwardBlock by a float multiplier.
         """
         super(EncoderBlock, self).__init__(**kwargs)
-
-        # @TODO Ensure these ids are generated correctly.
         # These Ids and counts are for determining layer dropout, higher layers == more chance of dropout
         self.block_start_id = (block_number * (conv_layers + 2)) + 1  # Start from one
-        self.self_attention_id = (self.block_start_id + conv_layers) + 1
+        self.self_attention_id = (self.block_start_id + conv_layers)
         self.feed_forward_id = self.self_attention_id + 1
         self.total_sub_layers = (conv_layers + 2) * total_blocks
 
@@ -202,7 +180,7 @@ class EncoderBlock(tf.keras.Model):
         return x
 
 
-class StackedEncoderBlocks(tf.keras.Model):
+class EncoderBlockStack(tf.keras.Model):
     def __init__(self, blocks, conv_layers, kernel_size, filters=128, heads=8, dropout=0.1, ff_mul=1.0, **kwargs):
         """ Builds a stack of encoder blocks and handles input projection + output dropout.
 
@@ -219,7 +197,7 @@ class StackedEncoderBlocks(tf.keras.Model):
                 ff_mul: Feed-Forward Multiplier, increases the number of units in the first feed-forward
                         layer of the FeedForwardBlock by a float multiplier.
         """
-        super(StackedEncoderBlocks, self).__init__(**kwargs)
+        super(EncoderBlockStack, self).__init__(**kwargs)
         self.hidden_size = filters
 
         self.projection = Conv1D(filters,

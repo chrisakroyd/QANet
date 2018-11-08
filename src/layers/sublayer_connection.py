@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dropout, Layer
 
 
-class LayerDropout(Layer):
+class SublayerConnection(Layer):
     def __init__(self, dropout, sublayer, total_sublayers, **kwargs):
         """ Layer Dropout implementation
             Adds a Layer Dropout layer, based on the paper "Deep Networks with Stochastic Depth"
@@ -20,12 +20,12 @@ class LayerDropout(Layer):
                 sublayer: Integer or float value representing this layers position.
                 total_sublayers: The total number of layers.
         """
-        super(LayerDropout, self).__init__(**kwargs)
+        super(SublayerConnection, self).__init__(**kwargs)
         self.Pl = dropout * float(sublayer) / float(total_sublayers)
         self.dropout = Dropout(dropout)
 
     def build(self, input_shape):
-        super(LayerDropout, self).build(input_shape)
+        super(SublayerConnection, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
