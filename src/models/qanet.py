@@ -36,8 +36,7 @@ class QANet(tf.keras.Model):
         self.predict_pointers = layers.PredictionHead(params.answer_limit)
 
     def call(self, x, training=True, mask=None):
-        context_words, context_chars, context_lengths, query_words, query_chars, query_lengths, \
-        y_start, y_end, answer_id = x
+        context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
         # Get the sequence length for this batch.
         context_max = tf.reduce_max(context_lengths)
         query_max = tf.reduce_max(query_lengths)
@@ -68,8 +67,8 @@ class QANet(tf.keras.Model):
         end_logits = self.end_output([enc_1, enc_3], training=training, mask=context_mask)
 
         # Prediction head - Returns an int pointer to the start and end position of the answer segment on the context.
-        start_pointer, end_pointer = self.predict_pointers([start_logits, end_logits])
-        return start_logits, end_logits, start_pointer, end_pointer, y_start, y_end, c2q, q2c, answer_id
+        start_pred, end_pred = self.predict_pointers([start_logits, end_logits])
+        return start_logits, end_logits, start_pred, end_pred, c2q, q2c
 
     def compute_loss(self, start_logits, end_logits, start_labels, end_labels, l2=None):
         start_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(

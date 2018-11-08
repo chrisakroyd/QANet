@@ -35,11 +35,14 @@ def train(sess_config, params):
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
         # This section creates models, gets the output tensors and constructs the train_op. Although messy
-        # it is written this way to bring it closer in line to how a tf estimator is written.
+        # it is written this way to bring it closer in line to the tf estimator API for easier later development.
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
-        placeholders = util.inputs_as_tuple(iterator.get_next())
-        start_logits, end_logits, start_pred, end_pred, y_start, y_end, _, _, id_op = qanet(placeholders,
-                                                                                            training=True)
+        placeholders = iterator.get_next()
+        # Features and labels.
+        qanet_inputs = train_utils.inputs_as_tuple(placeholders)
+        y_start, y_end, id_tensor = train_utils.labels_as_tuple(placeholders)
+
+        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,
@@ -52,8 +55,8 @@ def train(sess_config, params):
                                                   beta2=params.beta2,
                                                   epsilon=params.epsilon)
         # What ops we want the results of.
-        train_outputs = [id_op, loss_op, start_pred, end_pred, train_op]
-        val_outputs = [id_op, loss_op, start_pred, end_pred]
+        train_outputs = [id_tensor, loss_op, start_pred, end_pred, train_op]
+        val_outputs = [id_tensor, loss_op, start_pred, end_pred]
         sess.run(tf.global_variables_initializer())
         # Saver boilerplate
         writer = tf.summary.FileWriter(log_dir, graph=sess.graph)
