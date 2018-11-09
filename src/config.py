@@ -70,6 +70,8 @@ def model_config(defaults):
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
     flags.DEFINE_integer('hidden_size', defaults.hidden_size, 'Number of hidden units to use.')
+    flags.DEFINE_integer('ff_inner_size', defaults.ff_inner_size,
+                         'Number of units in the first layer of a feed forward block.')
     flags.DEFINE_integer('heads', defaults.heads, 'Number of heads used for multi-head attention.')
     flags.DEFINE_integer('embed_encoder_blocks', defaults.embed_encoder_blocks,
                          'Number of blocks in the embedding_encoder.')
@@ -83,17 +85,18 @@ def model_config(defaults):
                          'Number of conv layers in each block of the model encoder.')
     flags.DEFINE_integer('model_encoder_kernel_width', defaults.model_encoder_kernel_width,
                          'Kernel width of each conv layer of the model encoder.')
-    flags.DEFINE_float('feed_forward_multiplier', defaults.feed_forward_multiplier,
-                       'Multiplier for the units in the first layer of the feed forward block.')
     # Flags for train hyper params e.g. dropout, l2, gradient ema decay values (set to QANet paper values).
-    flags.DEFINE_float('dropout', defaults.dropout, 'Fraction of units to drop.')
+    flags.DEFINE_float('dropout', defaults.dropout, 'Dropout rate.', lower_bound=0.0, upper_bound=1.0)
+    flags.DEFINE_float('attn_dropout', defaults.attn_dropout, 'Attention dropout rate.',
+                       lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('l2', defaults.l2, 'L2 weight decay.')
     flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.')
     flags.DEFINE_float('learn_rate', defaults.learn_rate, 'Learning rate.')
-    flags.DEFINE_float('beta1', defaults.beta1, 'Beta 1 parameter of adam optimizer.')
-    flags.DEFINE_float('beta2', defaults.beta2, 'Beta 2 parameter of adam optimizer.')
+    flags.DEFINE_float('beta1', defaults.beta1, 'Beta 1 parameter of adam optimizer.', lower_bound=0.0, upper_bound=1.0)
+    flags.DEFINE_float('beta2', defaults.beta2, 'Beta 2 parameter of adam optimizer.', lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('epsilon', defaults.epsilon, 'Value for epsilon.')
-    flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.')
+    flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.',
+                       lower_bound=0.0, upper_bound=1.0)
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')
     flags.DEFINE_integer('warmup_steps', defaults.warmup_steps, 'Number of warmup steps.')

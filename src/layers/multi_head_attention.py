@@ -4,7 +4,7 @@ from src import layers
 
 
 class MultiHeadAttention(Layer):
-    def __init__(self, filters=128, num_heads=8, dropout=0.1, **kwargs):
+    def __init__(self, hidden_size=128, num_heads=8, dropout=0.1, self_attention=True, **kwargs):
         """ Multi-Headed Attention implementation.
 
             This is an implementation of multi-head attention based on the paper "Attention
@@ -19,20 +19,23 @@ class MultiHeadAttention(Layer):
             output layer.
 
             Args:
-                filters: The number of units in the final dimension of the input tensor.
+                hidden_size: The number of units in the final dimension of the input tensor.
                 num_heads: Number of attention heads to compute.
                 dropout: Fraction of units to drop.
+                self_attention: Boolean value for whether to use self-attention on the inputs.
         """
         super(MultiHeadAttention, self).__init__(**kwargs)
+        self.supports_masking = True
+        self.self_attention = self_attention
         self.num_heads = num_heads
-        self.filters = filters
+        self.hidden_size = hidden_size
         # Linear mappings
-        self.queries_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
-        self.keys_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
-        self.values_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
-        self.output_layer = Conv1D(self.filters, kernel_size=1, strides=1, use_bias=False)
+        self.queries_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
+        self.keys_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
+        self.values_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
+        self.output_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
         # square root of key depth Attention is all you Need, 3.2.1
-        self.depth = (self.filters // self.num_heads)
+        self.depth = (self.hidden_size // self.num_heads)
         self.scaling_factor = self.depth ** -0.5
 
         self.softmax = Activation('softmax')
@@ -57,7 +60,7 @@ class MultiHeadAttention(Layer):
             of shape [batch_size, seq_length, depth]
         """
         x = tf.transpose(x, perm=(0, 2, 1, 3))  # --> [batch, length, num_heads, depth]
-        return tf.reshape(x, shape=(batch_size, length, self.filters))
+        return tf.reshape(x, shape=(batch_size, length, self.hidden_size))
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
@@ -67,7 +70,11 @@ class MultiHeadAttention(Layer):
                 training: Boolean flag for training mode.
                 mask: A boolean mask tensor.
         """
-        x, y = x
+        if self.self_attention:
+            x, y = x, x
+        else:
+            x, y = x
+        # x, y = x
         batch_size, length = self.compute_input_shape(x)
         query, key, values = (self.queries_layer(x), self.keys_layer(y), self.values_layer(y))
         # Split into n heads, allows model to jointly attend to different positions.

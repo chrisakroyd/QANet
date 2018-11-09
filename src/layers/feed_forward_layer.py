@@ -2,22 +2,21 @@ from tensorflow.keras.layers import Conv1D, Dropout, Layer
 
 
 class FeedForwardLayer(Layer):
-    def __init__(self, filters=128, ff_mul=1.0, dropout=0.1, **kwargs):
+    def __init__(self, hidden_size=128, inner_size=128, dropout=0.1, **kwargs):
         """ Feed forward block
 
             Follows paper "Attention is all you need" (https://arxiv.org/pdf/1706.03762.pdf, section 3.3) with
             optional parameter for increasing dimension of non-linear layer.
 
             Args:
-                filters: Number of filters in each block.
+                hidden_size: Number of hidden units.
                 dropout: Fraction of input units to drop.
-                ff_mul: Feed-Forward Multiplier, increases the number of units in the first feed-forward
-                        layer by a float multiplier.
+                inner_size: Number of units in the inner non-linear layer.
         """
         super(FeedForwardLayer, self).__init__(**kwargs)
-        self.filters = filters
+        self.filters = hidden_size
         # Optionally increase non-linear layer units by a multiplier
-        self.conv_ff_1 = Conv1D(int(filters * ff_mul),
+        self.conv_ff_1 = Conv1D(inner_size,
                                 kernel_size=1,
                                 padding='same',
                                 name='conv_ff_1',
@@ -25,7 +24,7 @@ class FeedForwardLayer(Layer):
 
         self.dropout = Dropout(dropout)
 
-        self.conv_ff_2 = Conv1D(filters,
+        self.conv_ff_2 = Conv1D(hidden_size,
                                 kernel_size=1,
                                 padding='same',
                                 name='conv_ff_2')
