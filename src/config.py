@@ -44,8 +44,7 @@ def model_config(defaults):
     flags.DEFINE_integer('embed_dim', defaults.embed_dim, 'Dimensionality of the input embeddings')
     flags.DEFINE_integer('char_dim', defaults.char_dim, 'Dimensionality of the character output embeddings')
     # Max lengths for context, query, answer, characters and mins for word+char occurrence.
-    flags.DEFINE_integer('context_limit', defaults.context_limit, 'Max length of the input paragraph.')
-    flags.DEFINE_integer('query_limit', defaults.query_limit, 'Max length of a query.')
+    flags.DEFINE_integer('max_tokens', defaults.max_tokens, 'Max length of the input paragraph.')
     flags.DEFINE_integer('answer_limit', defaults.answer_limit, 'Max length of a answer.')
     flags.DEFINE_integer('char_limit', defaults.char_limit, 'Max number of characters in a word.')
     flags.DEFINE_integer('max_words', defaults.max_words, 'Max words to be included in the word index.')
@@ -70,7 +69,7 @@ def model_config(defaults):
     flags.DEFINE_boolean('use_elmo', defaults.use_elmo, 'Whether to use ELMo embeddings.')
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
-    flags.DEFINE_integer('filters', defaults.filters, 'Number of filters on all layers.')
+    flags.DEFINE_integer('hidden_size', defaults.hidden_size, 'Number of hidden units to use.')
     flags.DEFINE_integer('heads', defaults.heads, 'Number of heads used for multi-head attention.')
     flags.DEFINE_integer('embed_encoder_blocks', defaults.embed_encoder_blocks,
                          'Number of blocks in the embedding_encoder.')

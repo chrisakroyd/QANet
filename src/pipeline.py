@@ -154,7 +154,7 @@ def create_pipeline(params, tables, record_paths, training=True):
                            num_parallel_calls=params.parallel_calls)
 
     if params.bucket and training:
-        buckets = create_buckets(params.bucket_size, params.context_limit, params.bucket_ranges)
+        buckets = create_buckets(params.bucket_size, params.max_tokens, params.bucket_ranges)
 
         def length_fn(fields):
             return fields['context_length']

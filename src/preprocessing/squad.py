@@ -28,14 +28,14 @@ def fit_and_extract(data_set, tokenizer, params):
             Contexts, Queries and the tokenizer.
     """
     contexts, queries = {}, {}
-    context_id, answer_id, skipped, total = 1, 1, 0, 0
+    context_id, answer_id, total = 1, 1, 0
 
     for data in tqdm(data_set['data']):
         for question_answer in data['paragraphs']:
             context_clean = prepro.clean(question_answer['context'])
             # Fit the tokenizer on the cleaned version of the context.
             context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
-            if len(context_tokens) > params.context_limit:
+            if len(context_tokens) > params.max_tokens:
                 continue
             spans = convert_idx(context_clean, context_tokens)
 
@@ -43,10 +43,6 @@ def fit_and_extract(data_set, tokenizer, params):
                 query_clean = prepro.clean(qa['question'])
                 query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
                 total += 1
-
-                if len(query_tokens) > params.query_limit:
-                    skipped += 1
-                    continue
                 answer_starts, answer_ends, answer_texts = [], [], []
 
                 for answer in qa['answers']:
@@ -94,7 +90,7 @@ def fit_and_extract(data_set, tokenizer, params):
 
             context_id += 1
 
-    assert len(queries) == (total - skipped)
+    assert len(queries) == total
 
     return contexts, queries, tokenizer
 
