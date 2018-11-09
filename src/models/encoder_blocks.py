@@ -65,6 +65,8 @@ class EncoderBlock(tf.keras.Model):
                                                       dropout=dropout,
                                                       name='feed_forward_%d' % self.feed_forward_id)
 
+        self.output_normalization = layers.LayerNorm()
+
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
             Args:
@@ -77,6 +79,7 @@ class EncoderBlock(tf.keras.Model):
             x = conv(x, training=training, mask=mask)
         x = self.self_attention(x, training=training, mask=mask)
         x = self.feed_forward(x, training=training, mask=mask)
+        x = self.output_normalization(x)
         return x
 
 

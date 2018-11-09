@@ -185,10 +185,10 @@ def process(params):
     write_as_tf_record(train_path, train_contexts, train_answers)
     write_as_tf_record(dev_path, dev_contexts, dev_answers)
 
-    train_contexts = util.remove_keys(train_contexts, ['context_tokens', 'context_length'])
-    dev_contexts = util.remove_keys(dev_contexts, ['context_tokens', 'context_length'])
-    train_answers = util.remove_keys(train_answers, ['query_tokens', 'query_length'])
-    dev_answers = util.remove_keys(dev_answers, ['query_tokens', 'query_length'])
+    train_contexts = util.remove_keys(train_contexts, ['context_tokens'])
+    dev_contexts = util.remove_keys(dev_contexts, ['context_tokens'])
+    train_answers = util.remove_keys(train_answers, ['query_tokens'])
+    dev_answers = util.remove_keys(dev_answers, ['query_tokens'])
 
     # Save the generated data
     util.save_json(train_contexts_path, train_contexts)

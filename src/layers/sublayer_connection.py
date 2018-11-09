@@ -54,6 +54,7 @@ class SublayerConnection(Layer):
                 mask: A boolean mask tensor.
         """
         x = self.layer_norm(x)
+
         if self.given_layer.supports_masking:
             x = self.given_layer(x, training, mask)
         else:
