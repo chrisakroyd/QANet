@@ -2,18 +2,23 @@ import tensorflow as tf
 import warnings
 
 
-def ema_ops(train_op, decay):
+def ema_ops(train_op, decay, variables=None):
     """ Adds ops to calculate and maintain Exponential moving average over all trainable weights.
         Args:
             train_op: Result of optimizer.minimize or optimizer.apply_gradients
             decay: Exponential decay rate.
+            variables: List of variables to maintain average over.
         Returns:
             Modified train_op and ema object.
     """
+    if variables is None:
+        variables = tf.trainable_variables()
+
     with tf.name_scope('ema_ops'):
-        ema = tf.train.ExponentialMovingAverage(decay)
+        ema = tf.train.ExponentialMovingAverage(decay=decay)
+        maintain_avg_op = ema.apply(variables)
         with tf.control_dependencies([train_op]):
-            train_op = ema.apply(tf.trainable_variables() + tf.moving_average_variables())
+            train_op = tf.group(maintain_avg_op)
             return train_op, ema
 
 
