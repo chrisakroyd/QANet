@@ -1,3 +1,4 @@
+import random
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
@@ -49,6 +50,9 @@ def fit_and_extract(data_set, tokenizer, params):
                     answer_text = prepro.clean(answer['text'])
                     answer_start = answer['answer_start']
                     answer_end = answer_start + len(answer_text)
+
+                    assert context_clean.find(answer_text) >= 0
+
                     answer_texts.append(answer_text)
                     answer_span = []
 
@@ -96,7 +100,7 @@ def fit_and_extract(data_set, tokenizer, params):
 
 
 def write_as_tf_record(path, contexts, queries):
-    """ Writes out the context + queries as a .tfrecord file.
+    """ Shuffles the queries and writes out the context + queries as a .tfrecord file.
 
         Args:
             path: Output path for the .tfrecord file.
@@ -104,7 +108,9 @@ def write_as_tf_record(path, contexts, queries):
             queries: Dict mapping of answer_id: words, answers, +start/end (Queries output from fit_and_extract)
     """
     records = []
-    for data in queries.values():
+    shuffled = list(queries.values())
+    random.shuffle(shuffled)
+    for data in shuffled:
         context = contexts[data['context_id']]
         encoded_context = [m.encode('utf-8') for m in context['context_tokens']]
         encoded_query = [m.encode('utf-8') for m in data['query_tokens']]

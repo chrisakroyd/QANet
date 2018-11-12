@@ -129,6 +129,8 @@ def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warm
     """
     if global_step is None:
         global_step = tf.train.get_global_step()
+    else:
+        tf.train.assert_global_step(global_step)
 
     learning_rate = get_warmup_scheme(warmup_scheme, learn_rate, warmup_steps, global_step)
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,
