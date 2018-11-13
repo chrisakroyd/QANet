@@ -1,8 +1,11 @@
 import re
 import string
+import unicodedata
 from ftfy import fix_text
 
 # Regexes
+# Treat \t, \n and \r as whitespace despite being control characters.
+whitespace_chars = {' ', '\t', '\n', '\r'}
 articles = re.compile(r'\b(a|an|the)\b')
 apostrophe = re.compile(r"('')")
 apostrophe_like = re.compile(r'(``)')
@@ -19,7 +22,32 @@ def clean(text):
     text = apostrophe.sub('" ', text)
     text = apostrophe_like.sub('" ', text)
     text = text.strip()
-    return text
+
+    text = list(text)
+    # Normalize spaces + remove invalid characters.
+    out_text = []
+    for char in text:
+        if is_invalid(char):
+            continue
+
+        if is_whitespace(char):
+            out_text.append(' ')
+        else:
+            out_text.append(char)
+    return ''.join(out_text)
+
+
+def is_whitespace(char):
+    """ Checks if the unicode character is a form of whitespace """
+    cat = unicodedata.category(char)
+    if char in whitespace_chars or cat == 'Zs':
+        return True
+    return False
+
+
+def is_invalid(char):
+    char_int = ord(char)
+    return char_int == 0 or char_int == 0xfffd
 
 
 def normalize_answer(s):
