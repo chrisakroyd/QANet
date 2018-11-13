@@ -4,7 +4,7 @@ from src import layers
 
 
 class SublayerConnection(Layer):
-    def __init__(self, layer, dropout, sublayer, total_sublayers, dropout_every=2, use_layer_dropout=True, **kwargs):
+    def __init__(self, layer, dropout, sublayer, total_sublayers, dropout_every=1, use_layer_dropout=True, **kwargs):
         """ SublayerConnection
 
             Every sublayer in QANet follows the rough template input -> LayerNorm -> Layer -> Dropout -> residual,

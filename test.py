@@ -27,7 +27,7 @@ def test(sess_config, params):
         placeholders = iterator.get_next()
         qanet_inputs = train_utils.inputs_as_tuple(placeholders)
         _, _, id_tensor = train_utils.labels_as_tuple(placeholders)
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
+        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=False)
 
         sess.run(tf.global_variables_initializer())
         # Restore the moving average version of the learned variables for eval.

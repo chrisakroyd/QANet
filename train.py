@@ -86,8 +86,12 @@ def train(sess_config, params):
                 writer.add_run_metadata(run_metadata, 'step%04d' % global_step)
                 writer.flush()
             else:
+                # @TODO dropout + attn_dropout feed_dict are temp -> Rewrite as tf estimator.
                 answer_id, loss, answer_start, answer_end, _ = sess.run(fetches=train_outputs,
-                                                                        feed_dict={handle: train_handle})
+                                                                        feed_dict={handle: train_handle,
+                                                                                   qanet.dropout: params.dropout,
+                                                                                   qanet.attn_dropout:
+                                                                                       params.attn_dropout})
 
             # Cache the result of the run for train evaluation.
             train_preds.append((answer_id, loss, answer_start, answer_end,))
