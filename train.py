@@ -37,12 +37,14 @@ def train(sess_config, params):
         # This section creates models, gets the output tensors and constructs the train_op. Although messy
         # it is written this way to bring it closer in line to the tf estimator API for easier later development.
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+        is_training = tf.placeholder_with_default(True, shape=())
+
         placeholders = iterator.get_next()
         # Features and labels.
         qanet_inputs = train_utils.inputs_as_tuple(placeholders)
         y_start, y_end, id_tensor = train_utils.labels_as_tuple(placeholders)
 
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
+        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=is_training)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,
@@ -79,7 +81,8 @@ def train(sess_config, params):
                 run_metadata = tf.RunMetadata()
 
                 answer_id, loss, answer_start, answer_end, _ = sess.run(fetches=train_outputs,
-                                                                        feed_dict={handle: train_handle},
+                                                                        feed_dict={handle: train_handle,
+                                                                                   is_training: True},
                                                                         options=run_options,
                                                                         run_metadata=run_metadata)
 
@@ -89,9 +92,7 @@ def train(sess_config, params):
                 # @TODO dropout + attn_dropout feed_dict are temp -> Rewrite as tf estimator.
                 answer_id, loss, answer_start, answer_end, _ = sess.run(fetches=train_outputs,
                                                                         feed_dict={handle: train_handle,
-                                                                                   qanet.dropout: params.dropout,
-                                                                                   qanet.attn_dropout:
-                                                                                       params.attn_dropout})
+                                                                                   is_training: True})
 
             # Cache the result of the run for train evaluation.
             train_preds.append((answer_id, loss, answer_start, answer_end,))
@@ -102,7 +103,8 @@ def train(sess_config, params):
                 # +1 for uneven batch values, +1 for the range.
                 for _ in tqdm(range(1, (len(val_answers) // params.batch_size + 1) + 1)):
                     answer_id, loss, answer_start, answer_end = sess.run(fetches=val_outputs,
-                                                                         feed_dict={handle: val_handle})
+                                                                         feed_dict={handle: val_handle,
+                                                                                    is_training: False})
                     val_preds.append((answer_id, loss, answer_start, answer_end,))
                 # Evaluate the predictions and reset the train result list for next eval period.
                 metrics.evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer,

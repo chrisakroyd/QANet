@@ -40,8 +40,8 @@ class SublayerConnection(Layer):
         """
         residual = x
 
-        if training and self.use_layer_dropout:
-            pred = tf.random_uniform([]) < self.Pl
+        if self.use_layer_dropout:
+            pred = tf.logical_and(tf.random_uniform([]) < self.Pl, training)
             return tf.cond(pred, lambda: residual, lambda: self.wrap_layer(x, training, mask) + residual)
         else:
             return self.wrap_layer(x, training, mask) + residual

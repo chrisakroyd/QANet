@@ -6,21 +6,18 @@ class QANet(tf.keras.Model):
     def __init__(self, embedding_matrix, char_matrix, trainable_matrix, params):
         super(QANet, self).__init__()
         self.global_step = tf.train.get_or_create_global_step()
-        # @TODO These variables are temp and should be purged.
-        self.dropout = tf.placeholder_with_default(0.0, (), name='dropout')
-        self.attn_dropout = tf.placeholder_with_default(0.0, (), name='dropout')
 
         self.embedding = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                word_dim=params.embed_dim, char_dim=params.char_dim,
-                                               word_dropout=self.dropout, char_dropout=self.dropout/2)
+                                               word_dropout=params.dropout, char_dropout=params.dropout / 2)
 
         self.embedding_encoder = models.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,
                                                           kernel_size=params.embed_encoder_kernel_width,
                                                           hidden_size=params.hidden_size,
                                                           heads=params.heads,
-                                                          dropout=self.dropout,
-                                                          attn_dropout=self.attn_dropout,
+                                                          dropout=params.dropout,
+                                                          attn_dropout=params.attn_dropout,
                                                           ff_inner_size=params.ff_inner_size,
                                                           name='embedding_encoder')
 
@@ -31,8 +28,8 @@ class QANet(tf.keras.Model):
                                                       kernel_size=params.model_encoder_kernel_width,
                                                       hidden_size=params.hidden_size,
                                                       heads=params.heads,
-                                                      dropout=self.dropout,
-                                                      attn_dropout=self.attn_dropout,
+                                                      dropout=params.dropout,
+                                                      attn_dropout=params.attn_dropout,
                                                       ff_inner_size=params.ff_inner_size,
                                                       name='model_encoder')
 
@@ -51,8 +48,8 @@ class QANet(tf.keras.Model):
         query_mask = layers.create_mask(query_lengths, query_max)
 
         # Embed the query + context
-        context_emb = self.embedding([context_words, context_chars])
-        query_emb = self.embedding([query_words, query_chars])
+        context_emb = self.embedding([context_words, context_chars], training=training)
+        query_emb = self.embedding([query_words, query_chars], training=training)
 
         # Encode the query + context.
         context_enc = self.embedding_encoder(context_emb, training=training, mask=context_mask)
