@@ -35,17 +35,20 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4):
     return dataset
 
 
-def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4):
+def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4, has_labels=True):
     """ Adds a map function to the dataset that maps strings to indices.
 
         To save memory + hard drive space we store contexts and queries as tokenised strings. Therefore we need
         to perform two tasks; Extract characters and map words + chars to an index for the embedding layer.
+
+        @TODO This is a pretty ugly solution to support labelled/unlabelled modes, refactor target?
 
         Args:
             dataset: A `tf.data.Dataset` object.
             tables: A tuple of contrib.lookup tables mapping string words to indices and string characters to indices.
             char_limit: Max number of characters per word.
             num_parallel_calls: An int for how many parallel lookups we perform.
+            has_labels: Include labels in the output dict.
         Returns:
             A `tf.data.Dataset` object.
     """
@@ -65,17 +68,23 @@ def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4):
         context_chars = context_chars[:, :char_limit]
         query_chars = query_chars[:, :char_limit]
 
-        return {
+        out_dict = {
             'context_words': tf.cast(context_words, dtype=tf.int32),
             'context_chars': tf.cast(context_chars, dtype=tf.int32),
             'context_length': tf.cast(fields['context_length'], dtype=tf.int32),
             'query_words': tf.cast(query_words, dtype=tf.int32),
             'query_chars': tf.cast(query_chars, dtype=tf.int32),
             'query_length': tf.cast(fields['query_length'], dtype=tf.int32),
-            'answer_starts': tf.cast(fields['answer_starts'], dtype=tf.int32),
-            'answer_ends': tf.cast(fields['answer_ends'], dtype=tf.int32),
             'answer_id': tf.cast(fields['answer_id'], dtype=tf.int32),
         }
+
+        if has_labels:
+            out_dict.update({
+                'answer_starts': tf.cast(fields['answer_starts'], dtype=tf.int32),
+                'answer_ends': tf.cast(fields['answer_ends'], dtype=tf.int32),
+            })
+
+        return out_dict
 
     dataset = dataset.map(_lookup, num_parallel_calls=num_parallel_calls)
     return dataset
@@ -95,24 +104,34 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
     return bucket_ranges
 
 
-def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16):
+def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True):
     """ Creates a dict of key: shape mappings for padding batches.
+
+        @TODO This is a pretty ugly solution to support labelled/unlabelled modes, refactor target?
+
         Args:
             max_context: Max size of the context, -1 to pad to max within the batch.
             max_query: Max size of the query, -1 to pad to max within the batch.
             max_characters: Max number of characters, -1 to pad to max within the batch.
+            has_labels: Include padded shape for answer_starts and answer_ends.
         Returns:
             A dict mapping of key: shape
     """
-    return {'context_words': [max_context],
-            'context_chars': [max_context, max_characters],
-            'context_length': [],
-            'query_words': [max_query],
-            'query_chars': [max_query, max_characters],
-            'query_length': [],
+    shape_dict = {
+        'context_words': [max_context],
+        'context_chars': [max_context, max_characters],
+        'context_length': [],
+        'query_words': [max_query],
+        'query_chars': [max_query, max_characters],
+        'query_length': [],
+        'answer_id': []}
+
+    if has_labels:
+        shape_dict.update({
             'answer_starts': [],
             'answer_ends': [],
-            'answer_id': []}
+        })
+    return shape_dict
 
 
 def create_lookup_tables(vocabs):
@@ -146,9 +165,10 @@ def create_pipeline(params, tables, record_paths, training=True):
             A `tf.data.Dataset` object and an initializable iterator.
     """
     dataset = tf_record_pipeline(record_paths, params.tf_record_buffer_size, params.parallel_calls)
-    dataset = dataset.cache().repeat()
+    dataset = dataset.cache()
     if training:
         dataset = dataset.shuffle(buffer_size=params.shuffle_buffer_size)
+    dataset = dataset.repeat()
     # Perform word -> index mapping.
     dataset = index_lookup(dataset, tables, char_limit=params.char_limit,
                            num_parallel_calls=params.parallel_calls)
@@ -165,7 +185,6 @@ def create_pipeline(params, tables, record_paths, training=True):
                                                       bucket_boundaries=buckets))
     else:
         padded_shapes = get_padded_shapes(max_characters=params.char_limit)
-
         dataset = dataset.padded_batch(
             batch_size=params.batch_size,
             padded_shapes=padded_shapes,
@@ -175,3 +194,40 @@ def create_pipeline(params, tables, record_paths, training=True):
     dataset = dataset.prefetch(buffer_size=params.max_prefetch)
     iterator = dataset.make_initializable_iterator()
     return dataset, iterator
+
+
+def create_demo_pipeline(params, tables, data):
+    """ Function that creates an input pipeline for demo mode, .
+
+        Output tensors are padded to the max within the batch.
+
+        Args:
+            params: A dictionary of parameters.
+            tables: A tuple of contrib.lookup tables mapping string words to indices and string characters to indices.
+            data: A dictionary containing keys for context_tokens, context_length, query_tokens, query_length and
+                  answer_id.
+        Returns:
+            A `tf.data.Dataset` object and an initializable iterator.
+    """
+    dataset = tf.data.Dataset.from_tensor_slices(dict(data))
+    dataset = index_lookup(dataset, tables, char_limit=params.char_limit,
+                           num_parallel_calls=params.parallel_calls, has_labels=False)
+    padded_shapes = get_padded_shapes(max_characters=params.char_limit, has_labels=False)
+    dataset = dataset.padded_batch(
+        batch_size=1,
+        padded_shapes=padded_shapes,
+        drop_remainder=False
+    )
+    dataset = dataset.prefetch(buffer_size=params.max_prefetch)
+    iterator = dataset.make_initializable_iterator()
+    return dataset, iterator
+
+
+def create_placeholders():
+    return {
+        'context_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string),
+        'context_length': tf.placeholder(shape=(None, ), dtype=tf.int32),
+        'query_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string),
+        'query_length': tf.placeholder(shape=(None, ), dtype=tf.int32),
+        'answer_id': tf.placeholder(shape=(None, ), dtype=tf.int32),
+    }
