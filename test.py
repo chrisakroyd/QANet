@@ -32,11 +32,7 @@ def test(sess_config, params):
 
         sess.run(tf.global_variables_initializer())
         # Restore the moving average version of the learned variables for eval.
-        if 0.0 < params.ema_decay < 1.0:
-            variable_averages = tf.train.ExponentialMovingAverage(0.)
-            saver = tf.train.Saver(variable_averages.variables_to_restore())
-        else:
-            saver = tf.train.Saver()
+        saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
         saver.restore(sess, tf.train.latest_checkpoint(model_dir))
         # Assign the shadow EMA variables to the graph.
         preds = []

@@ -158,8 +158,8 @@ def inputs_as_tuple(placeholders):
         Returns:
             A tuple of input tensors.
     """
-    return placeholders['context_words'], placeholders['context_chars'], placeholders['context_length'], \
-    placeholders['query_words'], placeholders['query_chars'], placeholders['query_length']
+    keys = ['context_words', 'context_chars', 'context_length', 'query_words', 'query_chars', 'query_length']
+    return dict_keys_as_tuple(placeholders, keys)
 
 
 def labels_as_tuple(placeholders):
@@ -169,4 +169,32 @@ def labels_as_tuple(placeholders):
         Returns:
             A tuple of input tensors.
     """
-    return placeholders['answer_starts'], placeholders['answer_ends'], placeholders['answer_id']
+    keys = ['answer_starts', 'answer_ends', 'answer_id']
+    return dict_keys_as_tuple(placeholders, keys)
+
+
+def dict_keys_as_tuple(placeholders, keys=None):
+    """
+        Args:
+            placeholders: A dict of input tensors.
+            keys: List of string keys on the given placeholder dict.
+        Returns:
+            A tuple of input tensors.
+    """
+    if keys is None:
+        raise ValueError('No keys given to dict_keys_as_tuple.')
+    return tuple([placeholders[key] for key in keys])
+
+
+def get_saver(ema_decay=0.0, ema_vars_only=False):
+    """
+        Args:
+            ema_decay: Ema decay value.
+            ema_vars_only: Boolean flag for restoring EMA variables only.
+        Returns:
+            A tuple of input tensors.
+    """
+    if 0.0 < ema_decay < 1.0 and ema_vars_only:
+        variable_averages = tf.train.ExponentialMovingAverage(0.)
+        return tf.train.Saver(variable_averages.variables_to_restore())
+    return tf.train.Saver()
