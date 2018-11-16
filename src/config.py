@@ -34,6 +34,8 @@ def model_config(defaults):
     flags.DEFINE_string('squad_dir', defaults.squad_dir, 'Directory where squad data is saved.')
     flags.DEFINE_string('data_dir', defaults.data_dir,
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
+    flags.DEFINE_string('dist_dir', defaults.dist_dir,
+                        'Out path for demo code.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
     flags.DEFINE_string('out_dir', defaults.out_dir, 'Directory to save the models, logs and answer files.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,

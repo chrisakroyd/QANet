@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import tensorflow as tf
 from src import config, constants, models, pipeline, train_utils, util
@@ -5,8 +6,8 @@ from src import config, constants, models, pipeline, train_utils, util
 
 def demo(sess_config, params):
     # Although bad practice, I don't want to force people to install unnecessary dependencies to run this repo.
-    from flask import Flask, json, request
-    app = Flask(__name__)
+    from flask import Flask, json, request, send_from_directory
+    app = Flask(__name__, static_folder=params.dist_dir)
 
     _, _, model_dir, _ = util.train_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
@@ -74,6 +75,14 @@ def demo(sess_config, params):
             'endProb': p_end.tolist(),
         }
         return json.dumps([response])
+
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if path != '' and os.path.exists(params.dist_dir + path):
+            return send_from_directory(params.dist_dir, path)
+        else:
+            return send_from_directory(params.dist_dir, 'index.html')
 
     return app
 
