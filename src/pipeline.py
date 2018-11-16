@@ -75,13 +75,13 @@ def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4, has_label
             'query_words': tf.cast(query_words, dtype=tf.int32),
             'query_chars': tf.cast(query_chars, dtype=tf.int32),
             'query_length': tf.cast(fields['query_length'], dtype=tf.int32),
-            'answer_id': tf.cast(fields['answer_id'], dtype=tf.int32),
         }
 
         if has_labels:
             out_dict.update({
                 'answer_starts': tf.cast(fields['answer_starts'], dtype=tf.int32),
                 'answer_ends': tf.cast(fields['answer_ends'], dtype=tf.int32),
+                'answer_id': tf.cast(fields['answer_id'], dtype=tf.int32),
             })
 
         return out_dict
@@ -123,13 +123,13 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
         'context_length': [],
         'query_words': [max_query],
         'query_chars': [max_query, max_characters],
-        'query_length': [],
-        'answer_id': []}
+        'query_length': []}
 
     if has_labels:
         shape_dict.update({
             'answer_starts': [],
             'answer_ends': [],
+            'answer_id': []
         })
     return shape_dict
 
@@ -225,9 +225,8 @@ def create_demo_pipeline(params, tables, data):
 
 def create_placeholders():
     return {
-        'context_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string),
-        'context_length': tf.placeholder(shape=(None, ), dtype=tf.int32),
-        'query_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string),
-        'query_length': tf.placeholder(shape=(None, ), dtype=tf.int32),
-        'answer_id': tf.placeholder(shape=(None, ), dtype=tf.int32),
+        'context_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string, name='context_tokens'),
+        'context_length': tf.placeholder(shape=(None, ), dtype=tf.int32, name='context_length'),
+        'query_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string, name='query_tokens'),
+        'query_length': tf.placeholder(shape=(None, ), dtype=tf.int32, name='query_length')
     }

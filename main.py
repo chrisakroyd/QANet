@@ -16,7 +16,8 @@ def main(config, flags):
     elif mode == 'test':
         test(config, hparams)
     elif mode == 'demo':
-        demo(config, hparams)
+        app = demo(config, hparams)
+        app.run(port=5000)
     else:
         print('Unknown Mode.')
         exit(0)
