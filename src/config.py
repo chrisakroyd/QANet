@@ -25,7 +25,6 @@ def model_config(defaults):
     flags = tf.flags
     # Mode to run in, e.g. train, test.
     flags.DEFINE_string('mode', defaults.mode, 'Train/test/demo.')
-    flags.DEFINE_string('demo_mode', defaults.demo_mode, 'Whether to run the barebones or fancy react version.')
     flags.DEFINE_string('dataset', defaults.dataset, 'Which dataset to use, e.g. Squad or MS Marco.')
     # Adds a name for this run.
     flags.DEFINE_string('run_name', defaults.run_name, 'Name for this run of training.')

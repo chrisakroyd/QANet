@@ -41,7 +41,7 @@ def demo(sess_config, params):
     saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
     saver.restore(sess, tf.train.latest_checkpoint(model_dir))
 
-    @app.route('/predict/text', methods=['POST'])
+    @app.route('/qanet/predict', methods=['POST'])
     def process():
         data = request.get_json()
         context = data['context']

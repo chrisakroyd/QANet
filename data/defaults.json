@@ -1,6 +1,5 @@
 {
   "mode": "train",
-  "demo_mode": "fancy_mode",
   "dataset": "squad",
   "run_name": "cakroyd_qanet",
   "embeddings_path": "./data/embeddings/glove.840B.300d.txt",
