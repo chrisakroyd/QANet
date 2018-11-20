@@ -1,4 +1,3 @@
-const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const path = require('path');
 
@@ -21,7 +20,8 @@ module.exports = {
     loaders: [
     ],
     rules: [
-      { test: /\.(js|jsx)$/,
+      {
+        test: /\.(js|jsx)$/,
         loader: 'babel-loader',
         exclude: /node_modules/,
         options: {
@@ -48,8 +48,5 @@ module.exports = {
   },
   plugins: [
     htmlWebpackPluginConfig,
-    new CopyWebpackPlugin([
-      { from: 'src/frontend/resources/images', to: `${outputDirectory}/images` }, // Should copy all images used in the actual site.
-    ]),
   ],
 };

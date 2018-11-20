@@ -1,0 +1,30 @@
+.search-bar {
+  height: 56px;
+  width: 720px;
+  margin: 30px;
+  border: 1px solid rgba(27, 23, 28, 0.6);
+  border-radius: 30px;
+  display: flex;
+
+
+  .search-input-container {
+    display:inline-flex;
+    height: 44px;
+    width: 90%;
+    padding: 6px 0 6px 16px;
+
+    input {
+      height: 44px;
+      width:100%;
+      font-size: 18px;
+      border: 0;
+      padding: 0;
+      font-family: 'Roboto', sans-serif;
+      font-weight: 300;
+
+      &:focus {
+        outline:none;
+      }
+    }
+  }
+}
