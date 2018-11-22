@@ -1,8 +1,8 @@
 import { connect } from 'react-redux';
 import { withRouter } from 'react-router-dom';
+import { push } from 'react-router-redux';
 
 import { SET_CONTEXT_TEXT, SET_CONTEXT_URL_TEXT, SET_QUERY_TEXT } from '../constants/actions';
-// Actions
 import { getPrediction } from '../actions/compositeActions';
 import { setInputText, setURLFlag } from '../actions/textActions';
 import Demo from '../components/Demo/Demo';
@@ -18,6 +18,10 @@ const mapDispatchToProps = dispatch => ({
   predict: () => {
     console.log('predict');
     dispatch(getPrediction());
+    dispatch(push('/results'));
+  },
+  returnHome: () => {
+    dispatch(push('/'));
   },
   setQueryText: (text) => {
     dispatch(setInputText(text, SET_QUERY_TEXT));
