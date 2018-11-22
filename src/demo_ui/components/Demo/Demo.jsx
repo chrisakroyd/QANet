@@ -1,13 +1,9 @@
 import React from 'react';
+import { Route } from 'react-router';
 import PropTypes from 'prop-types';
 
-import ContextOptions from './ContextOptions/ContextOptions';
 import Introduction from './Introduction/Introduction';
-import InputBar from './InputBar/InputBar';
-import InputBox from './InputBox/InputBox';
-import PredictButton from './PredictButton/PredictButton';
-import WordHeat from './WordHeat/WordHeat';
-import Step from './Step/Step';
+import InputPage from '../Inputs/InputPage';
 import predictShape from './../../prop-shapes/predictShape';
 import textShape from './../../prop-shapes/textShape';
 // import { predictShape, textShape } from './../../prop-shapes';
@@ -15,35 +11,21 @@ import './demo.scss';
 
 const Demo = ({
   predict, setQueryText, setContextText, setContextUrlText, setContextUrlFlag, text, predictions,
-}) => {
-  let contextInput;
-  if (text.loadContextFromUrl) {
-    contextInput = <InputBar placeholder="URL" value={text.contextUrl} onKeyPress={setContextUrlText} />;
-  } else {
-    contextInput = <InputBox placeholder="Context" value={text.context} onKeyPress={setContextText} />;
-  }
-
-  return (
-    <div className="demo-body">
-      <div className="section">
-        <Introduction />
-      </div>
-      <div className="section">
-        <Step number={1} label="Ask a question" />
-        <InputBar placeholder="Question" value={text.query} onKeyPress={setQueryText} />
-      </div>
-      <div className="section">
-        <Step number={2} label="Enter a context" />
-        <ContextOptions onClick={setContextUrlFlag} useUrl={text.loadContextFromUrl} />
-        {contextInput}
-      </div>
-      <div className="section">
-        <Step number={3} label="Get an Answer" />
-        <PredictButton onEnter={predict} />
-      </div>
+}) => (
+  <div className="demo-body">
+    <div className="section">
+      <Introduction />
     </div>
-  );
-};
+    <InputPage
+      predict={predict}
+      setQueryText={setQueryText}
+      setContextText={setContextText}
+      setContextUrlText={setContextUrlText}
+      setContextUrlFlag={setContextUrlFlag}
+      text={text}
+    />
+  </div>
+);
 
 Demo.propTypes = {
   // Functions
