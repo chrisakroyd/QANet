@@ -4,7 +4,7 @@ import { withRouter } from 'react-router-dom';
 import { SET_CONTEXT_TEXT, SET_QUERY_TEXT } from '../constants/actions';
 // Actions
 import { getPrediction } from '../actions/compositeActions';
-import { setInputText } from '../actions/textActions';
+import { setInputText, setURLFlag } from '../actions/textActions';
 import Demo from '../components/Demo/Demo';
 
 
@@ -25,8 +25,8 @@ const mapDispatchToProps = dispatch => ({
   setContextText: (text) => {
     dispatch(setInputText(text, SET_CONTEXT_TEXT));
   },
-  setContextUrl: (text) => {
-    dispatch(setInputText(text, SET_CONTEXT_TEXT));
+  setContextUrl: (flag) => {
+    dispatch(setURLFlag(flag));
   },
 });
 
