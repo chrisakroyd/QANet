@@ -9,8 +9,8 @@ class InputBox extends React.Component {
       <div className="input-box">
         <textarea
           className="text-area"
-          value={this.props.value}
           onChange={() => this.props.onKeyPress(this.textInput.value)}
+          value={this.props.value}
           ref={(input) => { this.textInput = input; }}
         />
       </div>

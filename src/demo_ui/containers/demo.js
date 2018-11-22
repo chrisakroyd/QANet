@@ -1,7 +1,7 @@
 import { connect } from 'react-redux';
 import { withRouter } from 'react-router-dom';
 
-import { SET_CONTEXT_TEXT, SET_QUERY_TEXT } from '../constants/actions';
+import { SET_CONTEXT_TEXT, SET_CONTEXT_URL_TEXT, SET_QUERY_TEXT } from '../constants/actions';
 // Actions
 import { getPrediction } from '../actions/compositeActions';
 import { setInputText, setURLFlag } from '../actions/textActions';
@@ -25,7 +25,10 @@ const mapDispatchToProps = dispatch => ({
   setContextText: (text) => {
     dispatch(setInputText(text, SET_CONTEXT_TEXT));
   },
-  setContextUrl: (flag) => {
+  setContextUrlText: (text) => {
+    dispatch(setInputText(text, SET_CONTEXT_URL_TEXT));
+  },
+  setContextUrlFlag: (flag) => {
     dispatch(setURLFlag(flag));
   },
 });

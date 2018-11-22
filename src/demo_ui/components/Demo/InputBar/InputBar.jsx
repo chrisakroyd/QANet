@@ -3,18 +3,14 @@ import PropTypes from 'prop-types';
 
 import './input-bar.scss';
 
-class SearchBar extends React.Component {
+class InputBar extends React.Component {
   render() {
-    const searchPlaceholder = 'What textShape do you want to analyse?';
-
     return (
-      <div className="search-bar">
-        <div className="search-input-container">
+      <div className="input-bar">
+        <div className="input-container">
           <input
-            className="search-input"
             onChange={() => this.props.onKeyPress(this.textInput.value)}
-            onKeyPress={(event) => { if (event.key === 'Enter') this.props.onEnter(); }}
-            placeholder={searchPlaceholder}
+            placeholder={this.props.placeholder}
             value={this.props.value}
             ref={(input) => { this.textInput = input; }}
           />
@@ -24,10 +20,10 @@ class SearchBar extends React.Component {
   }
 }
 
-SearchBar.propTypes = {
-  onEnter: PropTypes.func.isRequired,
-  value: PropTypes.string.isRequired,
+InputBar.propTypes = {
   onKeyPress: PropTypes.func.isRequired,
+  placeholder: PropTypes.string.isRequired,
+  value: PropTypes.string.isRequired,
 };
 
-export default SearchBar;
+export default InputBar;

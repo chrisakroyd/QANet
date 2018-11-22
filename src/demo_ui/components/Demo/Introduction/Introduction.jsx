@@ -8,7 +8,7 @@ const Introduction = () => (
     <p>
       This is a demo of the machine-comprehension network QANet that extracts an answer
       from an arbitrary section of english language text. Due to how the network is trained,
-      it is expected that a correct answer exists within this text.
+      we expect a correct answer exists within the text.
     </p>
   </div>
 );

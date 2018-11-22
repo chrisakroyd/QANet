@@ -2,7 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import ContextOptions from './ContextOptions/ContextOptions';
-import Introduction from './Introduction/Introduction'
+import Introduction from './Introduction/Introduction';
 import InputBar from './InputBar/InputBar';
 import InputBox from './InputBox/InputBox';
 import PredictButton from './PredictButton/PredictButton';
@@ -14,8 +14,15 @@ import textShape from './../../prop-shapes/textShape';
 import './demo.scss';
 
 const Demo = ({
-  predict, setQueryText, setContextText, setContextUrl, text, predictions,
+  predict, setQueryText, setContextText, setContextUrlText, setContextUrlFlag, text, predictions,
 }) => {
+  let contextInput;
+  if (text.loadContextFromUrl) {
+    contextInput = <InputBar placeholder="URL" value={text.contextUrl} onKeyPress={setContextUrlText} />;
+  } else {
+    contextInput = <InputBox placeholder="Context" value={text.context} onKeyPress={setContextText} />;
+  }
+
   return (
     <div className="demo-body">
       <div className="section">
@@ -23,24 +30,16 @@ const Demo = ({
       </div>
       <div className="section">
         <Step number={1} label="Ask a question" />
-        <InputBar
-          value={text.query}
-          onKeyPress={setQueryText}
-        />
+        <InputBar placeholder="Question" value={text.query} onKeyPress={setQueryText} />
       </div>
       <div className="section">
         <Step number={2} label="Enter a context" />
-        <ContextOptions onClick={setContextUrl} useUrl={text.loadContextFromUrl} />
-        <InputBox
-          value={text.context}
-          onKeyPress={setContextText}
-        />
+        <ContextOptions onClick={setContextUrlFlag} useUrl={text.loadContextFromUrl} />
+        {contextInput}
       </div>
       <div className="section">
         <Step number={3} label="Get an Answer" />
-        <div className="button-container">
-          <PredictButton onEnter={predict} />
-        </div>
+        <PredictButton onEnter={predict} />
       </div>
     </div>
   );
@@ -51,7 +50,8 @@ Demo.propTypes = {
   predict: PropTypes.func.isRequired,
   setQueryText: PropTypes.func.isRequired,
   setContextText: PropTypes.func.isRequired,
-  setContextUrl: PropTypes.func.isRequired,
+  setContextUrlText: PropTypes.func.isRequired,
+  setContextUrlFlag: PropTypes.func.isRequired,
   // Data
   text: textShape.isRequired,
   predictions: predictShape.isRequired,
