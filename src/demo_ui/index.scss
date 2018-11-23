@@ -13,3 +13,14 @@ body {
 #app-container {
   width: 100%;
 }
+
+.flex-grid {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+
+  .flex-grid-third {
+    width: 32%;
+    display: flex;
+  }
+}

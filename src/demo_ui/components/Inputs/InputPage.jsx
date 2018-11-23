@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 import ContextOptions from './ContextOptions/ContextOptions';
 import InputBar from './InputBar/InputBar';
 import InputBox from './InputBox/InputBox';
-import PredictButton from './PredictButton/PredictButton';
+import Button from '../common/Button';
 import Step from './Step/Step';
 import textShape from '../../prop-shapes/textShape';
 
@@ -31,7 +31,7 @@ const InputPage = ({
       </div>
       <div className="section">
         <Step number={3} label="Get an Answer" />
-        <PredictButton onEnter={predict} />
+        <Button onClick={predict} label="Predict" />
       </div>
     </div>
   );
