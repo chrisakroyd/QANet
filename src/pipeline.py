@@ -214,7 +214,7 @@ def create_demo_pipeline(params, tables, data):
                            num_parallel_calls=params.parallel_calls, has_labels=False)
     padded_shapes = get_padded_shapes(max_characters=params.char_limit, has_labels=False)
     dataset = dataset.padded_batch(
-        batch_size=1,
+        batch_size=32,
         padded_shapes=padded_shapes,
         drop_remainder=False
     )

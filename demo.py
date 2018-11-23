@@ -1,7 +1,7 @@
 import os
 import numpy as np
 import tensorflow as tf
-from src import config, constants, models, pipeline, train_utils, util
+from src import config, constants, demo_utils, models, pipeline, preprocessing as prepro, train_utils, util
 
 
 def demo(sess_config, params):
@@ -44,8 +44,8 @@ def demo(sess_config, params):
     @app.route('/qanet/predict', methods=['POST'])
     def process():
         data = request.get_json()
-        context = data['context']
-        query = data['query']
+        context = prepro.clean(data['context'])
+        query = prepro.clean(data['query'])
 
         context_tokens = tokenizer.tokenize(context)
         query_tokens = tokenizer.tokenize(query)
@@ -65,15 +65,9 @@ def demo(sess_config, params):
             # one batch but theories are frequently wrong.
             raise RuntimeError('Iterator out of range, attempted to call too many times. (Please report this error)')
 
-        response = {
-            'contextTokens': context_tokens,
-            'queryTokens': query_tokens,
-            'answerTexts': 'NULL',  # @TODO Add in answer text extraction.
-            'answerStarts': answer_start.tolist(),
-            'answerEnds': answer_end.tolist(),
-            'startProb': p_start.tolist(),
-            'endProb': p_end.tolist(),
-        }
+        response = demo_utils.get_predict_response(context_tokens, query_tokens, answer_start,
+                                                   answer_end, p_start, p_end)
+
         return json.dumps([response])
 
     @app.route('/', defaults={'path': ''})
