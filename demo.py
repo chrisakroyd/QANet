@@ -7,7 +7,20 @@ from src import config, constants, demo_utils, models, pipeline, preprocessing a
 def demo(sess_config, params):
     # Although bad practice, I don't want to force people to install unnecessary dependencies to run this repo.
     from flask import Flask, json, request, send_from_directory
+
+    # TODO This is a mess and shouldn't be here but is neccessary for demo_ui development.
+    # Comes from https://gist.github.com/blixt/54d0a8bf9f64ce2ec6b8
+    def add_cors_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        if request.method == 'OPTIONS':
+            response.headers['Access-Control-Allow-Methods'] = 'DELETE, GET, POST, PUT'
+            headers = request.headers.get('Access-Control-Request-Headers')
+            if headers:
+                response.headers['Access-Control-Allow-Headers'] = headers
+        return response
+
     app = Flask(__name__, static_folder=params.dist_dir)
+    app.after_request(add_cors_headers)
 
     _, _, model_dir, _ = util.train_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
