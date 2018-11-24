@@ -11,7 +11,7 @@ export function getPrediction() {
 
     dispatch(predict());
     // return axios.post(`${config.siteUrl}/api/v1/tweets/predict`, {textShape: ''})
-    return axios.post(`http://localhost:5000'/qanet/predict'`, { context: text.context, query: text.query })
+    return axios.post(`http://localhost:5000/qanet/predict`, { context: text.context, query: text.query })
       .then(res => dispatch(predictSuccess(res.data)))
       .catch(err => dispatch(predictFailure(err)));
   };

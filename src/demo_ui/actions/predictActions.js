@@ -11,7 +11,8 @@ export function predict() {
 export function predictSuccess(data) {
   return {
     type: PREDICT_SUCCESS,
-    data,
+    numPredictions: data.numPredictions,
+    data: data.data,
   };
 }
 

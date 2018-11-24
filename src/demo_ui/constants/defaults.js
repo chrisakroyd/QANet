@@ -9,15 +9,8 @@ const text = {
 
 const predictions = {
   loading: false,
-  query: '',
-  numAnswers: 0,
-  contextTokens: [],
-  queryTokens: [],
-  answerTexts: [],
-  answerStarts: [],
-  answerEnds: [],
-  startProb: [],
-  endProb: [],
+  numPredictions: 0,
+  data: [],
   errorCode: -1,
 };
 
