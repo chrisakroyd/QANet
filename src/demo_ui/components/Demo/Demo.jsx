@@ -38,6 +38,7 @@ const Demo = ({
       render={() => (
         <ResultPage
           goBack={returnHome}
+          query={text.query}
           predictions={predictions}
         />
       )}

@@ -16,7 +16,6 @@ const mapStateToProps = state =>
 
 const mapDispatchToProps = dispatch => ({
   predict: () => {
-    console.log('predict');
     dispatch(getPrediction());
     dispatch(push('/results'));
   },

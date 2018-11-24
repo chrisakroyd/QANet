@@ -6,9 +6,9 @@ const Introduction = () => (
     <h2>QANet - Demo</h2>
     <h3>What is this thing?</h3>
     <p>
-      This is a demo of the machine-comprehension network QANet that extracts an answer
-      from an arbitrary section of english language text. Due to how the network is trained,
-      we expect a correct answer exists within the text.
+      This is a demo of the Machine Comprehension network QANet that answers natural language
+      questions by pointing to the start and end words of an answer span from a section
+      of relevant english language text.
     </p>
   </div>
 );
