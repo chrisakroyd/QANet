@@ -5,17 +5,20 @@ const predictions = (state = {}, action) => {
     case PREDICT:
       return Object.assign({}, state, {
         loading: true,
+        error: null,
       });
     case PREDICT_SUCCESS:
       return Object.assign({}, state, {
         loading: false,
+        bestAnswer: action.bestAnswer,
         numPredictions: action.numPredictions,
         data: action.data,
+        error: null,
       });
     case PREDICT_FAILURE:
       return Object.assign({}, state, {
         loading: false,
-        errorCode: action.errorCode,
+        error: action.errorCode,
       });
     default:
       return state;

@@ -29,12 +29,12 @@ const text = (state = {}, action) => {
       return Object.assign({}, state, {
         loading: false,
         context: action.text,
-        errorCode: -1,
+        error: null,
       });
     case LOAD_TEXT_FAILURE:
       return Object.assign({}, state, {
         loading: false,
-        errorCode: action.errorCode,
+        error: action.error,
       });
     default:
       return state;

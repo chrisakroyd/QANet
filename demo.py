@@ -33,7 +33,8 @@ def demo(sess_config, params):
                                char_limit=params.char_limit,
                                word_index=word_index,
                                char_index=char_index,
-                               trainable_words=params.trainable_words)
+                               trainable_words=params.trainable_words,
+                               filters=None)
 
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
@@ -81,7 +82,7 @@ def demo(sess_config, params):
         response = demo_utils.get_predict_response(context_tokens, query_tokens, answer_start,
                                                    answer_end, p_start, p_end)
 
-        return json.dumps([response])
+        return json.dumps(response)
 
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')

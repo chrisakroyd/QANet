@@ -6,5 +6,4 @@ export default PropTypes.shape({
   query: PropTypes.string.isRequired,
   context: PropTypes.string.isRequired,
   contextUrl: PropTypes.string.isRequired,
-  errorCode: PropTypes.number.isRequired,
 });

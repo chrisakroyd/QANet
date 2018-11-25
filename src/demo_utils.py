@@ -47,14 +47,16 @@ def get_predict_response(context_tokens, query_tokens, answer_starts, answer_end
         data.append({
             'contextTokens': c_tokens,
             'queryTokens': q_tokens,
-            'answerTexts': ans_txts,
-            'answerStarts': ans_starts,
-            'answerEnds': ans_ends,
+            'answerText': ans_txts[-1],
+            'answerStart': ans_starts[-1],
+            'answerEnd': ans_ends[-1],
             'startProb': p_start,
             'endProb': p_end,
         })
 
     return {
         'numPredictions': len(p_starts),
+        # TODO: Revist this to grab the multiplied prob from the prediction matrix (P(start) * P(end)).
+        'bestAnswer': answer_texts[0][-1],
         'data': data,
     }

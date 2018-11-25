@@ -30,9 +30,9 @@ export function loadUrlSuccess(data) {
   };
 }
 
-export function loadUrlFailure(errorCode) {
+export function loadUrlFailure(error) {
   return {
     type: LOAD_TEXT_FAILURE,
-    errorCode,
+    error,
   };
 }

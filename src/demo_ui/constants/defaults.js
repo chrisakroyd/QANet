@@ -4,14 +4,15 @@ const text = {
   query: '',
   context: '',
   contextUrl: '',
-  errorCode: -1,
+  error: null,
 };
 
 const predictions = {
   loading: false,
   numPredictions: 0,
+  bestAnswer: '',
   data: [],
-  errorCode: -1,
+  error: null,
 };
 
 export {

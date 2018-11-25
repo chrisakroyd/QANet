@@ -12,13 +12,14 @@ export function predictSuccess(data) {
   return {
     type: PREDICT_SUCCESS,
     numPredictions: data.numPredictions,
+    bestAnswer: data.bestAnswer,
     data: data.data,
   };
 }
 
-export function predictFailure(errorCode) {
+export function predictFailure(error) {
   return {
     type: PREDICT_FAILURE,
-    errorCode,
+    error,
   };
 }
