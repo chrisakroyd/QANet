@@ -1,47 +1,61 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import classNames from 'classnames';
 import shortid from 'shortid';
 
-import * as d3 from 'd3';
+import { interpolateHcl } from 'd3';
+
 import './word-heat.scss';
 
-const highColour = '#ff6d77';
-// const lowColour = '#fe9f60';
-const lowColour = '#f2e5f1';
-
-const interpolate = d3.interpolateHcl(lowColour, highColour);
+const highColour = '#5fcf80';
+const lowColour = '#fbfefc';
+const interpolate = interpolateHcl(lowColour, highColour);
+// const interpolate = d3.interpolateHcl(lowColour, highColour);
 
 class WordHeat extends React.Component {
   generateWordComponents() {
-    const splitWords = this.props.words.split(' ');
-    const scores = this.props.scores;
+    const {
+      words, startProb, endProb, answerStart, answerEnd,
+    } = this.props;
+    return words.map((word, i) => {
+      const wordClass = classNames('heat-word', { 'answer-segment': i >= answerStart && i <= answerEnd });
+      let score;
 
-    return splitWords.map((word, i) =>
-      (
-        <li
+      if (startProb[i] > endProb[i]) {
+        score = startProb[i];
+      } else {
+        score = endProb[i];
+      }
+
+      return (
+        <div
           key={shortid.generate()}
-          className="heat-word"
-          style={({ backgroundColor: interpolate(scores[i] * 15) })}
+          className={wordClass}
+          style={({ backgroundColor: interpolate(score) })}
         >
           {word}
-        </li>));
+        </div>);
+    });
   }
 
 
   render() {
     return (
       <div className="word-heat">
-        <ul className="heat-word-list">
+        <div className="heat-word-list">
           {this.generateWordComponents()}
-        </ul>
+        </div>
       </div>
     );
   }
 }
 
 WordHeat.propTypes = {
-  words: PropTypes.string.isRequired,
-  scores: PropTypes.arrayOf(PropTypes.number).isRequired,
+  words: PropTypes.arrayOf(PropTypes.string).isRequired,
+  startProb: PropTypes.arrayOf(PropTypes.number).isRequired,
+  endProb: PropTypes.arrayOf(PropTypes.number).isRequired,
+  answerStart: PropTypes.number.isRequired,
+  answerEnd: PropTypes.number.isRequired,
 };
 
 export default WordHeat;

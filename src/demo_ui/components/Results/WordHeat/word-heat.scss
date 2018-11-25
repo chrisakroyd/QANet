@@ -1,26 +1,20 @@
 .word-heat {
-  margin: 30px 0 10px 0;
-  p {
-    margin: 0;
-  }
+  margin-top: 30px;
 
   .heat-word-list {
     align-items: flex-end;
     display: flex;
     flex-flow: row wrap;
-    margin-bottom: .5rem;
-    padding: 0;
-    list-style: none;
 
     .heat-word {
-      margin: 0 .4rem 1rem 0;
-      position: relative;
-      text-align: center;
-      transition: opacity .15s ease-in-out;
+      margin: 0 0.2rem 0.1rem 0;
+      border: 1px solid rgba(232, 236, 241, 0.75);
       border-radius: 4px;
-      white-space: nowrap;
-      padding: .2rem .5rem;
-      color: white;
+      padding: .1rem .3rem;
+
+      &.answer-segment {
+        font-weight: bold;
+      }
     }
   }
 }
