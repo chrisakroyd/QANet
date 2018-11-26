@@ -14,13 +14,17 @@ const InputPage = ({
 }) => (
   <div className="input-page">
     <div className="section">
-      <Step number={1} label="Ask a question" />
-      <InputBar placeholder="Question" value={text.query} onKeyPress={setQueryText} />
+      <Step number={1} label="Enter a context" />
+      <ContextOptions
+        enterTextFunc={enterText}
+        exampleFunc={loadExample}
+        loadExample={text.loadExample}
+      />
+      <InputBox placeholder="Context" value={text.context} onKeyPress={setContextText} />
     </div>
     <div className="section">
-      <Step number={2} label="Enter a context" />
-      <ContextOptions enterTextFunc={enterText} exampleFunc={loadExample} loadExample={text.loadExample} />
-      <InputBox placeholder="Context" value={text.context} onKeyPress={setContextText} />
+      <Step number={2} label="Ask a question" />
+      <InputBar placeholder="Question" value={text.query} onKeyPress={setQueryText} />
     </div>
     <div className="section">
       <Step number={3} label="Get an Answer" />

@@ -32,13 +32,19 @@ const ResultsPage = ({ goBack, query, predictions }) => {
         answerEnd={prediction.answerEnd}
       />));
 
+    const topAnswers = predictions.data.map((prediction, number) => (
+      <div className="answer">
+        <div className="answer-number">{number + 1}</div>
+        <div className="answer-text">{capitalizeFirstLetter(prediction.answerText)}</div>
+      </div>
+    ));
 
     answerContent = (
       <div>
         <div className="section">
-          <div className="header-text">Best Answer</div>
-          <div className="answer-container">
-            <p>{capitalizeFirstLetter(predictions.bestAnswer)}</p>
+          <div className="header-text">Top Answers</div>
+          <div className="answers-container">
+            {topAnswers}
           </div>
         </div>
         <div className="section">
@@ -59,12 +65,14 @@ const ResultsPage = ({ goBack, query, predictions }) => {
           <div className="flex-grid-third">
             <BackButton onClick={goBack} />
           </div>
-          <div className="flex-grid-third header-text">Your Question</div>
+          <div className="flex-grid-third header-text">Results</div>
           <div className="flex-grid-third"></div>
         </div>
-        <div className="answer-container">
-          <p>{query}</p>
-        </div>
+
+      </div>
+      <div className="section">
+        <div className="header-text">Your question</div>
+        <p>{query}</p>
       </div>
       {answerContent}
     </div>
