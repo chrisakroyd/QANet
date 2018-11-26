@@ -6,18 +6,18 @@ from demo import demo
 
 
 def main(config, flags):
-    hparams = flags.FLAGS
-    mode = hparams.mode.lower()
+    params = flags.FLAGS
+    mode = params.mode.lower()
 
     if mode == 'train':
-        train(config, hparams)
+        train(config, params)
     elif mode == 'preprocess':
-        preprocess(hparams)
+        preprocess(params)
     elif mode == 'test':
-        test(config, hparams)
+        test(config, params)
     elif mode == 'demo':
-        app = demo(config, hparams)
-        app.run(port=5000)
+        app = demo(config, params)
+        app.run(port=params.demo_server_port)
     else:
         print('Unknown Mode.')
         exit(0)

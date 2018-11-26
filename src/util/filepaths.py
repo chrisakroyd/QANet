@@ -113,3 +113,8 @@ def tf_record_paths(params, training):
     paths = os.path.join(tf_record_dir, '{name}.tfrecord'.format(name=name))
 
     return paths
+
+
+def examples_path(params):
+    _, data_dir, _, _, _, _ = get_directories(params)
+    return os.path.join(data_dir, constants.FileNames.EXAMPLES.value)

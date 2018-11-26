@@ -37,6 +37,7 @@ def model_config(defaults):
                         'Out path for demo code.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
     flags.DEFINE_string('out_dir', defaults.out_dir, 'Directory to save the models, logs and answer files.')
+    flags.DEFINE_integer('demo_server_port', defaults.demo_server_port, 'Port on which to serve/receive requests.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')
     flags.DEFINE_boolean('runtime_data', defaults.runtime_data,

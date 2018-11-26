@@ -7,6 +7,7 @@
   "data_dir": "./data/processed",
   "dist_dir": "./dist",
   "out_dir": "./models/",
+  "demo_server_port": 5000,
   "embed_dim": 300,
   "char_dim": 200,
   "char_limit": 16,

@@ -4,6 +4,9 @@ import numpy as np
 from tqdm import tqdm
 from src import preprocessing as prepro, util
 
+context_keys_to_remove = ['context_tokens']
+answer_keys_to_remove = ['query_tokens', 'query']
+
 
 def convert_idx(text, tokens):
     current = 0
@@ -73,6 +76,7 @@ def fit_and_extract(data_set, tokenizer, params):
                     'id': qa['id'],
                     'answer_id': answer_id,
                     'context_id': context_id,
+                    'query': query_clean,
                     'query_tokens': query_tokens,
                     'query_length': len(query_tokens),
                     'answers': answer_texts,
@@ -140,15 +144,30 @@ def write_as_tf_record(path, contexts, queries):
             writer.write(record.SerializeToString())
 
 
+def get_examples(contexts, queries, num_examples=1000):
+    shuffled = list(queries.values())
+    random.shuffle(shuffled)
+    shuffled = shuffled[:num_examples]
+    examples = [{'context': contexts[data['context_id']]['context'], 'query': data['query']} for data in shuffled]
+    return examples
+
+
 def process(params):
-    train_path, dev_path = util.raw_data_paths(params)
+    # Create prerequisite directories.
     directories = util.get_directories(params)
     util.make_dirs(directories)
+    # Path to squad
+    train_path, dev_path = util.raw_data_paths(params)
+    # path to save tf_records and a random sample of data.
+    train_record_path = util.tf_record_paths(params, training=True)
+    dev_record_path = util.tf_record_paths(params, training=False)
+    examples_path = util.examples_path(params)
     # Paths for dumping our processed data.
     train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path = util.processed_data_paths(params)
     # Get paths for saving embedding related info.
     word_index_path, trainable_index_path, char_index_path = util.index_paths(params)
     word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params)
+
     # Read the embedding index and create a vocab of words with embeddings.
     print('Loading Embeddings, this may take some time...')
     embedding_index = util.read_embeddings_file(params.embeddings_path)
@@ -186,21 +205,22 @@ def process(params):
     char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim)
 
     print('Saving to TF Records...')
-    train_path = util.tf_record_paths(params, training=True)
-    dev_path = util.tf_record_paths(params, training=False)
-    write_as_tf_record(train_path, train_contexts, train_answers)
-    write_as_tf_record(dev_path, dev_contexts, dev_answers)
+    write_as_tf_record(train_record_path, train_contexts, train_answers)
+    write_as_tf_record(dev_record_path, dev_contexts, dev_answers)
+    examples = get_examples(train_contexts, train_answers)
 
-    train_contexts = util.remove_keys(train_contexts, ['context_tokens'])
-    dev_contexts = util.remove_keys(dev_contexts, ['context_tokens'])
-    train_answers = util.remove_keys(train_answers, ['query_tokens'])
-    dev_answers = util.remove_keys(dev_answers, ['query_tokens'])
+    train_contexts = util.remove_keys(train_contexts, context_keys_to_remove)
+    dev_contexts = util.remove_keys(dev_contexts, context_keys_to_remove)
+    train_answers = util.remove_keys(train_answers, answer_keys_to_remove)
+    dev_answers = util.remove_keys(dev_answers, answer_keys_to_remove)
 
     # Save the generated data
     util.save_json(train_contexts_path, train_contexts)
     util.save_json(train_answers_path, train_answers)
     util.save_json(dev_contexts_path, dev_contexts)
     util.save_json(dev_answers_path, dev_answers)
+    # Save a random sample of the data.
+    util.save_json(examples_path, examples)
     # Save the word index mapping of word:index for both the pre-trained and trainable embeddings.
     util.save_json(word_index_path, word_index)
     util.save_json(char_index_path, char_index)

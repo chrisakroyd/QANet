@@ -54,4 +54,4 @@ def test(sess_config, params):
 
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
-    test(config.gpu_config(), config.model_config(defaults))
+    test(config.gpu_config(), config.model_config(defaults).FLAGS)
