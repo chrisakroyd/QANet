@@ -1,9 +1,8 @@
 const text = {
   loading: false,
-  loadContextFromUrl: false,
+  loadExample: false,
   query: '',
   context: '',
-  contextUrl: '',
   error: null,
 };
 

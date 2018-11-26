@@ -1,30 +1,27 @@
 import axios from 'axios';
 
 import config from '../config';
-import { loadUrl, loadUrlSuccess, loadUrlFailure } from './textActions'
+import { loadExample, loadExampleSuccess, loadExampleFailure } from './textActions';
 import { predict, predictSuccess, predictFailure } from './predictActions';
 
+const demoUrl = `http://localhost:${config.demoPort}`;
 
 export function getPrediction() {
   return (dispatch, getState) => {
     const { text } = getState();
 
     dispatch(predict());
-    // return axios.post(`${config.siteUrl}/api/v1/tweets/predict`, {textShape: ''})
-    return axios.post(`http://localhost:5000/qanet/predict`, { context: text.context, query: text.query })
+    return axios.post(`${demoUrl}/api/v1/qanet/predict`, { context: text.context, query: text.query })
       .then(res => dispatch(predictSuccess(res.data)))
       .catch(err => dispatch(predictFailure(err)));
   };
 }
 
-export function getContextFromUrl() {
-  return (dispatch, getState) => {
-    const { text } = getState();
-
-    dispatch(loadUrl());
-    // return axios.post(`${config.siteUrl}/api/v1/tweets/predict`, {textShape: ''})
-    return axios.post(`http://localhost:5000/text/extract`, { url: text.contextUrl })
-      .then(res => dispatch(loadUrlSuccess(res.data)))
-      .catch(err => dispatch(loadUrlFailure(err)));
+export function getExample() {
+  return (dispatch) => {
+    dispatch(loadExample());
+    return axios.get(`${demoUrl}/api/v1/examples`, { params: { numExamples: 1 } })
+      .then(res => dispatch(loadExampleSuccess(res.data)))
+      .catch(err => dispatch(loadExampleFailure(err)));
   };
 }

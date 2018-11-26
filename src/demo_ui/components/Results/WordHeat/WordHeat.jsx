@@ -10,7 +10,6 @@ import './word-heat.scss';
 const highColour = '#5fcf80';
 const lowColour = '#fbfefc';
 const interpolate = interpolateHcl(lowColour, highColour);
-// const interpolate = d3.interpolateHcl(lowColour, highColour);
 
 class WordHeat extends React.Component {
   generateWordComponents() {

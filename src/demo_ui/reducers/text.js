@@ -1,6 +1,6 @@
 import {
   LOAD_TEXT, LOAD_TEXT_FAILURE, LOAD_TEXT_SUCCESS, SET_CONTEXT_TEXT,
-  SET_CONTEXT_URL_TEXT, SET_QUERY_TEXT, SET_URL_LOAD_FLAG,
+  SET_CONTEXT_URL_TEXT, SET_QUERY_TEXT, ENTER_TEXT_MANUALLY,
 } from '../constants/actions';
 
 const text = (state = {}, action) => {
@@ -13,9 +13,11 @@ const text = (state = {}, action) => {
       return Object.assign({}, state, {
         query: action.text,
       });
-    case SET_URL_LOAD_FLAG:
+    case ENTER_TEXT_MANUALLY:
       return Object.assign({}, state, {
-        loadContextFromUrl: action.loadFromUrl,
+        loadExample: false,
+        context: '',
+        query: '',
       });
     case SET_CONTEXT_URL_TEXT:
       return Object.assign({}, state, {
@@ -24,11 +26,13 @@ const text = (state = {}, action) => {
     case LOAD_TEXT:
       return Object.assign({}, state, {
         loading: true,
+        loadExample: true,
       });
     case LOAD_TEXT_SUCCESS:
       return Object.assign({}, state, {
         loading: false,
-        context: action.text,
+        query: action.query,
+        context: action.context,
         error: null,
       });
     case LOAD_TEXT_FAILURE:

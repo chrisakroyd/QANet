@@ -11,8 +11,8 @@ import textShape from './../../prop-shapes/textShape';
 import './demo.scss';
 
 const Demo = ({
-  predict, returnHome, setQueryText, setContextText,
-  setContextUrlText, setContextUrlFlag, text, predictions,
+  predict, returnHome, setQueryText, setContextText, enterText,
+  loadExample, text, predictions,
 }) => (
   <div className="demo-body">
     <div className="section">
@@ -26,8 +26,8 @@ const Demo = ({
           predict={predict}
           setQueryText={setQueryText}
           setContextText={setContextText}
-          setContextUrlText={setContextUrlText}
-          setContextUrlFlag={setContextUrlFlag}
+          enterText={enterText}
+          loadExample={loadExample}
           text={text}
         />
       )}
@@ -52,8 +52,8 @@ Demo.propTypes = {
   returnHome: PropTypes.func.isRequired,
   setQueryText: PropTypes.func.isRequired,
   setContextText: PropTypes.func.isRequired,
-  setContextUrlText: PropTypes.func.isRequired,
-  setContextUrlFlag: PropTypes.func.isRequired,
+  enterText: PropTypes.func.isRequired,
+  loadExample: PropTypes.func.isRequired,
   // Data
   text: textShape.isRequired,
   predictions: predictShape.isRequired,

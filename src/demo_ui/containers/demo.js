@@ -2,9 +2,9 @@ import { connect } from 'react-redux';
 import { withRouter } from 'react-router-dom';
 import { push } from 'react-router-redux';
 
-import { SET_CONTEXT_TEXT, SET_CONTEXT_URL_TEXT, SET_QUERY_TEXT } from '../constants/actions';
-import { getPrediction } from '../actions/compositeActions';
-import { setInputText, setURLFlag } from '../actions/textActions';
+import { SET_CONTEXT_TEXT, SET_QUERY_TEXT } from '../constants/actions';
+import { getPrediction, getExample } from '../actions/compositeActions';
+import { setInputText, enterTextManually } from '../actions/textActions';
 import Demo from '../components/Demo/Demo';
 
 
@@ -28,11 +28,11 @@ const mapDispatchToProps = dispatch => ({
   setContextText: (text) => {
     dispatch(setInputText(text, SET_CONTEXT_TEXT));
   },
-  setContextUrlText: (text) => {
-    dispatch(setInputText(text, SET_CONTEXT_URL_TEXT));
+  enterText: (flag) => {
+    dispatch(enterTextManually(flag));
   },
-  setContextUrlFlag: (flag) => {
-    dispatch(setURLFlag(flag));
+  loadExample: () => {
+    dispatch(getExample());
   },
 });
 

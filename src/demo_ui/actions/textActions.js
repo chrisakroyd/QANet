@@ -1,6 +1,6 @@
 import {
   LOAD_TEXT, LOAD_TEXT_SUCCESS, LOAD_TEXT_FAILURE,
-  SET_URL_LOAD_FLAG, SET_QUERY_TEXT,
+  ENTER_TEXT_MANUALLY, SET_QUERY_TEXT,
 } from '../constants/actions';
 
 export function setInputText(text, type = SET_QUERY_TEXT) {
@@ -10,27 +10,28 @@ export function setInputText(text, type = SET_QUERY_TEXT) {
   };
 }
 
-export function setURLFlag(flag) {
+export function enterTextManually() {
   return {
-    type: SET_URL_LOAD_FLAG,
-    loadFromUrl: flag,
+    type: ENTER_TEXT_MANUALLY,
   };
 }
 
-export function loadUrl() {
+export function loadExample() {
   return {
     type: LOAD_TEXT,
   };
 }
 
-export function loadUrlSuccess(data) {
+export function loadExampleSuccess(data) {
+  const lastExample = data.data[data.numExamples - 1];
   return {
     type: LOAD_TEXT_SUCCESS,
-    data,
+    query: lastExample.query,
+    context: lastExample.context,
   };
 }
 
-export function loadUrlFailure(error) {
+export function loadExampleFailure(error) {
   return {
     type: LOAD_TEXT_FAILURE,
     error,
