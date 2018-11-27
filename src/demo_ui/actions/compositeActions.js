@@ -6,7 +6,7 @@ import { predict, predictSuccess, predictFailure } from './predictActions';
 
 const demoUrl = `http://localhost:${config.demoPort}`;
 
-export function getPrediction() {
+export function runPrediction() {
   return (dispatch, getState) => {
     const { text } = getState();
 

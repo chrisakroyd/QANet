@@ -5,9 +5,10 @@ import { render } from 'react-dom';
 import { createStore, applyMiddleware, combineReducers } from 'redux';
 import { routerMiddleware, routerReducer } from 'react-router-redux';
 
-import searchApp from './reducers';
+import { getExample } from './actions/compositeActions';
 import Root from './components/Root';
 import { predictions, text } from './constants/defaults';
+import searchApp from './reducers';
 
 import './index.scss';
 
@@ -40,6 +41,8 @@ const store = createStore(
   defaultState,
   middleware,
 );
+
+store.dispatch(getExample());
 
 render(
   <Root store={store} history={history} />,

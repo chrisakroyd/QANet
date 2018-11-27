@@ -3,7 +3,7 @@ import { withRouter } from 'react-router-dom';
 import { push } from 'react-router-redux';
 
 import { SET_CONTEXT_TEXT, SET_QUERY_TEXT } from '../constants/actions';
-import { getPrediction, getExample } from '../actions/compositeActions';
+import { runPrediction, getExample } from '../actions/compositeActions';
 import { setInputText, enterTextManually } from '../actions/textActions';
 import Demo from '../components/Demo/Demo';
 
@@ -16,7 +16,7 @@ const mapStateToProps = state =>
 
 const mapDispatchToProps = dispatch => ({
   predict: () => {
-    dispatch(getPrediction());
+    dispatch(runPrediction());
     dispatch(push('/results'));
   },
   returnHome: () => {

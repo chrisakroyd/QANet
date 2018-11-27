@@ -6,6 +6,7 @@ import { capitalizeFirstLetter, isError } from './../../util';
 
 
 import BackButton from '../common/BackButton';
+import LoadingSpinner from '../common/LoadingSpinner';
 import WordHeat from './WordHeat/WordHeat';
 
 import './results-page.scss';
@@ -20,7 +21,11 @@ const ResultsPage = ({ goBack, query, predictions }) => {
   }
 
   if (predictions.loading) {
-    answerContent = <div>Loading...</div>;
+    answerContent = (
+      <div className="section spinner-container">
+        <LoadingSpinner />
+      </div>
+    );
   } else {
     const pointerHeatmaps = predictions.data.map(prediction => (
       <WordHeat
@@ -33,7 +38,7 @@ const ResultsPage = ({ goBack, query, predictions }) => {
       />));
 
     const topAnswers = predictions.data.map((prediction, number) => (
-      <div className="answer">
+      <div className="answer" key={shortid.generate()}>
         <div className="answer-number">{number + 1}</div>
         <div className="answer-text">{capitalizeFirstLetter(prediction.answerText)}</div>
       </div>
