@@ -4,7 +4,7 @@ import './tooltip.scss';
 
 const ToolTip = ({ tip }) => (
   <div className="tool-tip">
-    <div className="tip" tooltip={tip}>?</div>
+    <div className="step small-step tip" tooltip={tip}>?</div>
   </div>
 );
 

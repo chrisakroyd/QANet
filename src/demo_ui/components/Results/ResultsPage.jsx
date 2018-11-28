@@ -7,6 +7,7 @@ import { pointerPredTip, probDistTip } from './../../constants/tooltips';
 
 import BackButton from '../common/BackButton';
 import LoadingSpinner from '../common/LoadingSpinner';
+import Step from '../common/Step';
 import ToolTip from '../common/ToolTip';
 import WordHeat from './WordHeat/WordHeat';
 
@@ -40,7 +41,7 @@ const ResultsPage = ({ goBack, query, predictions }) => {
 
     const topAnswers = predictions.data.map((prediction, number) => (
       <div className="answer" key={shortid.generate()}>
-        <div className="answer-number">{number + 1}</div>
+        <Step number={number + 1} small />
         <div className="answer-text">{capitalizeFirstLetter(prediction.answerText)}</div>
       </div>
     ));

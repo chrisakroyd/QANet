@@ -6,16 +6,9 @@ $tooltip-color: rgba(0, 0, 0, 0.7);
   margin-left: 10px;
 
   .tip {
-    width: 20px;
-    line-height: 20px;
-    height: 20px;
-    position: relative;
-    vertical-align: middle;
-    text-align: center;
     border: 2px solid grey;
     border-radius: 50%;
     color: grey;
-    font-weight: bold;
     margin-top: 3px;
     cursor: pointer;
 

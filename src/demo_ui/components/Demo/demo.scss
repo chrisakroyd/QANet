@@ -16,23 +16,6 @@ $font-size: 16px;
     font-size: 1.8em;
   }
 
-  .section {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    margin: 25px auto 0 auto;
-    max-width:750px;
-
-    &.spinner-container {
-      flex-direction: row;
-      justify-content: center;
-    }
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
   .button {
     margin: 30px auto 0 auto;
   }

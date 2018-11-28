@@ -18,22 +18,8 @@ $font-size: 16px;
       flex-direction: row;
 
       .answer-text {
-        margin-left: 10px;
         line-height: 25px;
       }
-    }
-
-    .answer-number {
-      width: 20px;
-      line-height: 20px;
-      height: 20px;
-      position: relative;
-      vertical-align: middle;
-      text-align: center;
-      border: 2px solid #5fcf80;
-      color: #5fcf80;
-      border-radius: 50%;
-      font-weight: bold;
     }
   }
 }

@@ -1,0 +1,22 @@
+.step {
+  font-weight: bold;
+  font-size: 1.6em;
+  width: 30px;
+  line-height: 30px;
+  height: 30px;
+  margin-right: 10px;
+  position: relative;
+  vertical-align: middle;
+  text-align: center;
+  border: 3px solid #5fcf80;
+  color: #5fcf80;
+  border-radius: 50%;
+
+  &.small-step {
+    width: 20px;
+    font-size: 1rem;
+    line-height: 20px;
+    height: 20px;
+    border-width: 2px;
+  }
+}

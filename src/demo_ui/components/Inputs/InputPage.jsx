@@ -2,10 +2,10 @@ import React from 'react';
 import PropTypes from 'prop-types';
 
 import ContextOptions from './ContextOptions/ContextOptions';
-import InputBar from './InputBar/InputBar';
-import InputBox from './InputBox/InputBox';
+import InputBar from '../common/InputBar';
+import InputBox from '../common/InputBox';
 import Button from '../common/Button';
-import Step from './Step/Step';
+import Step from '../common/Step';
 import textShape from '../../prop-shapes/textShape';
 
 
@@ -14,7 +14,10 @@ const InputPage = ({
 }) => (
   <div className="input-page">
     <div className="section">
-      <Step number={1} label="Enter a context" />
+      <div className="section-header">
+        <Step number={1} />
+        <div className="header-text">Enter a context</div>
+      </div>
       <ContextOptions
         enterTextFunc={enterText}
         exampleFunc={loadExample}
@@ -23,11 +26,17 @@ const InputPage = ({
       <InputBox placeholder="Context" value={text.context} onKeyPress={setContextText} />
     </div>
     <div className="section">
-      <Step number={2} label="Ask a question" />
+      <div className="section-header">
+        <Step number={2} />
+        <div className="header-text">Ask a question</div>
+      </div>
       <InputBar placeholder="Question" value={text.query} onKeyPress={setQueryText} />
     </div>
     <div className="section">
-      <Step number={3} label="Get an Answer" />
+      <div className="section-header">
+        <Step number={3} />
+        <div className="header-text">Get an Answer</div>
+      </div>
       <Button onClick={predict} label="Predict" />
     </div>
   </div>
