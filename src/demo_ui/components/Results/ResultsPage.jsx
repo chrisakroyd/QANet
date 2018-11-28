@@ -3,10 +3,11 @@ import PropTypes from 'prop-types';
 import shortid from 'shortid';
 import predictShape from './../../prop-shapes/predictShape';
 import { capitalizeFirstLetter, isError } from './../../util';
-
+import { pointerPredTip, probDistTip } from './../../constants/tooltips';
 
 import BackButton from '../common/BackButton';
 import LoadingSpinner from '../common/LoadingSpinner';
+import ToolTip from '../common/ToolTip';
 import WordHeat from './WordHeat/WordHeat';
 
 import './results-page.scss';
@@ -53,11 +54,17 @@ const ResultsPage = ({ goBack, query, predictions }) => {
           </div>
         </div>
         <div className="section">
-          <div className="header-text">Pointer predictions</div>
+          <div className="section-header">
+            <div className="header-text">Pointer predictions</div>
+            <ToolTip tip={pointerPredTip} />
+          </div>
           {pointerHeatmaps}
         </div>
         <div className="section">
-          <div className="header-text">Probability Distribution</div>
+          <div className="section-header">
+            <div className="header-text">Probability Distribution</div>
+            <ToolTip tip={probDistTip} />
+          </div>
         </div>
       </div>
     );

@@ -24,3 +24,30 @@ body {
     display: flex;
   }
 }
+
+.section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  margin: 25px auto 0 auto;
+  max-width:750px;
+
+  .section-header {
+    display: flex;
+    flex-direction: row;
+  }
+
+  .header-text {
+    font-weight: bold;
+    font-size: 1.6em;
+  }
+
+  &.spinner-container {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
