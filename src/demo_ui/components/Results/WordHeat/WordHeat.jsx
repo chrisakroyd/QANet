@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import classNames from 'classnames';
 import shortid from 'shortid';
 
-import { interpolateHcl } from 'd3';
+import { interpolateHcl } from 'd3-interpolate';
 
 import './word-heat.scss';
 
