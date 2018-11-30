@@ -61,12 +61,6 @@ const ResultsPage = ({ goBack, query, predictions }) => {
           </div>
           {pointerHeatmaps}
         </div>
-        <div className="section">
-          <div className="section-header">
-            <div className="header-text">Probability Distribution</div>
-            <ToolTip tip={probDistTip} />
-          </div>
-        </div>
       </div>
     );
   }

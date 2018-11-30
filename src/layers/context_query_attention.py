@@ -87,11 +87,12 @@ class ContextQueryAttention(Layer):
 
         S = tf.transpose(S, perm=(0, 2, 1))
         # Standard context to query attention.
-        S_ = self.query_activation(layers.apply_mask(S, mask=mask_query))
-        c2q = tf.matmul(S_, x_query)
+        c2q_act = self.query_activation(layers.apply_mask(S, mask=mask_query))
+        c2q = tf.matmul(c2q_act, x_query)
         # DCN style query to context attention.
-        S_T = tf.transpose(self.context_activation(layers.apply_mask(S, mask=mask_context)), perm=(0, 2, 1))
-        q2c = tf.matmul(tf.matmul(S_, S_T), x_context)
+        q2c_act = self.context_activation(layers.apply_mask(S, mask=mask_context))
+        S_T = tf.transpose(q2c_act, perm=(0, 2, 1))
+        q2c = tf.matmul(tf.matmul(c2q_act, S_T), x_context)
 
         return c2q, q2c
 
