@@ -28,23 +28,20 @@ def train(sess_config, params):
         _, val_iter = pipeline.create_pipeline(params, tables, val_tfrecords, training=False)
 
     with tf.Session(config=sess_config) as sess:
-        sess.run(train_iter.initializer)
-        sess.run(val_iter.initializer)
-        sess.run(tf.tables_initializer())
+        sess.run([tf.tables_initializer(), train_iter.initializer, val_iter.initializer])
         # Create the dataset iterators.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
         # This section creates models, gets the output tensors and constructs the train_op. Although messy
         # it is written this way to bring it closer in line to the tf estimator API for easier later development.
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
-        is_training = tf.placeholder_with_default(True, shape=())
 
         placeholders = iterator.get_next()
         # Features and labels.
         qanet_inputs = train_utils.inputs_as_tuple(placeholders)
         y_start, y_end, id_tensor = train_utils.labels_as_tuple(placeholders)
 
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=is_training)
+        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,
@@ -62,7 +59,7 @@ def train(sess_config, params):
         sess.run(tf.global_variables_initializer())
         # Saver boilerplate
         writer = tf.summary.FileWriter(log_dir, graph=sess.graph)
-        saver = tf.train.Saver()
+        saver = train_utils.get_saver()
         # Initialize the handles for switching.
         train_handle = sess.run(train_iter.string_handle())
         val_handle = sess.run(val_iter.string_handle())
@@ -81,18 +78,15 @@ def train(sess_config, params):
                 run_metadata = tf.RunMetadata()
 
                 answer_id, loss, answer_start, answer_end, _ = sess.run(fetches=train_outputs,
-                                                                        feed_dict={handle: train_handle,
-                                                                                   is_training: True},
+                                                                        feed_dict={handle: train_handle},
                                                                         options=run_options,
                                                                         run_metadata=run_metadata)
 
                 writer.add_run_metadata(run_metadata, 'step%04d' % global_step)
                 writer.flush()
             else:
-                # @TODO dropout + attn_dropout feed_dict are temp -> Rewrite as tf estimator.
                 answer_id, loss, answer_start, answer_end, _ = sess.run(fetches=train_outputs,
-                                                                        feed_dict={handle: train_handle,
-                                                                                   is_training: True})
+                                                                        feed_dict={handle: train_handle})
 
             # Cache the result of the run for train evaluation.
             train_preds.append((answer_id, loss, answer_start, answer_end,))
@@ -104,7 +98,9 @@ def train(sess_config, params):
                 for _ in tqdm(range(1, (len(val_answers) // params.batch_size + 1) + 1)):
                     answer_id, loss, answer_start, answer_end = sess.run(fetches=val_outputs,
                                                                          feed_dict={handle: val_handle,
-                                                                                    is_training: False})
+                                                                                    qanet.dropout: 0.0,
+                                                                                    qanet.attn_dropout: 0.0,
+                                                                                    })
                     val_preds.append((answer_id, loss, answer_start, answer_end,))
                 # Evaluate the predictions and reset the train result list for next eval period.
                 metrics.evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer,

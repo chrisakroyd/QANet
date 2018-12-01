@@ -6,18 +6,20 @@ class QANet(tf.keras.Model):
     def __init__(self, embedding_matrix, char_matrix, trainable_matrix, params):
         super(QANet, self).__init__()
         self.global_step = tf.train.get_or_create_global_step()
+        self.dropout = tf.placeholder_with_default(params.dropout, (), name='dropout')
+        self.attn_dropout = tf.placeholder_with_default(params.attn_dropout, (), name='attn_dropout')
 
         self.embedding = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                word_dim=params.embed_dim, char_dim=params.char_dim,
-                                               word_dropout=params.dropout, char_dropout=params.dropout / 2)
+                                               word_dropout=self.dropout, char_dropout=self.dropout / 2)
 
         self.embedding_encoder = models.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,
                                                           kernel_size=params.embed_encoder_kernel_width,
                                                           hidden_size=params.hidden_size,
                                                           heads=params.heads,
-                                                          dropout=params.dropout,
-                                                          attn_dropout=params.attn_dropout,
+                                                          dropout=self.dropout,
+                                                          attn_dropout=self.attn_dropout,
                                                           ff_inner_size=params.ff_inner_size,
                                                           name='embedding_encoder')
 
@@ -28,8 +30,8 @@ class QANet(tf.keras.Model):
                                                       kernel_size=params.model_encoder_kernel_width,
                                                       hidden_size=params.hidden_size,
                                                       heads=params.heads,
-                                                      dropout=params.dropout,
-                                                      attn_dropout=params.attn_dropout,
+                                                      dropout=self.dropout,
+                                                      attn_dropout=self.attn_dropout,
                                                       ff_inner_size=params.ff_inner_size,
                                                       name='model_encoder')
 
@@ -57,6 +59,7 @@ class QANet(tf.keras.Model):
 
         # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
         c2q, q2c = self.context_query([context_enc, query_enc], training=training, mask=[context_mask, query_mask])
+
         # Input for the first stage of the model encoder, refer to section 2.2. of QANet paper for more details
         inputs = tf.concat([context_enc, c2q, context_enc * c2q, context_enc * q2c], axis=-1)
 
@@ -70,8 +73,8 @@ class QANet(tf.keras.Model):
         end_logits = self.end_output([enc_1, enc_3], training=training, mask=context_mask)
 
         # Prediction head - Returns an int pointer to the start and end position of the answer segment on the context.
-        start_pred, end_pred = self.predict_pointers([start_logits, end_logits])
-        return start_logits, end_logits, start_pred, end_pred, c2q, q2c
+        start_prob, end_prob, start_pred, end_pred = self.predict_pointers([start_logits, end_logits])
+        return start_logits, end_logits, start_pred, end_pred, start_prob, end_prob
 
     def compute_loss(self, start_logits, end_logits, start_labels, end_labels, l2=None):
         start_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
