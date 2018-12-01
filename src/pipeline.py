@@ -1,3 +1,4 @@
+import os
 import tensorflow as tf
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
@@ -27,15 +28,15 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4):
     def parse(proto):
         return tf.parse_single_example(proto, features=features)
 
-    dataset = tf.data.TFRecordDataset(filenames,
+    data = tf.data.TFRecordDataset(filenames,
                                       buffer_size=buffer_size,
                                       num_parallel_reads=num_parallel_calls)
 
-    dataset = dataset.map(parse, num_parallel_calls=num_parallel_calls)
-    return dataset
+    data = data.map(parse, num_parallel_calls=num_parallel_calls)
+    return data
 
 
-def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4, has_labels=True):
+def index_lookup(data, tables, char_limit=16, num_parallel_calls=4, has_labels=True):
     """ Adds a map function to the dataset that maps strings to indices.
 
         To save memory + hard drive space we store contexts and queries as tokenised strings. Therefore we need
@@ -44,7 +45,7 @@ def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4, has_label
         @TODO This is a pretty ugly solution to support labelled/unlabelled modes, refactor target?
 
         Args:
-            dataset: A `tf.data.Dataset` object.
+            data: A `tf.data.Dataset` object.
             tables: A tuple of contrib.lookup tables mapping string words to indices and string characters to indices.
             char_limit: Max number of characters per word.
             num_parallel_calls: An int for how many parallel lookups we perform.
@@ -63,8 +64,8 @@ def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4, has_label
         # with the addition of 1 to again treat padding as 0 without needing to define a padding character.
         context_chars = tf.string_split(fields['context_tokens'], delimiter='')
         query_chars = tf.string_split(fields['query_tokens'], delimiter='')
-        context_chars = tf.sparse_tensor_to_dense(char_table.lookup(context_chars), default_value=-1) + 1
-        query_chars = tf.sparse_tensor_to_dense(char_table.lookup(query_chars), default_value=-1) + 1
+        context_chars = tf.sparse.to_dense(char_table.lookup(context_chars), default_value=-1) + 1
+        query_chars = tf.sparse.to_dense(char_table.lookup(query_chars), default_value=-1) + 1
         context_chars = context_chars[:, :char_limit]
         query_chars = query_chars[:, :char_limit]
 
@@ -86,8 +87,8 @@ def index_lookup(dataset, tables, char_limit=16, num_parallel_calls=4, has_label
 
         return out_dict
 
-    dataset = dataset.map(_lookup, num_parallel_calls=num_parallel_calls)
-    return dataset
+    data = data.map(_lookup, num_parallel_calls=num_parallel_calls)
+    return data
 
 
 def create_buckets(bucket_size, max_size, bucket_ranges=None):
@@ -164,14 +165,20 @@ def create_pipeline(params, tables, record_paths, training=True):
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
-    dataset = tf_record_pipeline(record_paths, params.tf_record_buffer_size, params.parallel_calls)
-    dataset = dataset.cache()
+    # If we aren't given a parallel calls parameter, default to the systems CPU count.
+    parallel_calls = params.parallel_calls
+    if parallel_calls < 0:
+        parallel_calls = os.cpu_count()
+
+    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, params.parallel_calls)
+    data = data.cache()
     if training:
-        dataset = dataset.shuffle(buffer_size=params.shuffle_buffer_size)
-    dataset = dataset.repeat()
+        data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=params.shuffle_buffer_size))
+    else:
+        data = data.repeat()
     # Perform word -> index mapping.
-    dataset = index_lookup(dataset, tables, char_limit=params.char_limit,
-                           num_parallel_calls=params.parallel_calls)
+    data = index_lookup(data, tables, char_limit=params.char_limit,
+                        num_parallel_calls=params.parallel_calls)
 
     if params.bucket and training:
         buckets = create_buckets(params.bucket_size, params.max_tokens, params.bucket_ranges)
@@ -179,21 +186,21 @@ def create_pipeline(params, tables, record_paths, training=True):
         def length_fn(fields):
             return fields['context_length']
 
-        dataset = dataset.apply(
-            tf.contrib.data.bucket_by_sequence_length(element_length_func=length_fn,
-                                                      bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
-                                                      bucket_boundaries=buckets))
+        data = data.apply(
+            tf.data.experimental.bucket_by_sequence_length(element_length_func=length_fn,
+                                                           bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
+                                                           bucket_boundaries=buckets))
     else:
         padded_shapes = get_padded_shapes(max_characters=params.char_limit)
-        dataset = dataset.padded_batch(
+        data = data.padded_batch(
             batch_size=params.batch_size,
             padded_shapes=padded_shapes,
             drop_remainder=training
         )
 
-    dataset = dataset.prefetch(buffer_size=params.max_prefetch)
-    iterator = dataset.make_initializable_iterator()
-    return dataset, iterator
+    data = data.prefetch(buffer_size=params.max_prefetch)
+    iterator = data.make_initializable_iterator()
+    return data, iterator
 
 
 def create_demo_pipeline(params, tables, data):
@@ -209,18 +216,18 @@ def create_demo_pipeline(params, tables, data):
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
-    dataset = tf.data.Dataset.from_tensor_slices(dict(data))
-    dataset = index_lookup(dataset, tables, char_limit=params.char_limit,
-                           num_parallel_calls=params.parallel_calls, has_labels=False)
+    data = tf.data.Dataset.from_tensor_slices(dict(data))
+    data = index_lookup(data, tables, char_limit=params.char_limit,
+                        num_parallel_calls=params.parallel_calls, has_labels=False)
     padded_shapes = get_padded_shapes(max_characters=params.char_limit, has_labels=False)
-    dataset = dataset.padded_batch(
-        batch_size=32,
+    data = data.padded_batch(
+        batch_size=params.batch_size,
         padded_shapes=padded_shapes,
         drop_remainder=False
     )
-    dataset = dataset.prefetch(buffer_size=params.max_prefetch)
-    iterator = dataset.make_initializable_iterator()
-    return dataset, iterator
+    data = data.prefetch(buffer_size=params.max_prefetch)
+    iterator = data.make_initializable_iterator()
+    return data, iterator
 
 
 def create_placeholders():

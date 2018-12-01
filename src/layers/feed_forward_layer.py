@@ -37,7 +37,7 @@ class FeedForwardLayer(Layer):
                 mask: A boolean mask tensor.
         """
         x = self.conv_ff_1(x)
-        x = self.dropout(x)
+        x = self.dropout(x, training=training)
         x = self.conv_ff_2(x)
         return x
 

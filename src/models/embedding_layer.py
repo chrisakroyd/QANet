@@ -110,7 +110,7 @@ class EmbeddingLayer(tf.keras.Model):
         # Concat the word + char embeddings to form a vector of embed_dim + char_dim at each position.
         embedding = tf.concat([word_embedding, char_embedding], axis=2)
 
-        embedding = self.highway_1(embedding, training=training)
-        embedding = self.highway_2(embedding, training=training)
+        embedding = self.highway_1(embedding, training=training, mask=mask)
+        embedding = self.highway_2(embedding, training=training, mask=mask)
 
         return embedding
