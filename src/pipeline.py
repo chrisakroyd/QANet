@@ -29,8 +29,8 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4):
         return tf.parse_single_example(proto, features=features)
 
     data = tf.data.TFRecordDataset(filenames,
-                                      buffer_size=buffer_size,
-                                      num_parallel_reads=num_parallel_calls)
+                                   buffer_size=buffer_size,
+                                   num_parallel_reads=num_parallel_calls)
 
     data = data.map(parse, num_parallel_calls=num_parallel_calls)
     return data
