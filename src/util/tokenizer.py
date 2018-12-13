@@ -1,8 +1,9 @@
+import string
 from collections import Counter
 import numpy as np
 import spacy
 
-default_punct = set(list(' !"#$%&()*+,-./:;=@[\]^_`{|}~?'))
+default_punct = set(string.punctuation)
 
 
 class Tokenizer(object):

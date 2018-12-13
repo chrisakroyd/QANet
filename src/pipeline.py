@@ -165,12 +165,9 @@ def create_pipeline(params, tables, record_paths, training=True):
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
-    # If we aren't given a parallel calls parameter, default to the systems CPU count.
-    parallel_calls = params.parallel_calls
-    if parallel_calls < 0:
-        parallel_calls = os.cpu_count()
+    parallel_calls = num_parallel_calls(params)
 
-    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, params.parallel_calls)
+    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls)
     data = data.cache()
     if training:
         data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=params.shuffle_buffer_size))
@@ -178,7 +175,7 @@ def create_pipeline(params, tables, record_paths, training=True):
         data = data.repeat()
     # Perform word -> index mapping.
     data = index_lookup(data, tables, char_limit=params.char_limit,
-                        num_parallel_calls=params.parallel_calls)
+                        num_parallel_calls=parallel_calls)
 
     if params.bucket and training:
         buckets = create_buckets(params.bucket_size, params.max_tokens, params.bucket_ranges)
@@ -216,9 +213,11 @@ def create_demo_pipeline(params, tables, data):
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
+    parallel_calls = num_parallel_calls(params)
+
     data = tf.data.Dataset.from_tensor_slices(dict(data))
     data = index_lookup(data, tables, char_limit=params.char_limit,
-                        num_parallel_calls=params.parallel_calls, has_labels=False)
+                        num_parallel_calls=parallel_calls, has_labels=False)
     padded_shapes = get_padded_shapes(max_characters=params.char_limit, has_labels=False)
     data = data.padded_batch(
         batch_size=params.batch_size,
@@ -237,3 +236,11 @@ def create_placeholders():
         'query_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string, name='query_tokens'),
         'query_length': tf.placeholder(shape=(None, ), dtype=tf.int32, name='query_length')
     }
+
+
+def num_parallel_calls(params):
+    # If we aren't given a parallel calls parameter, default to the systems CPU count.
+    parallel_calls = params.parallel_calls
+    if parallel_calls < 0:
+        parallel_calls = os.cpu_count()
+    return parallel_calls

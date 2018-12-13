@@ -74,21 +74,24 @@ class MultiHeadAttention(Layer):
             x, y = x, x
         else:
             x, y = x
-        # x, y = x
+
         batch_size, length = self.compute_input_shape(x)
         query, key, values = (self.queries_layer(x), self.keys_layer(y), self.values_layer(y))
         # Split into n heads, allows model to jointly attend to different positions.
         query = self.split_heads(query, batch_size, length)
         key = self.split_heads(key, batch_size, length)
         values = self.split_heads(values, batch_size, length)
+
         # Query is scaled to prevent large dot products.
         query *= self.scaling_factor
         # Calculate the dot product attention for each head
         logits = tf.matmul(query, key, transpose_b=True)
+
         # Optionally apply a mask.
         if mask is not None:
             mask = tf.expand_dims(tf.expand_dims(mask, axis=1), axis=1)  # reshape mask to [bs, 1, 1, num_heads]
             logits = layers.apply_mask(logits, mask)
+
         # Calculate attention weights + apply dropout.
         weights = self.softmax(logits)
         weights = self.dropout(weights, training=training)
