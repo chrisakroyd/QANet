@@ -15,7 +15,7 @@ def train(sess_config, params):
 
     train_spans, train_answers, train_ctxt_mapping = train
     val_spans, val_answers, val_ctxt_mapping = val
-
+    
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
 

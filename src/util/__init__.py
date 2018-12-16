@@ -3,4 +3,4 @@ from .filepaths import raw_data_paths, processed_data_paths, index_paths, embedd
     get_directories, tf_record_paths, examples_path
 from .tokenizer import Tokenizer
 from .util import save_json, load_json, load_vocab_files, namespace_json, index_from_list, make_dirs, make_dirs, \
-    remove_keys
+    remove_keys, download_json

@@ -1,5 +1,6 @@
 import json
 import os
+import urllib.request
 from types import SimpleNamespace
 
 
@@ -22,6 +23,13 @@ def load_json(path):
     """
     with open(path, encoding='utf-8') as f:
         return json.load(f)
+
+
+def download_json(url, path):
+    req = urllib.request.Request(url)
+    r = urllib.request.urlopen(req).read()
+    cont = json.loads(r.decode('utf-8'))
+    save_json(path, cont)
 
 
 def namespace_json(path):

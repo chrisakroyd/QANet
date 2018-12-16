@@ -12,12 +12,19 @@ def get_directories(params):
     data_dir = os.path.abspath(params.data_dir)
     raw_data_dir = os.path.join(data_dir, params.dataset)
     processed_data_dir = os.path.join(data_dir, constants.DirNames.PROCESSED, params.dataset)
+    records_dir = os.path.join(processed_data_dir, constants.DirNames.RECORDS)
     models_dir = os.path.abspath(params.models_dir)
 
-    return raw_data_dir, data_dir, processed_data_dir, models_dir
+    return raw_data_dir, data_dir, processed_data_dir, models_dir, records_dir
 
 
 def get_filenames(params):
+    """ Gets the filenames for a specific dataset, if dataset isn't listed returns defaults.
+        Args:
+            params: A dictionary of parameters.
+        returns:
+            String paths for train + dev sets.
+    """
     if params.dataset == constants.Datasets.SQUAD_1:
         return constants.FileNames.TRAIN_SQUAD_1, constants.FileNames.DEV_SQUAD_1
     elif params.dataset == constants.Datasets.SQUAD_2:
@@ -33,7 +40,7 @@ def raw_data_paths(params):
         returns:
             String paths for raw squad train + dev sets.
     """
-    raw_data_dir, _, _, _ = get_directories(params)
+    raw_data_dir, _, _, _, _ = get_directories(params)
     train_name, dev_name = get_filenames(params)
     # Where we find the data
     train_path = os.path.join(raw_data_dir, train_name)
@@ -49,7 +56,7 @@ def processed_data_paths(params):
         returns:
             String paths for processed answers and contexts for train and dev sets.
     """
-    _, data_dir, processed_dir, _ = get_directories(params)
+    _, data_dir, processed_dir, _, _ = get_directories(params)
     train, dev = constants.FileNames.TRAIN, constants.FileNames.DEV
 
     paths = (
@@ -68,7 +75,7 @@ def index_paths(params):
         returns:
             String paths for loading word, character and trainable indexes.
     """
-    _, data_dir, processed_dir, _ = get_directories(params)
+    _, data_dir, processed_dir, _, _ = get_directories(params)
 
     paths = []
     for embed_type in constants.EmbeddingTypes.get_list():
@@ -83,7 +90,7 @@ def embedding_paths(params):
         returns:
             String paths for loading word, character and trainable embeddings.
     """
-    _, data_dir, processed_dir, _ = get_directories(params)
+    _, data_dir, processed_dir, _, _ = get_directories(params)
     paths = []
     for embed_type in constants.EmbeddingTypes.get_list():
         paths += [
@@ -99,7 +106,7 @@ def train_paths(params):
         returns:
             String paths for loading data, saved models and saved logs.
     """
-    _, data_dir, _, out_dir = get_directories(params)
+    _, data_dir, _, out_dir, _ = get_directories(params)
 
     model_dir = os.path.join(out_dir, constants.DirNames.CHECKPOINTS)
     logs_dir = os.path.join(out_dir, constants.DirNames.LOGS)
@@ -118,9 +125,7 @@ def tf_record_paths(params, training):
         returns:
             A string path to .tfrecord file.
     """
-    _, _, processed_data_dir, _ = get_directories(params)
-
-    tf_record_dir = os.path.join(processed_data_dir, constants.DirNames.RECORDS)
+    _, _, processed_data_dir, _, tf_record_dir = get_directories(params)
 
     if training:
         name = constants.FileNames.TRAIN
@@ -133,5 +138,5 @@ def tf_record_paths(params, training):
 
 
 def examples_path(params):
-    _, _, processed_dir, _ = get_directories(params)
+    _, _, processed_dir, _, _ = get_directories(params)
     return os.path.join(processed_dir, constants.FileNames.EXAMPLES)
