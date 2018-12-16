@@ -14,6 +14,7 @@ class Urls:
     TRAIN_SQUAD_2 = 'https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json'
     DEV_SQUAD_2 = 'https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json'
     GLOVE_380_300D_URL = 'http://nlp.stanford.edu/data/glove.840B.300d.zip'
+    EMBEDDING_URL = GLOVE_380_300D_URL
 
 
 class Datasets:
@@ -35,11 +36,22 @@ class FilePaths:
 
 
 class FileNames:
-    """ Constant URLs for downloading data.
+    """ Variety of constant filenames.
         The following keys are defined:
-        * DEFAULTS: Path to the default model parameters.
-        * DEFAULTS: Path to the default model parameters.
-        * DEFAULTS: Path to the default model parameters.
+        * TRAIN_SQUAD_1: Name of the raw Squad 1 train file.
+        * DEV_SQUAD_1: Name of the raw Squad 1 dev file.
+        * TRAIN_SQUAD_2: Name of the raw Squad 2 train file.
+        * DEV_SQUAD_2: Name of the raw Squad 2 dev file.
+        * TRAIN_DEFAULT: Default filename for an unrecognised train dataset.
+        * DEV_DEFAULT: Default filename for an unrecognised dev dataset.
+        * EXAMPLES: Filename to store examples of data.
+        * INDEX: Filename + type for word/character index files.
+        * EMBEDDINGS: Filename + type for word/character embedding files.
+        * CONTEXT: Filename + type for storing context related information for eval/test files.
+        * ANSWERS: Filename + type for storing answer related information for eval/test files.
+        * TF_RECORD: Tfrecord template string for storing processed train/dev files.
+        * TRAIN: String representing train mode data.
+        * DEV: String representing val mode data.
     """
     TRAIN_SQUAD_1 = 'train-v1.1.json'
     DEV_SQUAD_1 = 'dev-v1.1.json'
@@ -58,11 +70,15 @@ class FileNames:
 
 
 class DirNames:
-    """ Constant URLs for downloading data.
+    """ Constant directory names for storing data/logs/checkpoints.
         The following keys are defined:
-        * DEFAULTS: Path to the default model parameters.
-        * DEFAULTS: Path to the default model parameters.
-        * DEFAULTS: Path to the default model parameters.
+        * CHECKPOINTS: Name of the directory to store checkpoint files.
+        * LOGS: Name of the directory to store log files.
+        * RECORDS: Name of the directory to store .tfrecord files.
+        * PROCESSED: Name of the directory to store processed data.
+        * EMBEDDINGS: Name of the directory to store raw embeddings.
+        * SQUAD_1: Name of the squad v1 directory.
+        * SQUAD_2: Name of the squad v2 directory.
     """
     CHECKPOINTS = 'checkpoints'
     LOGS = 'logs'
@@ -102,5 +118,5 @@ class EmbeddingTypes:
 
     @staticmethod
     def get_list():
-        """ Returns a list of all supported     embedding types """
+        """ Returns a list of all supported embedding types """
         return [EmbeddingTypes.WORD, EmbeddingTypes.TRAINABLE, EmbeddingTypes.CHAR]
