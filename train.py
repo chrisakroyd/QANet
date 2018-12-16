@@ -118,5 +118,5 @@ def train(sess_config, params):
 
 
 if __name__ == '__main__':
-    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     train(config.gpu_config(), config.model_config(defaults).FLAGS)

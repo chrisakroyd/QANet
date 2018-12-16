@@ -30,13 +30,12 @@ def model_config(defaults):
     flags.DEFINE_string('run_name', defaults.run_name, 'Name for this run of training.')
     # Within these flags we define where to find the original GLoVe/FastText embeddings and where to find/save data.
     flags.DEFINE_string('embeddings_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
-    flags.DEFINE_string('squad_dir', defaults.squad_dir, 'Directory where squad data is saved.')
     flags.DEFINE_string('data_dir', defaults.data_dir,
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
     flags.DEFINE_string('dist_dir', defaults.dist_dir,
                         'Out path for demo code.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
-    flags.DEFINE_string('out_dir', defaults.out_dir, 'Directory to save the models, logs and answer files.')
+    flags.DEFINE_string('models_dir', defaults.models_dir, 'Directory to save the models, logs and answer files.')
     flags.DEFINE_integer('demo_server_port', defaults.demo_server_port, 'Port on which to serve/receive requests.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')

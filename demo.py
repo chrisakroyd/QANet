@@ -109,7 +109,7 @@ def demo(sess_config, params):
 
 
 if __name__ == '__main__':
-    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     model_config = config.model_config(defaults).FLAGS
     app = demo(config.gpu_config(), model_config)
     app.run(port=model_config.demo_server_port)

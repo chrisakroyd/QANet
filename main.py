@@ -7,15 +7,15 @@ from demo import demo
 
 def main(config, flags):
     params = flags.FLAGS
-    mode = params.mode.lower()
+    mode = params.mode.lower().strip()
 
-    if mode == 'train':
+    if mode == constants.Modes.TRAIN:
         train(config, params)
-    elif mode == 'preprocess':
+    elif mode == constants.Modes.PREPROCESS:
         preprocess(params)
-    elif mode == 'test':
+    elif mode == constants.Modes.TEST:
         test(config, params)
-    elif mode == 'demo':
+    elif mode == constants.Modes.DEMO:
         app = demo(config, params)
         app.run(port=params.demo_server_port)
     else:
@@ -24,5 +24,5 @@ def main(config, flags):
 
 
 if __name__ == '__main__':
-    defaults = util.namespace_json(path=constants.FilePaths.defaults.value)
+    defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     main(config.gpu_config(), config.model_config(defaults))
