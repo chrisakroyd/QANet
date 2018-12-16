@@ -1,17 +1,20 @@
 import json
 import os
 import urllib.request
+from io import BytesIO
+from zipfile import ZipFile
 from types import SimpleNamespace
 
 
-def save_json(path, data):
+def save_json(path, data, indent=None):
     """ Saves data as a UTF-8 encoded .json file.
         Args:
             path: String path to a .json file.
             data: A dict or iterable.
+            indent: Pretty print the json with this level of indentation.
     """
     with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=indent)
 
 
 def load_json(path):
@@ -26,10 +29,39 @@ def load_json(path):
 
 
 def download_json(url, path):
+    """ Downloads and saves a UTF-8 encoded .json file.
+        Args:
+            url: String url which points to a .json file.
+            path: String path to save a .json file.
+        Returns:
+            Loaded json as original saved type e.g. dict for index, list for saved lists.
+    """
+    if not url.endswith('.json'):
+        raise ValueError('Expected URL to be a .json file instead received {}'.format(url))
     req = urllib.request.Request(url)
     r = urllib.request.urlopen(req).read()
     cont = json.loads(r.decode('utf-8'))
     save_json(path, cont)
+    return cont
+
+
+def download_unpack_zip(url, path):
+    """ Downloads and unpacks a zip file containing a single embedding file.
+
+        TODO: Add in progress bar to keep user updated on huge embedding files. @cakroyd.
+
+        Args:
+            url: String url which points to a .zip file.
+            path: String directory path into which we extract the zip.
+        Returns:
+            Filename of the downloaded embeddings.
+    """
+    resp = urllib.request.urlopen(url)
+
+    with ZipFile(BytesIO(resp.read())) as zip_file:
+        embedding_name = zip_file.namelist()[-1]
+        zip_file.extractall(path)
+        return embedding_name
 
 
 def namespace_json(path):
