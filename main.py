@@ -6,18 +6,20 @@ from demo import demo
 from download import download
 
 
-def main(config, flags):
+def main(sess_config, flags):
     params = flags.FLAGS
     mode = params.mode.lower().strip()
 
     if mode == constants.Modes.TRAIN:
-        train(config, params)
+        train(sess_config, params)
+    elif mode == constants.Modes.DEBUG:
+        train(sess_config, params, debug=True)
     elif mode == constants.Modes.PREPROCESS:
         preprocess(params)
     elif mode == constants.Modes.TEST:
-        test(config, params)
+        test(sess_config, params)
     elif mode == constants.Modes.DEMO:
-        app = demo(config, params)
+        app = demo(sess_config, params)
         app.run(port=params.demo_server_port)
     elif mode == constants.Modes.DOWNLOAD:
         download(params)

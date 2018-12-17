@@ -83,7 +83,7 @@ class DirNames:
     CHECKPOINTS = 'checkpoints'
     LOGS = 'logs'
     RECORDS = 'records'
-    PROCESSED = 'processed'
+    PROCESSED = 'processed_{}'
     EMBEDDINGS = 'embeddings'
     SQUAD_1 = Datasets.SQUAD_1
     SQUAD_2 = Datasets.SQUAD_2
@@ -92,12 +92,14 @@ class DirNames:
 class Modes:
     """ Standard names for repo modes.
         The following keys are defined:
-        * `TRAIN`: training mode.
-        * `TEST`: testing mode.
-        * `PREPROCESS`: preprocess mode.
-        * `DEMO`: inference mode.
-        * `DOWNLOAD`: download mode.
+        * TRAIN: training mode.
+        * TEST: testing mode.
+        * PREPROCESS: preprocess mode.
+        * DEBUG: Debug mode.
+        * DEMO: inference mode.
+        * DOWNLOAD: download mode.
     """
+    DEBUG = 'debug'
     DEMO = 'demo'
     DOWNLOAD = 'download'
     PREPROCESS = 'preprocess'
@@ -108,9 +110,9 @@ class Modes:
 class EmbeddingTypes:
     """ Names for embedding types.
         The following keys are defined:
-        * `WORD`: Word embeddings name.
-        * `TRAINABLE`: Trainable embeddings name.
-        * `CHAR`: Character embeddings name.
+        * WORD: Word embeddings name.
+        * TRAINABLE: Trainable embeddings name.
+        * CHAR: Character embeddings name.
     """
     WORD = 'word'
     TRAINABLE = 'trainable'

@@ -39,8 +39,6 @@ def model_config(defaults):
     flags.DEFINE_integer('demo_server_port', defaults.demo_server_port, 'Port on which to serve/receive requests.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')
-    flags.DEFINE_boolean('runtime_data', defaults.runtime_data,
-                         'Whether or not to collect runtime metadata for tf.summary.')
     # Dimension for the word + char embeddings. Char embeddings are generated during the pre-processing stage.
     flags.DEFINE_integer('embed_dim', defaults.embed_dim, 'Dimensionality of the input embeddings')
     flags.DEFINE_integer('char_dim', defaults.char_dim, 'Dimensionality of the character output embeddings')

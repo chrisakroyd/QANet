@@ -4,7 +4,7 @@ from tqdm import tqdm
 from src import config, constants, loaders, metrics, models, pipeline, train_utils, util
 
 
-def train(sess_config, params):
+def train(sess_config, params, debug=False):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
     _, out_dir, model_dir, log_dir = util.train_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
@@ -72,8 +72,8 @@ def train(sess_config, params):
 
         for _ in tqdm(range(global_step, params.train_steps + 1)):
             global_step = sess.run(qanet.global_step) + 1
-            # Either train + predict + save run metadata or train + predict
-            if params.runtime_data and global_step % (params.checkpoint_every + 1) == 0:
+            # In debug mode we record performance + memory usage.
+            if debug and global_step % (params.checkpoint_every + 1) == 0:
                 run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
 

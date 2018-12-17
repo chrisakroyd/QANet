@@ -11,7 +11,7 @@ def get_directories(params):
     """
     data_dir = os.path.abspath(params.data_dir)
     raw_data_dir = os.path.join(data_dir, params.dataset)
-    processed_data_dir = os.path.join(data_dir, constants.DirNames.PROCESSED, params.dataset)
+    processed_data_dir = os.path.join(data_dir, constants.DirNames.PROCESSED.format(params.dataset))
     records_dir = os.path.join(processed_data_dir, constants.DirNames.RECORDS)
     models_dir = os.path.abspath(params.models_dir)
 
