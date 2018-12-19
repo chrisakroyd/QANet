@@ -78,7 +78,7 @@ def index_paths(params):
     _, data_dir, processed_dir, _, _ = get_directories(params)
 
     paths = []
-    for embed_type in constants.EmbeddingTypes.get_list():
+    for embed_type in constants.EmbeddingTypes.as_list():
         paths += [os.path.join(data_dir, processed_dir, constants.FileNames.INDEX.format(embedding_type=embed_type))]
     return paths
 
@@ -92,7 +92,7 @@ def embedding_paths(params):
     """
     _, data_dir, processed_dir, _, _ = get_directories(params)
     paths = []
-    for embed_type in constants.EmbeddingTypes.get_list():
+    for embed_type in constants.EmbeddingTypes.as_list():
         paths += [
             os.path.join(data_dir, processed_dir, constants.FileNames.EMBEDDINGS.format(embedding_type=embed_type))
         ]

@@ -84,6 +84,7 @@ class DirNames:
     LOGS = 'logs'
     RECORDS = 'records'
     PROCESSED = 'processed_{}'
+    TRANSLATED = 'translated_{data}_{lang}'
     EMBEDDINGS = 'embeddings'
     SQUAD_1 = Datasets.SQUAD_1
     SQUAD_2 = Datasets.SQUAD_2
@@ -105,6 +106,7 @@ class Modes:
     PREPROCESS = 'preprocess'
     TEST = 'test'
     TRAIN = 'train'
+    TRANSLATE = 'translate'
 
 
 class EmbeddingTypes:
@@ -119,6 +121,6 @@ class EmbeddingTypes:
     CHAR = 'char'
 
     @staticmethod
-    def get_list():
+    def as_list():
         """ Returns a list of all supported embedding types """
         return [EmbeddingTypes.WORD, EmbeddingTypes.TRAINABLE, EmbeddingTypes.CHAR]
