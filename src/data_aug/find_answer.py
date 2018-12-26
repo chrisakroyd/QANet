@@ -82,6 +82,8 @@ def find_answer(context_text, spans, context_tokens, answer_text, answer_tokens,
         Generally heuristics 1 + 2 get the answer accurately so we utilise the slower heuristics 3a + 3b in cases
         where the previous heuristics fail.
 
+        TODO: Code is a mess and needs to be revisited.
+
         Args:
             context_text: Context in text form, used to extract candidate answers.
             spans: Word character spans, generated during preprocessing.
@@ -92,7 +94,6 @@ def find_answer(context_text, spans, context_tokens, answer_text, answer_tokens,
         Returns:
             Two integer pointers, one to the start word and one to the end word.
     """
-    # answer_words = toke.tokenize(answer_text)
     start_word, start_shift = get_start_word(answer_tokens)
     end_word, end_shift = get_end_word(answer_tokens)
     start_sims, end_sims = compute_similarity_scores(start_word, end_word, context_tokens)

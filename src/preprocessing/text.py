@@ -1,40 +1,96 @@
 import re
 import string
 import unicodedata
-from ftfy import fix_text
+
+# TODO: Revisit this and clean it up a bit.
 
 # Regexes
 # Treat \t, \n and \r as whitespace despite being control characters.
 whitespace_chars = {' ', '\t', '\n', '\r'}
+dash_chars = {'-'}
 articles = re.compile(r'\b(a|an|the)\b')
 apostrophe = re.compile(r"('')")
-apostrophe_like = re.compile(r'(``)')
+# Should filter out wiki style references e.g. [3], [123], [citation needed]
+double_apostrophe = re.compile(r"('')")
+apostrophe_like = re.compile(r'`')
+multi_spaces = re.compile(r'\s{2,}')
+elipsiss = re.compile(r'[.]{2,}')
+
+space_before = re.compile(r'([:$\\])')
+
+# Should filter out wiki style references e.g. [3], [123], [citation needed]
+wiki_noise = re.compile(
+    r'\[(((not)|(original)|(when)|(dubious)|(better))(.*?)|(([Ff]ull )?(citation|verification|year) needed)|(update)|((([Nn][Bb])|([Nn](ote)?|[Ww]eb))?\s\d+))\]')
+
+# We need to split words and digits, e.g. 14-story -> 14 - story
+digit_word = re.compile(r'(\d+)-(\w+)')
+word_digit = re.compile(r'(\w+)-(\d+)')
+
+double_punct = re.compile(r'(\w+[.,\/#!$%~\'\"^&\*;:{}=\-_`~()\[\]])([.,\/#!$%~\'\"^&\*;:{}=\-_`~()\[\]]\w+)')
 
 
-def clean(text):
-    """ Cleans text, fixing unicode errors, normalising quotes and stripping stray whitespace.
+def text_span(text, spans, start_pointer, end_pointer):
+    """ Given spans, text + start/end word pointers, extracts an answer span from the text. """
+    start_char = spans[start_pointer][0]
+    end_char = spans[end_pointer][-1]
+    return text[start_char: end_char]
+
+
+def normalize(text):
+    """
+        Normalizes unicode whitespace, dashes and invalid characters. As this does not modify the length or position
+        of words it is considered non-destructive.
         Args:
             text: String text to be cleaned.
         Returns:
             Cleaned string.
     """
-    text = fix_text(text)
-    text = apostrophe.sub('" ', text)
-    text = apostrophe_like.sub('" ', text)
     text = text.strip()
 
     text = list(text)
     # Normalize spaces + remove invalid characters.
     out_text = []
+
     for char in text:
         if is_invalid(char):
             continue
 
         if is_whitespace(char):
             out_text.append(' ')
+        elif is_dash(char):
+            out_text.append('-')
         else:
             out_text.append(char)
+
     return ''.join(out_text)
+
+
+def clean(text):
+    """ Cleans the given text by removing wikipedia noise ([citation needed], [1], etc.) recurring punctuation and
+        multiple spaces. As this may significantly modify the string, any answer pointers will need to be updated
+        before used for training.
+
+        Args:
+            text: String text to be cleaned.
+        Returns:
+            Cleaned string.
+    """
+    text = normalize(text)
+    text = space_before.sub(r" \1", text)
+    text = elipsiss.sub('.', text)
+    text = apostrophe_like.sub("'", text)
+
+    text = double_punct.sub(r'\1 \2', text)
+
+    text = digit_word.sub(r'\1 - \2', text)
+    text = word_digit.sub(r'\1 - \2', text)
+
+    text = wiki_noise.sub('', text)
+    text = text.strip()
+
+    text = multi_spaces.sub(' ', text)
+
+    return text
 
 
 def is_whitespace(char):
@@ -43,6 +99,12 @@ def is_whitespace(char):
     if char in whitespace_chars or cat == 'Zs':
         return True
     return False
+
+
+def is_dash(char):
+    """ Checks if the unicode character is a dash character """
+    cat = unicodedata.category(char)
+    return char in dash_chars or cat == 'Pd'
 
 
 def is_invalid(char):

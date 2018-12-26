@@ -63,8 +63,8 @@ def demo(sess_config, params):
     @app.route('/api/v{0}/qanet/predict'.format(API_VERSION), methods=['POST'])
     def process():
         data = request.get_json()
-        context = prepro.clean(data['context'])
-        query = prepro.clean(data['query'])
+        context = prepro.normalize(data['context'])
+        query = prepro.normalize(data['query'])
 
         context_tokens = tokenizer.tokenize(context)
         query_tokens = tokenizer.tokenize(query)

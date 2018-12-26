@@ -32,30 +32,37 @@ def fit_and_extract(data_set, tokenizer, params):
             Contexts, Queries and the tokenizer.
     """
     contexts, queries = {}, {}
-    context_id, answer_id, total = 1, 1, 0
+    context_id, answer_id, total, skipped = 1, 1, 0, 0
 
     for data in tqdm(data_set['data']):
         for question_answer in data['paragraphs']:
-            context_clean = prepro.clean(question_answer['context'])
+            context_clean = prepro.normalize(question_answer['context'])
             # Fit the tokenizer on the cleaned version of the context.
             context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
+
+            # Skip contexts which are larger than max tokens.
             if len(context_tokens) > params.max_tokens:
                 continue
+
             spans = convert_idx(context_clean, context_tokens)
 
             for qa in question_answer['qas']:
-                query_clean = prepro.clean(qa['question'])
+                query_clean = prepro.normalize(qa['question'])
                 query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
                 total += 1
-                answer_starts, answer_ends, answer_texts = [], [], []
+                answer_starts, answer_ends, answer_texts, orig_answers = [], [], [], []
 
                 for answer in qa['answers']:
-                    answer_text = prepro.clean(answer['text'])
+                    answer_text = prepro.normalize(answer['text'])
                     answer_start = answer['answer_start']
                     answer_end = answer_start + len(answer_text)
 
-                    assert context_clean.find(answer_text) >= 0
+                    if not context_clean.find(answer_text) >= 0:
+                        print('Cannot find answer, skipping...')
+                        skipped += 1
+                        continue
 
+                    orig_answers.append(answer['text'])
                     answer_texts.append(answer_text)
                     answer_span = []
 
@@ -69,8 +76,11 @@ def fit_and_extract(data_set, tokenizer, params):
                     answer_starts.append(answer_span[0])
                     answer_ends.append(answer_span[-1])
 
-                assert len(answer_starts) == len(answer_ends) == len(answer_texts)
+                assert len(answer_starts) == len(answer_ends) == len(answer_texts) == len(orig_answers)
                 assert answer_id not in queries
+
+                if len(answer_starts) == 0 or len(answer_ends) == 0:
+                    continue
 
                 queries[answer_id] = {
                     'id': qa['id'],
@@ -79,6 +89,7 @@ def fit_and_extract(data_set, tokenizer, params):
                     'query': query_clean,
                     'query_tokens': query_tokens,
                     'query_length': len(query_tokens),
+                    'orig_answers': orig_answers,
                     'answers': answer_texts,
                     'answer_starts': answer_starts[-1],
                     'answer_ends': answer_ends[-1],
@@ -98,7 +109,11 @@ def fit_and_extract(data_set, tokenizer, params):
 
             context_id += 1
 
-    assert len(queries) == total
+    print('Total Questions: {}'.format(total))
+    print('Total Answers: {}'.format(len(queries)))
+    print('Total Skipped: {}'.format(skipped))
+
+    # assert total == (len(queries) + skipped)
 
     return contexts, queries, tokenizer
 
