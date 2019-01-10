@@ -1,5 +1,6 @@
 $anim-duration: .5s;
 $button-height: 20px;
+$back-button-height: 24px;
 $button-padding: 15px;
 $border-radius: 5px;
 $border-width: 2px;
@@ -10,7 +11,7 @@ $font-weight: 300;
 $font-size: 16px;
 $green-colour: #5fcf80;
 $neutral-colour: grey;
-$blue-colour: #53BCE8;
+$blue-colour: #2e86de;
 $red-colour: #FF6666;
 $section-margin: 30px;
 
@@ -37,11 +38,15 @@ $section-margin: 30px;
   background-color: $neutral-colour;
 
   &:hover, &:focus {
-    background-color: $green-colour;
+    &.enabled {
+      background-color: $green-colour;
+    }
+
+    background-color: $red-colour;
   }
 
   &.back-button {
-    height: 24px;
+    height: $back-button-height;
     padding: 5px 10px;
 
     svg {
@@ -56,8 +61,8 @@ $section-margin: 30px;
   margin: $section-margin 0;
 
   .context-or, .context-option {
-    height: 20px;
-    padding: 15px;
+    height: $button-height;
+    padding: $button-padding;
     margin: 7px;
   }
 
@@ -66,6 +71,7 @@ $section-margin: 30px;
 
     &.active, &:hover, &:focus {
       border: $border-width solid $green-colour;
+      outline: none;
     }
 
     &:first-child {
@@ -88,7 +94,7 @@ $section-margin: 30px;
     border-radius: $border-radius;
 
     &:focus {
-      outline:none;
+      outline: none;
     }
   }
 
