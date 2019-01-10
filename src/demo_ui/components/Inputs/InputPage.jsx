@@ -23,21 +23,31 @@ const InputPage = ({
         exampleFunc={loadExample}
         loadExample={text.loadExample}
       />
-      <InputBox placeholder="Context" value={text.context} onKeyPress={setContextText} />
+      <InputBox
+        placeholder="Context"
+        value={text.context}
+        onKeyPress={setContextText}
+        validInput={text.context.length > 0}
+      />
     </div>
     <div className="section">
       <div className="section-header">
         <Step number={2} />
         <div className="header-text">Ask a question</div>
       </div>
-      <InputBar placeholder="Question" value={text.query} onKeyPress={setQueryText} />
+      <InputBar
+        placeholder="Question"
+        value={text.query}
+        onKeyPress={setQueryText}
+        validInput={text.query.length > 0}
+      />
     </div>
     <div className="section">
       <div className="section-header">
         <Step number={3} />
         <div className="header-text">Get an Answer</div>
       </div>
-      <Button onClick={predict} label="Predict" />
+      <Button onClick={predict} label="Predict" enabled={text.query.length > 0 && text.context.length > 0} />
     </div>
   </div>
 );
