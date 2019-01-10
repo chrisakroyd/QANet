@@ -1,0 +1,117 @@
+$anim-duration: .5s;
+$button-height: 20px;
+$button-padding: 15px;
+$border-radius: 5px;
+$border-width: 2px;
+$input-bar-height: 56px;
+$input-box-height: 250px;
+$input-width: 700px;
+$font-weight: 300;
+$font-size: 16px;
+$green-colour: #5fcf80;
+$neutral-colour: grey;
+$blue-colour: #53BCE8;
+$red-colour: #FF6666;
+$section-margin: 30px;
+
+.general-button {
+  display: flex;
+  justify-content: center;
+  vertical-align: middle;
+  height: $button-height;
+  padding: $button-padding;
+  font-size: $font-size;
+  border-radius: $border-radius;
+  cursor: pointer;
+  transition: border $anim-duration, box-shadow $anim-duration, background-color $anim-duration;
+
+  &:hover {
+    box-shadow: 10px 10px 20px 2px rgba(0, 0, 0, 0.15);
+    outline: none;
+  }
+}
+
+.button {
+  color: white;
+  cursor: pointer;
+  background-color: $neutral-colour;
+
+  &:hover, &:focus {
+    background-color: $green-colour;
+  }
+
+  &.back-button {
+    height: 24px;
+    padding: 5px 10px;
+
+    svg {
+      margin-right: 4px;
+    }
+  }
+}
+
+.context-options {
+  display: flex;
+  flex-direction: row;
+  margin: $section-margin 0;
+
+  .context-or, .context-option {
+    height: 20px;
+    padding: 15px;
+    margin: 7px;
+  }
+
+  .context-option {
+    border: $border-width solid $neutral-colour;
+
+    &.active, &:hover, &:focus {
+      border: $border-width solid $green-colour;
+    }
+
+    &:first-child {
+      margin-left: 0;
+    }
+  }
+}
+
+.input-box, .input-bar {
+  display: flex;
+  width: $input-width;
+  border: $border-width solid $neutral-colour;
+  border-radius: $border-radius;
+
+  input, textarea {
+    width: 100%;
+    font-weight: $font-weight;
+    resize: none;
+    border: none;
+    border-radius: $border-radius;
+
+    &:focus {
+      outline:none;
+    }
+  }
+
+  &.focused {
+    border-color: $blue-colour;
+  }
+
+  &.invalid {
+    border-color: $red-colour;
+  }
+}
+
+.input-bar {
+  height: $input-bar-height;
+  margin: $section-margin 0 0 0;
+
+  input {
+    font-size: 18px;
+    width: 100%;
+    padding: 6px 16px;
+  }
+}
+
+.input-box {
+  height: $input-box-height;
+}

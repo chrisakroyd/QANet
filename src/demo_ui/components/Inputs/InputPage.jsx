@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import ContextOptions from './ContextOptions/ContextOptions';
+import ContextOptions from '../common/ContextOptions';
 import InputBar from '../common/InputBar';
 import InputBox from '../common/InputBox';
 import Button from '../common/Button';

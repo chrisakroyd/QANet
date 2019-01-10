@@ -1,9 +1,9 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-import './buttons.scss';
+import './inputs.scss';
 
 const Button = ({ onClick, label }) => (
-  <div className="button" onClick={() => onClick()} onKeyPress={() => onClick()} role="button" tabIndex={0}>
+  <div className="general-button button" onClick={() => onClick()} onKeyPress={() => onClick()} role="button" tabIndex={0}>
     {label}
   </div>
 );

@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import './input-box.scss';
+import './inputs.scss';
 
 class InputBox extends React.Component {
   render() {

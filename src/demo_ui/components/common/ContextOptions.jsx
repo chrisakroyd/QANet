@@ -2,11 +2,11 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classNames from 'classnames';
 
-import './context-options.scss';
+import './inputs.scss';
 
 const ContextOptions = ({ enterTextFunc, exampleFunc, loadExample }) => {
-  const manualClass = classNames('context-option', { active: !loadExample });
-  const getUrlClass = classNames('context-option', { active: loadExample });
+  const manualClass = classNames('context-option', 'general-button', { active: !loadExample });
+  const getUrlClass = classNames('context-option', 'general-button', { active: loadExample });
 
   return (
     <div className="context-options">
