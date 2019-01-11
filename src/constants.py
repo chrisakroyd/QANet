@@ -124,3 +124,17 @@ class EmbeddingTypes:
     def as_list():
         """ Returns a list of all supported embedding types """
         return [EmbeddingTypes.WORD, EmbeddingTypes.TRAINABLE, EmbeddingTypes.CHAR]
+
+
+class ErrorMessages:
+    """ Constant error messages.
+        The following keys are defined:
+        * NO_CONTEXT: Key for context missing.
+        * NO_QUERY: Key for QUERY missing.
+        * INVALID_CONTEXT: Context field is invalid.
+        * INVALID_QUERY: Query field is invalid.
+    """
+    NO_CONTEXT = 'Context key missing from body of POST request.'
+    NO_QUERY = 'Query key missing from body of POST request.'
+    INVALID_CONTEXT = 'Context must be longer than 0 excluding space characters.'
+    INVALID_QUERY = 'Query must be longer than 0 excluding space characters.'

@@ -1,11 +1,12 @@
 def get_answer_texts(context_tokens, answer_starts, answer_ends):
     """
+        Given a context, answer starts and answer end positions, extracts the original text for each answer pair.
         Args:
-            context_tokens:
-            answer_starts:
-            answer_ends:
+            context_tokens: Tokenized form of the original context.
+            answer_starts: An answer start pointer.
+            answer_ends: An answer end pointer.
         Returns:
-
+            A list of answer texts.
     """
     answer_texts = []
 
@@ -17,17 +18,19 @@ def get_answer_texts(context_tokens, answer_starts, answer_ends):
     return [answer_texts]
 
 
-def get_predict_response(context_tokens, query_tokens, answer_starts, answer_ends, p_starts, p_ends):
+def get_predict_response(context_tokens, query_tokens, answer_starts, answer_ends, p_starts, p_ends, orig_body):
     """
+        Generates a formatted response message containing successful predictions as well as original parameters.
         Args:
-            context_tokens:
-            query_tokens:
-            answer_starts:
-            answer_ends:
-            p_starts:
-            p_ends:
+            context_tokens: Tokenized form of the original context.
+            query_tokens: Tokenized form of the original query.
+            answer_starts: The predicted answer start position.
+            answer_ends: The predicted answer end position.
+            p_starts: The softmax probabilities for start position over all context tokens.
+            p_ends: The softmax probabilities for end position over all context tokens.
+            orig_body: Original parameters send with the prediction request.
         Returns:
-
+            Formatted prediction success response message.
     """
     if isinstance(context_tokens[0], str):
         context_tokens = [context_tokens]
@@ -59,4 +62,34 @@ def get_predict_response(context_tokens, query_tokens, answer_starts, answer_end
         # TODO: Revist this to grab the multiplied prob from the prediction matrix (P(start) * P(end)).
         'bestAnswer': answer_texts[0][-1],
         'data': data,
+        'parameters': {
+            'context': orig_body['context'],
+            'query': orig_body['query']
+        }
+    }
+
+
+def get_error_response(error_message, orig_body, error_code=0):
+    """
+        Generates a formatted error response with the given error message and error code.
+        Args:
+            error_code: A unique id for this error.
+            orig_body: The original parameters sent with the request which were invalid.
+            error_message: Cause of this error.
+        Returns:
+            Error dict for the response.
+    """
+
+    params = {}
+
+    if 'context' in orig_body:
+        params['context'] = orig_body['context']
+
+    if 'query' in orig_body:
+        params['query'] = orig_body['query']
+
+    return {
+        'error_code': error_code,
+        'error_message': error_message,
+        'parameters': params
     }
