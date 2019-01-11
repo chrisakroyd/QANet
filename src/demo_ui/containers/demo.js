@@ -17,7 +17,6 @@ const mapStateToProps = state =>
 const mapDispatchToProps = dispatch => ({
   predict: () => {
     dispatch(runPrediction());
-    dispatch(push('/results'));
   },
   returnHome: () => {
     dispatch(push('/'));

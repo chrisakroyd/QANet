@@ -1,3 +1,8 @@
+$background-colour: #ffffff;
+$header-font-size: 1.6em;
+$section-margin: 25px;
+$max-width: 750px;
+
 html, body {
   height: 100%;
   width: 100%;
@@ -7,7 +12,7 @@ html, body {
 
 body {
   min-height: 100vh;
-  background-color: #ffffff;
+  background-color: $background-colour;
 }
 
 #app-container {
@@ -29,8 +34,8 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
-  margin: 25px auto 0 auto;
-  max-width:750px;
+  margin: $section-margin auto 0 auto;
+  max-width: $max-width;
 
   .section-header {
     display: flex;
@@ -39,7 +44,7 @@ body {
 
   .header-text {
     font-weight: bold;
-    font-size: 1.6em;
+    font-size: $header-font-size;
   }
 
   &.spinner-container {
@@ -48,6 +53,6 @@ body {
   }
 
   &:last-child {
-    margin-bottom: 30px;
+    margin-bottom: $section-margin;
   }
 }

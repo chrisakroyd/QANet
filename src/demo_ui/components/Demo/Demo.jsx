@@ -28,6 +28,7 @@ const Demo = ({
           setContextText={setContextText}
           enterText={enterText}
           loadExample={loadExample}
+          predictions={predictions}
           text={text}
         />
       )}

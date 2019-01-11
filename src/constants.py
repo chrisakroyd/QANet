@@ -138,3 +138,4 @@ class ErrorMessages:
     NO_QUERY = 'Query key missing from body of POST request.'
     INVALID_CONTEXT = 'Context must be longer than 0 excluding space characters.'
     INVALID_QUERY = 'Query must be longer than 0 excluding space characters.'
+    OUT_OF_RANGE_ERR = 'Iterator out of range, attempted to call too many times. (Please report this error)'

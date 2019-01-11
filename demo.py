@@ -97,9 +97,10 @@ def demo(sess_config, params):
         try:
             answer_start, answer_end, p_start, p_end = sess.run(fetches=demo_outputs)
         except tf.errors.OutOfRangeError:
-            # This in theory should never happen as we reset the iterator after each iteration and only run
+            # This in theory should never happen as we reinitialize the iterator after each iteration and only run
             # one batch but theories are frequently wrong.
-            raise RuntimeError('Iterator out of range, attempted to call too many times. (Please report this error)')
+            return json.dumps(demo_utils.get_error_response(constants.ErrorMessages.OUT_OF_RANGE_ERR,
+                                                            data, error_code=5)), BAD_REQUEST_CODE
 
         response = demo_utils.get_predict_response(context_tokens, query_tokens, answer_start,
                                                    answer_end, p_start, p_end, data)

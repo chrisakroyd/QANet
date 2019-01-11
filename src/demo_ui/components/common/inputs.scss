@@ -4,6 +4,7 @@ $back-button-height: 24px;
 $button-padding: 15px;
 $border-radius: 5px;
 $border-width: 2px;
+$context-option-spacing: 7px;
 $input-bar-height: 56px;
 $input-box-height: 250px;
 $input-width: 700px;
@@ -13,7 +14,7 @@ $green-colour: #5fcf80;
 $neutral-colour: grey;
 $blue-colour: #2e86de;
 $red-colour: #FF6666;
-$section-margin: 30px;
+$section-margin: 25px;
 
 .general-button {
   display: flex;
@@ -52,6 +53,10 @@ $section-margin: 30px;
     svg {
       margin-right: 4px;
     }
+
+    &:hover, &:focus {
+      background-color: $green-colour;
+    }
   }
 }
 
@@ -63,7 +68,7 @@ $section-margin: 30px;
   .context-or, .context-option {
     height: $button-height;
     padding: $button-padding;
-    margin: 7px;
+    margin-right: $context-option-spacing;
   }
 
   .context-option {

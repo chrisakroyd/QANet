@@ -34,7 +34,6 @@ def test(sess_config, params):
         # Restore the moving average version of the learned variables for eval.
         saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
         saver.restore(sess, tf.train.latest_checkpoint(model_dir))
-        # Assign the shadow EMA variables to the graph.
         preds = []
         # +1 for uneven batch values, +1 for the range.
         for _ in tqdm(range(1, (len(val_answers) // params.batch_size + 1) + 1)):

@@ -89,7 +89,7 @@ def get_error_response(error_message, orig_body, error_code=0):
         params['query'] = orig_body['query']
 
     return {
-        'error_code': error_code,
-        'error_message': error_message,
+        'errorCode': error_code,
+        'errorMessage': error_message,
         'parameters': params
     }

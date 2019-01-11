@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { push } from 'react-router-redux';
 
 import config from '../config';
 import { loadExample, loadExampleSuccess, loadExampleFailure } from './textActions';
@@ -13,6 +14,7 @@ export function runPrediction() {
     dispatch(predict());
     return axios.post(`${demoUrl}/api/v1/model/predict`, { context: text.context, query: text.query })
       .then(res => dispatch(predictSuccess(res.data)))
+      .then(() => dispatch(push('/results')))
       .catch(err => dispatch(predictFailure(err)));
   };
 }
