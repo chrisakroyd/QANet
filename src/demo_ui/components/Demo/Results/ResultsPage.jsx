@@ -1,17 +1,16 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import shortid from 'shortid';
-import predictShape from './../../prop-shapes/predictShape';
-import { capitalizeFirstLetter, isError } from './../../util';
-import { pointerPredTip, probDistTip } from './../../constants/tooltips';
+import { predictShape } from '../../../prop-shapes/index';
+import { capitalizeFirstLetter, isError } from '../../../util';
+import { pointerPredTip } from '../../../constants/tooltips';
 
-import BackButton from '../common/BackButton';
-import LoadingSpinner from '../common/LoadingSpinner';
-import Step from '../common/Step';
-import ToolTip from '../common/ToolTip';
-import WordHeat from './WordHeat/WordHeat';
+import BackButton from '../../common/BackButton';
+import LoadingSpinner from '../../common/LoadingSpinner';
+import Step from '../../common/Step';
+import ToolTip from '../../common/ToolTip';
+import WordHeat from './WordHeat';
 
-import './results-page.scss';
 
 const ResultsPage = ({ goBack, query, predictions }) => {
   let answerContent;

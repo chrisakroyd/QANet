@@ -1,16 +1,15 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 
-import ContextOptions from '../common/ContextOptions';
-import InputBar from '../common/InputBar';
-import InputBox from '../common/InputBox';
-import Button from '../common/Button';
-import Step from '../common/Step';
-import textShape from '../../prop-shapes/textShape';
-
+import ContextOptions from '../../common/ContextOptions';
+import InputBar from '../../common/InputBar';
+import InputBox from '../../common/InputBox';
+import Step from '../../common/Step';
+import Predict from './Predict';
+import { predictShape, textShape } from '../../../prop-shapes/index';
 
 const InputPage = ({
-  predict, setQueryText, setContextText, enterText, loadExample, text,
+  predict, setQueryText, setContextText, enterText, loadExample, text, predictions,
 }) => (
   <div className="input-page">
     <div className="section">
@@ -47,7 +46,12 @@ const InputPage = ({
         <Step number={3} />
         <div className="header-text">Get an Answer</div>
       </div>
-      <Button onClick={predict} label="Predict" enabled={text.query.length > 0 && text.context.length > 0} />
+      <Predict
+        predict={predict}
+        loading={predictions.loading || text.loading}
+        error={predictions.error}
+        text={text}
+      />
     </div>
   </div>
 );
@@ -59,6 +63,7 @@ InputPage.propTypes = {
   enterText: PropTypes.func.isRequired,
   loadExample: PropTypes.func.isRequired,
   text: textShape.isRequired,
+  predictions: predictShape.isRequired,
 };
 
 export default InputPage;

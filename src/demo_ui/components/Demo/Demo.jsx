@@ -2,12 +2,10 @@ import React from 'react';
 import { Route } from 'react-router';
 import PropTypes from 'prop-types';
 
-import Introduction from './Introduction/Introduction';
-import InputPage from '../Inputs/InputPage';
-import ResultPage from '../Results/ResultsPage';
-import predictShape from './../../prop-shapes/predictShape';
-import textShape from './../../prop-shapes/textShape';
-// import { predictShape, textShape } from './../../prop-shapes';
+import InputPage from './Inputs/InputPage';
+import ResultPage from './Results/ResultsPage';
+import { predictShape, textShape } from '../../prop-shapes/index';
+
 import './demo.scss';
 
 const Demo = ({
@@ -16,7 +14,15 @@ const Demo = ({
 }) => (
   <div className="demo-body">
     <div className="section">
-      <Introduction />
+      <div className="intro-container">
+        <h2>QANet - Demo</h2>
+        <h3>What is this thing?</h3>
+        <p>
+          This is a demo of the Machine Comprehension network QANet that answers natural language
+          questions by pointing to the start and end words of an answer span from a section
+          of relevant english language text.
+        </p>
+      </div>
     </div>
     <Route
       exact

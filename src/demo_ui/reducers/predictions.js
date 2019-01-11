@@ -18,7 +18,7 @@ const predictions = (state = {}, action) => {
     case PREDICT_FAILURE:
       return Object.assign({}, state, {
         loading: false,
-        error: action.errorCode,
+        error: action.error,
       });
     default:
       return state;

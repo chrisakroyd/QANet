@@ -1,9 +1,13 @@
 $font-size: 16px;
 $section-margin: 25px;
+$red-colour: #FF6666;
 
-.demo-body {
+.demo-body, .intro-container, .predict-action, .answer, .answers-container {
   display: flex;
   flex-direction: column;
+}
+
+.demo-body {
   overflow: hidden;
   margin: 0 auto;
   padding: 0 15%;
@@ -17,11 +21,53 @@ $section-margin: 25px;
     font-size: 1.8em;
   }
 
+  .intro-container {
+    h3 {
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0;
+    }
+  }
+
   .button {
     margin: $section-margin auto 0 auto;
   }
 
   .back-button {
     margin: 0;
+  }
+
+  .input-page {
+    .predict-action {
+      align-items: center;
+    }
+
+    .error-message {
+      color: $red-colour;
+      text-align: center;
+      margin: 5px 0 0 0;
+    }
+  }
+
+  .results-page {
+    font-size: $font-size;
+
+    .header-text {
+      justify-content: center;
+    }
+
+    .answers-container {
+      margin-top: $section-margin;
+
+      .answer {
+        flex-direction: row;
+
+        .answer-text {
+          line-height: 25px;
+        }
+      }
+    }
   }
 }

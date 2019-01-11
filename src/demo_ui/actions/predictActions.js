@@ -1,6 +1,4 @@
-import {
-  PREDICT, PREDICT_SUCCESS, PREDICT_FAILURE, STATUS, STATUS_FAILURE, STATUS_SUCCESS,
-} from '../constants/actions';
+import { PREDICT, PREDICT_SUCCESS, PREDICT_FAILURE } from '../constants/actions';
 
 export function predict() {
   return {
@@ -20,6 +18,6 @@ export function predictSuccess(data) {
 export function predictFailure(error) {
   return {
     type: PREDICT_FAILURE,
-    error,
+    error: error.response.data,
   };
 }
