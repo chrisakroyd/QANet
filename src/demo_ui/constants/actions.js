@@ -1,3 +1,7 @@
+// Action for resetting error state.
+
+export const CLEAR_ERROR = 'CLEAR_ERROR';
+
 // Action constants for running predictions.
 export const PREDICT = 'PREDICT';
 

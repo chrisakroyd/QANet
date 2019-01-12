@@ -1,4 +1,4 @@
-import { PREDICT, PREDICT_SUCCESS, PREDICT_FAILURE } from '../constants/actions';
+import { CLEAR_ERROR, PREDICT, PREDICT_SUCCESS, PREDICT_FAILURE } from '../constants/actions';
 
 export function predict() {
   return {
@@ -19,5 +19,11 @@ export function predictFailure(error) {
   return {
     type: PREDICT_FAILURE,
     error: error.response.data,
+  };
+}
+
+export function clearError() {
+  return {
+    type: CLEAR_ERROR,
   };
 }
