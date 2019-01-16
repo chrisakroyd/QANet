@@ -13,6 +13,7 @@ def save_json(path, data, indent=None):
             data: A dict or iterable.
             indent: Pretty print the json with this level of indentation.
     """
+    assert isinstance(path, str) and len(path) > 0
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=indent)
 
@@ -24,8 +25,20 @@ def load_json(path):
         Returns:
             Loaded json as original saved type e.g. dict for index, list for saved lists.
     """
+    assert isinstance(path, str) and len(path) > 0
     with open(path, encoding='utf-8') as f:
         return json.load(f)
+
+
+def load_multiple_jsons(paths):
+    """ Loads multiple UTF-8 encoded .json file.
+        Args:
+            paths: List of string paths to .json files.
+        Returns:
+            Loaded json as original saved type e.g. dict for index, list for saved lists for each path.
+    """
+    assert isinstance(paths, list) or isinstance(paths, tuple)
+    return [load_json(path) for path in paths]
 
 
 def download_json(url, path):

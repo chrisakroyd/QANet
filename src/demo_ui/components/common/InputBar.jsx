@@ -32,6 +32,7 @@ class InputBar extends React.Component {
           onChange={() => this.props.onKeyPress(this.textInput.value)}
           onFocus={() => this.onFocus()}
           onBlur={() => this.onBlur()}
+          onKeyPress={(event) => { if (event.key === 'Enter') this.props.onEnter(); }}
           placeholder={this.props.placeholder}
           value={this.props.value}
           ref={(input) => { this.textInput = input; }}
@@ -43,6 +44,7 @@ class InputBar extends React.Component {
 
 InputBar.propTypes = {
   onKeyPress: PropTypes.func.isRequired,
+  onEnter: PropTypes.func,
   placeholder: PropTypes.string.isRequired,
   value: PropTypes.string.isRequired,
   validInput: PropTypes.bool,
@@ -50,6 +52,7 @@ InputBar.propTypes = {
 
 InputBar.defaultProps = {
   validInput: true,
+  onEnter: () => {},
 };
 
 export default InputBar;

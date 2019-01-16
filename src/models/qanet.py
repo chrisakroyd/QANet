@@ -86,7 +86,11 @@ class QANet(tf.keras.Model):
         loss = tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)
 
         if l2 is not None and l2 > 0.0:
-            l2_loss = train_utils.l2_ops(l2)
+            variables = tf.trainable_variables()
+            # Ignore bias/scale weights (Bag of Tricks for Image Classification with
+            # Convolutional Neural Networks, https://arxiv.org/pdf/1812.01187.pdf)
+            variables = [v for v in variables if 'bias' not in v.name and 'scale' not in v.name]
+            l2_loss = train_utils.l2_ops(l2, variables=variables)
             loss = loss + l2_loss
 
         return loss

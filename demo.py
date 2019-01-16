@@ -30,9 +30,7 @@ def demo(sess_config, params):
     word_index_path, _, char_index_path = util.index_paths(params)
     examples_path = util.examples_path(params)
     embedding_paths = util.embedding_paths(params)
-    word_index = util.load_json(word_index_path)
-    char_index = util.load_json(char_index_path)
-    examples = util.load_json(examples_path)
+    word_index, char_index, examples = util.load_multiple_jsons(paths=(word_index_path, char_index_path, examples_path))
 
     tokenizer = util.Tokenizer(lower=False,
                                oov_token=params.oov_token,
