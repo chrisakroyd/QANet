@@ -133,6 +133,7 @@ class ErrorMessages:
         * NO_QUERY: Key for QUERY missing.
         * INVALID_CONTEXT: Context field is invalid.
         * INVALID_QUERY: Query field is invalid.
+        * OUT_OF_RANGE_ERR: Internal error related to iterators running out of data.
     """
     NO_CONTEXT = 'Context key missing from body of POST request.'
     NO_QUERY = 'Query key missing from body of POST request.'

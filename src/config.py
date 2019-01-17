@@ -99,6 +99,10 @@ def model_config(defaults):
     # Train specific flags e.g. number of steps, early stop, eval period.
     flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')
     flags.DEFINE_integer('warmup_steps', defaults.warmup_steps, 'Number of warmup steps.')
+    flags.DEFINE_integer('plateau_steps', defaults.plateau_steps,
+                         'Only used when `use_cosine_decay` is True. Number of steps to hold the learning rate for before decaying.')
+    flags.DEFINE_boolean('use_cosine_decay', defaults.use_cosine_decay,
+                         'Whether or not to use cosine decay on the learning rate.')
     flags.DEFINE_string('warmup_scheme', defaults.warmup_scheme, 'Learning rate warmup scheme.')
     flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint.')
     flags.DEFINE_integer('run_val_every', defaults.run_val_every, 'After how many steps do we calculate EM/F1 scores.')
