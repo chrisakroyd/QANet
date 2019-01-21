@@ -60,7 +60,7 @@ def demo(sess_config, params):
     saver.restore(sess, tf.train.latest_checkpoint(model_dir))
 
     @app.route('/api/v{0}/model/predict'.format(API_VERSION), methods=['POST'])
-    def process():
+    def predict():
         data = request.get_json()
 
         if 'context' not in data:
@@ -83,6 +83,13 @@ def demo(sess_config, params):
             return json.dumps(demo_utils.get_error_response(constants.ErrorMessages.INVALID_QUERY,
                                                             data, error_code=4)), BAD_REQUEST_CODE
 
+        answer_start, answer_end, p_start, p_end = process(context_tokens, query_tokens)
+        response = demo_utils.get_predict_response(context_tokens, query_tokens, answer_start,
+                                                   answer_end, p_start, p_end, data)
+
+        return json.dumps(response)
+
+    def process(context_tokens, query_tokens):
         # These values must match the names given to the input tensors in pipeline.py.
         # @TODO Fix this, there must be a better way of feeding values that is less fragile.
         sess.run(demo_iter.initializer, feed_dict={
@@ -92,18 +99,8 @@ def demo(sess_config, params):
             'query_length:0': np.array([len(query_tokens)], dtype=np.int32),
         })
 
-        try:
-            answer_start, answer_end, p_start, p_end = sess.run(fetches=demo_outputs)
-        except tf.errors.OutOfRangeError:
-            # This in theory should never happen as we reinitialize the iterator after each iteration and only run
-            # one batch but theories are frequently wrong.
-            return json.dumps(demo_utils.get_error_response(constants.ErrorMessages.OUT_OF_RANGE_ERR,
-                                                            data, error_code=5)), BAD_REQUEST_CODE
-
-        response = demo_utils.get_predict_response(context_tokens, query_tokens, answer_start,
-                                                   answer_end, p_start, p_end, data)
-
-        return json.dumps(response)
+        answer_start, answer_end, p_start, p_end = sess.run(fetches=demo_outputs)
+        return answer_start, answer_end, p_start, p_end
 
     @app.route('/api/v{0}/examples'.format(API_VERSION), methods=['GET'])
     def get_example():

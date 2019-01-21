@@ -16,21 +16,26 @@ class WordHeat extends React.Component {
     const {
       words, startProb, endProb, answerStart, answerEnd,
     } = this.props;
+
+    const maxStartProb = Math.max(...startProb);
+    const maxEndProb = Math.max(...endProb);
+
     return words.map((word, i) => {
       const wordClass = classNames('heat-word', { 'answer-segment': i >= answerStart && i <= answerEnd });
-      let score;
+      let backgroundColor;
 
       if (startProb[i] > endProb[i]) {
-        score = startProb[i];
+        // Scale colour relative to rest of probs.
+        backgroundColor = interpolate(startProb[i] / maxStartProb);
       } else {
-        score = endProb[i];
+        backgroundColor = interpolate(endProb[i] / maxEndProb);
       }
 
       return (
         <div
           key={shortid.generate()}
           className={wordClass}
-          style={({ backgroundColor: interpolate(score) })}
+          style={({ backgroundColor })}
         >
           {word}
         </div>);

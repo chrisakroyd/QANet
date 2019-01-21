@@ -90,10 +90,18 @@ $section-margin: 25px;
   width: $input-width;
   border: $border-width solid $neutral-colour;
   border-radius: $border-radius;
+  background-color: rgba(0, 0, 0, 0.02);
+  transition: .25s;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
 
   input, textarea {
     width: 100%;
     font-weight: $font-weight;
+    background-color: unset;
     resize: none;
     border: none;
     border-radius: $border-radius;
