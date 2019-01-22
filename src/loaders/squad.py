@@ -35,7 +35,7 @@ def load_squad_set(context_path, answer_path):
     return contexts, answers, context_mapping
 
 
-def load_squad(params):
+def load_squad_v1(params):
     """ Loads the processed train and dev squad sets.
         Args:
             params: A dictionary of parameters.

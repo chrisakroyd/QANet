@@ -6,7 +6,7 @@ import InputBar from '../../common/InputBar';
 import InputBox from '../../common/InputBox';
 import Step from '../../common/Step';
 import Predict from './Predict';
-import { predictShape, textShape } from '../../../prop-shapes/index';
+import { predictShape, textShape } from '../../../prop-shapes';
 
 const InputPage = ({
   predict, setQueryText, setContextText, enterText, loadExample, text, predictions,
@@ -38,6 +38,7 @@ const InputPage = ({
         placeholder="Question"
         value={text.query}
         onKeyPress={setQueryText}
+        onEnter={predict}
         validInput={text.query.length > 0}
       />
     </div>

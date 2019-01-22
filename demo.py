@@ -83,20 +83,30 @@ def demo(sess_config, params):
             return json.dumps(demo_utils.get_error_response(constants.ErrorMessages.INVALID_QUERY,
                                                             data, error_code=4)), BAD_REQUEST_CODE
 
-        answer_start, answer_end, p_start, p_end = process(context_tokens, query_tokens)
+        if len(context_tokens) > params.max_tokens:
+            context_tokens, context_lengths = demo_utils.split_text(context_tokens, params.max_tokens)
+            query_lengths = [len(query_tokens)] * len(context_lengths)
+            query_tokens = [query_tokens] * len(context_lengths)
+        else:
+            context_lengths = [len(context_tokens)]
+            query_lengths = [len(query_tokens)]
+            context_tokens = [context_tokens]
+            query_tokens = [query_tokens]
+
+        answer_start, answer_end, p_start, p_end = process(context_tokens, context_lengths, query_tokens, query_lengths)
         response = demo_utils.get_predict_response(context_tokens, query_tokens, answer_start,
                                                    answer_end, p_start, p_end, data)
 
         return json.dumps(response)
 
-    def process(context_tokens, query_tokens):
+    def process(context_tokens, context_lengths, query_tokens, query_lengths):
         # These values must match the names given to the input tensors in pipeline.py.
         # @TODO Fix this, there must be a better way of feeding values that is less fragile.
         sess.run(demo_iter.initializer, feed_dict={
-            'context_tokens:0': np.array([context_tokens], dtype=np.str),
-            'context_length:0': np.array([len(context_tokens)], dtype=np.int32),
-            'query_tokens:0': np.array([query_tokens], dtype=np.str),
-            'query_length:0': np.array([len(query_tokens)], dtype=np.int32),
+            'context_tokens:0': np.array(context_tokens, dtype=np.str),
+            'context_length:0': np.array(context_lengths, dtype=np.int32),
+            'query_tokens:0': np.array(query_tokens, dtype=np.str),
+            'query_length:0': np.array(query_lengths, dtype=np.int32),
         })
 
         answer_start, answer_end, p_start, p_end = sess.run(fetches=demo_outputs)

@@ -10,7 +10,6 @@ export function predictSuccess(data) {
   return {
     type: PREDICT_SUCCESS,
     numPredictions: data.numPredictions,
-    bestAnswer: data.bestAnswer,
     data: data.data,
   };
 }

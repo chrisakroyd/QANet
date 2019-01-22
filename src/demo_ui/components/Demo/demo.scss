@@ -1,5 +1,5 @@
 $font-size: 16px;
-$section-margin: 25px;
+$section-margin: 20px;
 $red-colour: #FF6666;
 
 .demo-body, .intro-container, .predict-action, .answer, .answers-container {
@@ -58,16 +58,29 @@ $red-colour: #FF6666;
       justify-content: center;
     }
 
+    .query {
+      margin-top: $section-margin;
+    }
+
     .answers-container {
       margin-top: $section-margin;
 
       .answer {
         flex-direction: row;
+        margin-top: 10px;
+
+        &:first-child {
+          margin: 0;
+        }
 
         .answer-text {
           line-height: 25px;
         }
       }
+    }
+
+    .word-heat:first-child {
+      margin-top: $section-margin;
     }
   }
 }

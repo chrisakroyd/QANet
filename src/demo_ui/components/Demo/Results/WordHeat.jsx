@@ -46,9 +46,7 @@ class WordHeat extends React.Component {
   render() {
     return (
       <div className="word-heat">
-        <div className="heat-word-list">
-          {this.generateWordComponents()}
-        </div>
+        {this.generateWordComponents()}
       </div>
     );
   }

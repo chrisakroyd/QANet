@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 
 import Button from '../../common/Button';
 import LoadingSpinner from '../../common/LoadingSpinner';
-import { errorShape, textShape } from '../../../prop-shapes/index';
+import { errorShape, textShape } from '../../../prop-shapes';
 
 
 const Predict = ({ text, loading, predict, error }) => {

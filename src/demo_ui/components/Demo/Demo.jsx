@@ -4,7 +4,7 @@ import PropTypes from 'prop-types';
 
 import InputPage from './Inputs/InputPage';
 import ResultPage from './Results/ResultsPage';
-import { predictShape, textShape } from '../../prop-shapes/index';
+import { predictShape, textShape } from '../../prop-shapes';
 
 import './demo.scss';
 

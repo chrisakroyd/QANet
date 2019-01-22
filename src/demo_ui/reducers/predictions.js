@@ -4,6 +4,7 @@ const predictions = (state = {}, action) => {
   switch (action.type) {
     case CLEAR_ERROR:
       return Object.assign({}, state, {
+        loading: false,
         error: null,
       });
     case PREDICT:
@@ -14,7 +15,6 @@ const predictions = (state = {}, action) => {
     case PREDICT_SUCCESS:
       return Object.assign({}, state, {
         loading: false,
-        bestAnswer: action.bestAnswer,
         numPredictions: action.numPredictions,
         data: action.data,
         error: null,

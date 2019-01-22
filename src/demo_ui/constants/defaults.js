@@ -9,7 +9,6 @@ const text = {
 const predictions = {
   loading: false,
   numPredictions: 0,
-  bestAnswer: '',
   data: [],
   error: null,
 };

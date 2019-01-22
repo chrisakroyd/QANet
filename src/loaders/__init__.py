@@ -1,1 +1,1 @@
-from .squad import load_squad
+from .squad import load_squad_v1

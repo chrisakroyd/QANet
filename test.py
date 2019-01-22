@@ -8,7 +8,7 @@ def test(sess_config, params):
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
 
-    _, val = loaders.load_squad(params)
+    _, val = loaders.load_squad_v1(params)
     val_spans, val_answers, val_ctxt_mapping = val
 
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))

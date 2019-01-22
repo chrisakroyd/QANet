@@ -11,7 +11,7 @@ def train(sess_config, params, debug=False):
     embedding_paths = util.embedding_paths(params)
     util.make_dirs([out_dir, model_dir, log_dir])
 
-    train, val = loaders.load_squad(params)
+    train, val = loaders.load_squad_v1(params)
 
     train_spans, train_answers, train_ctxt_mapping = train
     val_spans, val_answers, val_ctxt_mapping = val

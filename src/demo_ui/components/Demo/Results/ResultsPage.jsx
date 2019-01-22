@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import shortid from 'shortid';
-import { predictShape } from '../../../prop-shapes/index';
+import { predictShape } from '../../../prop-shapes';
 import { capitalizeFirstLetter, isError } from '../../../util';
 import { pointerPredTip } from '../../../constants/tooltips';
 
@@ -38,7 +38,8 @@ const ResultsPage = ({ goBack, query, predictions }) => {
         answerEnd={prediction.answerEnd}
       />));
 
-    const topAnswers = predictions.data.map((prediction, number) => (
+    const sortedAnswers = predictions.data.sort((a, b) => b.answerProb - a.answerProb);
+    const topAnswers = sortedAnswers.map((prediction, number) => (
       <div className="answer" key={shortid.generate()}>
         <Step number={number + 1} small />
         <div className="answer-text">{capitalizeFirstLetter(prediction.answerText)}</div>
@@ -58,7 +59,9 @@ const ResultsPage = ({ goBack, query, predictions }) => {
             <div className="header-text">Pointer predictions</div>
             <ToolTip tip={pointerPredTip} />
           </div>
-          {pointerHeatmaps}
+          <div>
+            {pointerHeatmaps}
+          </div>
         </div>
       </div>
     );
@@ -78,7 +81,7 @@ const ResultsPage = ({ goBack, query, predictions }) => {
       </div>
       <div className="section">
         <div className="header-text">Your question</div>
-        <p>{query}</p>
+        <p className="query">{query}</p>
       </div>
       {answerContent}
     </div>
