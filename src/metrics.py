@@ -14,6 +14,8 @@ def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, wri
             data_type: String for whether we are in train/val.
             writer: Summary Writer object.
             global_step: Current step.
+        Returns:
+            A dictionary of metrics and a dict of id: predicted_text
     """
     answer_texts = {}
     losses = []
