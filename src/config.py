@@ -23,6 +23,7 @@ def model_config(defaults):
             A `tf.flags` instance.
     """
     flags = tf.flags
+    flags.DEFINE_boolean('help', False, 'Print flag help')
     # Mode to run in, e.g. train, test.
     flags.DEFINE_string('mode', defaults.mode, 'Train/test/demo.')
     flags.DEFINE_string('dataset', defaults.dataset, 'Which dataset to use, e.g. Squad or MS Marco.')
@@ -32,11 +33,8 @@ def model_config(defaults):
     flags.DEFINE_string('embeddings_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
     flags.DEFINE_string('data_dir', defaults.data_dir,
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
-    flags.DEFINE_string('dist_dir', defaults.dist_dir,
-                        'Out path for demo code.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
     flags.DEFINE_string('models_dir', defaults.models_dir, 'Directory to save the models, logs and answer files.')
-    flags.DEFINE_integer('demo_server_port', defaults.demo_server_port, 'Port on which to serve/receive requests.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')
     # Dimension for the word + char embeddings. Char embeddings are generated during the pre-processing stage.
@@ -88,9 +86,9 @@ def model_config(defaults):
     flags.DEFINE_float('dropout', defaults.dropout, 'Dropout rate.', lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('attn_dropout', defaults.attn_dropout, 'Attention dropout rate.',
                        lower_bound=0.0, upper_bound=1.0)
-    flags.DEFINE_float('l2', defaults.l2, 'L2 weight decay.')
-    flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.')
-    flags.DEFINE_float('learn_rate', defaults.learn_rate, 'Learning rate.')
+    flags.DEFINE_float('l2', defaults.l2, 'L2 weight decay.', lower_bound=0.0)
+    flags.DEFINE_float('gradient_clip', defaults.gradient_clip, 'Clip by global norm value.', lower_bound=0.0)
+    flags.DEFINE_float('learn_rate', defaults.learn_rate, 'Learning rate.', lower_bound=0.0)
     flags.DEFINE_float('beta1', defaults.beta1, 'Beta 1 parameter of adam optimizer.', lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('beta2', defaults.beta2, 'Beta 2 parameter of adam optimizer.', lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('epsilon', defaults.epsilon, 'Value for epsilon.')
@@ -104,6 +102,5 @@ def model_config(defaults):
     flags.DEFINE_boolean('use_cosine_decay', defaults.use_cosine_decay,
                          'Whether or not to use cosine decay on the learning rate.')
     flags.DEFINE_string('warmup_scheme', defaults.warmup_scheme, 'Learning rate warmup scheme.')
-    flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint.')
-    flags.DEFINE_integer('run_val_every', defaults.run_val_every, 'After how many steps do we calculate EM/F1 scores.')
+    flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint and calculate EM/F1 scores.')
     return flags
