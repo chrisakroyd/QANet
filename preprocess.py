@@ -3,7 +3,7 @@ from src import config, constants, preprocessing, util
 
 def preprocess(params):
     dataset = params.dataset.lower().strip()
-    util.make_dirs(util.get_directories(params))
+    util.make_dirs(util.get_directories(params) + (util.raw_data_directory(params), ))
 
     if dataset == constants.Datasets.SQUAD_1:
         preprocessing.squad_process(params)

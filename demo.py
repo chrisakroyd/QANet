@@ -26,7 +26,7 @@ def demo(sess_config, params):
     app = Flask(__name__, static_folder=params.dist_dir)
     app.after_request(add_cors_headers)
 
-    _, _, model_dir, _ = util.train_paths(params)
+    _, model_dir, _ = util.train_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
     examples_path = util.examples_path(params)
     embedding_paths = util.embedding_paths(params)
@@ -135,4 +135,4 @@ if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     model_config = config.model_config(defaults).FLAGS
     app = demo(config.gpu_config(), model_config)
-    app.run(port=model_config.demo_server_port)
+    app.run(port=5000)
