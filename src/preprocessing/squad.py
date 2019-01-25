@@ -22,12 +22,11 @@ def convert_idx(text, tokens):
     return spans
 
 
-def fit_and_extract(data_set, tokenizer, params):
+def fit_and_extract(data_set, tokenizer):
     """ Extracts context + query tokens and flattens squad data structure.
         Args:
-            data_set: Either train/dev squad dict.
+            data_set: Either train/dev raw squad data.
             tokenizer: A Tokenizer instance.
-            params: A dictionary of parameters.
         Returns:
             Contexts, Queries and the tokenizer.
     """
@@ -36,24 +35,19 @@ def fit_and_extract(data_set, tokenizer, params):
 
     for data in tqdm(data_set['data']):
         for question_answer in data['paragraphs']:
-            context_clean = prepro.normalize(question_answer['context'])
+            context_clean = question_answer['context'].strip()
             # Fit the tokenizer on the cleaned version of the context.
             context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
-
-            # Skip contexts which are larger than max tokens.
-            if len(context_tokens) > params.max_tokens:
-                continue
-
             spans = convert_idx(context_clean, context_tokens)
 
             for qa in question_answer['qas']:
-                query_clean = prepro.normalize(qa['question'])
+                query_clean = qa['question'].strip()
                 query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
                 total += 1
                 answer_starts, answer_ends, answer_texts, orig_answers = [], [], [], []
 
                 for answer in qa['answers']:
-                    answer_text = prepro.normalize(answer['text'])
+                    answer_text = answer['text'].strip()
                     answer_start = answer['answer_start']
                     answer_end = answer_start + len(answer_text)
 
@@ -80,6 +74,7 @@ def fit_and_extract(data_set, tokenizer, params):
                 assert answer_id not in queries
 
                 if len(answer_starts) == 0 or len(answer_ends) == 0:
+                    skipped += 1
                     continue
 
                 queries[answer_id] = {
@@ -113,36 +108,43 @@ def fit_and_extract(data_set, tokenizer, params):
     print('Total Answers: {}'.format(len(queries)))
     print('Total Skipped: {}'.format(skipped))
 
-    # assert total == (len(queries) + skipped)
-
     return contexts, queries, tokenizer
 
 
-def write_as_tf_record(path, contexts, queries):
+def write_as_tf_record(path, contexts, queries, params, skip_too_long=True):
     """ Shuffles the queries and writes out the context + queries as a .tfrecord file.
 
         Args:
             path: Output path for the .tfrecord file.
             contexts: Dict mapping of context_id: words, spans + length (Context output from fit_and_extract)
             queries: Dict mapping of answer_id: words, answers, +start/end (Queries output from fit_and_extract)
+            params: A dictionary of parameters.
+            skip_too_long: Skip rows when either the query or context if their length is above max_tokens.
     """
     records = []
     shuffled = list(queries.values())
     random.shuffle(shuffled)
+
     for data in shuffled:
         context = contexts[data['context_id']]
+        num_context_tokens = context['context_length']
+        num_query_tokens = data['query_length']
+
+        if (num_context_tokens > params.max_tokens or num_query_tokens > params.max_tokens) and skip_too_long:
+            continue
+
         encoded_context = [m.encode('utf-8') for m in context['context_tokens']]
         encoded_query = [m.encode('utf-8') for m in data['query_tokens']]
 
         context_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_context))
-        context_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[context['context_length']]))
+        context_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[num_context_tokens]))
         query_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_query))
-        query_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['query_length']]))
+        query_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[num_query_tokens]))
         answer_starts = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['answer_starts']]))
         answer_ends = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['answer_ends']]))
         answer_id = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['answer_id']]))
 
-        record = tf.train.Example(features=tf.train.Features(feature={
+        features = {
             'context_tokens': context_tokens,
             'context_length': context_length,
             'query_tokens': query_tokens,
@@ -150,8 +152,12 @@ def write_as_tf_record(path, contexts, queries):
             'answer_starts': answer_starts,
             'answer_ends': answer_ends,
             'answer_id': answer_id,
-        }))
+        }
 
+        if params.use_elmo:
+            raise NotImplementedError('ElMo not yet implemented.')
+
+        record = tf.train.Example(features=tf.train.Features(feature=features))
         records.append(record)
 
     with tf.python_io.TFRecordWriter(path) as writer:
@@ -168,17 +174,15 @@ def get_examples(contexts, queries, num_examples=1000):
 
 
 def process(params):
-    # Create prerequisite directories.
     directories = util.get_directories(params)
     util.make_dirs(directories)
     # Path to squad
-    train_path, dev_path = util.raw_data_paths(params)
-    # path to save tf_records and a random sample of data.
-    train_record_path = util.tf_record_paths(params, training=True)
-    dev_record_path = util.tf_record_paths(params, training=False)
+    train_raw_path, dev_raw_path = util.raw_data_paths(params)
+    train_record_path, dev_record_path, test_record_path = util.tf_record_paths(params)
     examples_path = util.examples_path(params)
     # Paths for dumping our processed data.
-    train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path = util.processed_data_paths(params)
+    train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path, \
+    test_contexts_path, test_answers_path = util.processed_data_paths(params)
     # Get paths for saving embedding related info.
     word_index_path, trainable_index_path, char_index_path = util.index_paths(params)
     word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params)
@@ -199,12 +203,12 @@ def process(params):
                                trainable_words=params.trainable_words,
                                filters=None)
 
-    train = util.load_json(train_path)
-    dev = util.load_json(dev_path)
+    train = util.load_json(train_raw_path)
+    dev = util.load_json(dev_raw_path)
 
     print('Processing...')
-    train_contexts, train_answers, tokenizer = fit_and_extract(train, tokenizer, params)
-    dev_contexts, dev_answers, tokenizer = fit_and_extract(dev, tokenizer, params)
+    train_contexts, train_answers, tokenizer = fit_and_extract(train, tokenizer)
+    dev_contexts, dev_answers, tokenizer = fit_and_extract(dev, tokenizer)
     tokenizer.init()
     word_index = tokenizer.word_index
     char_index = tokenizer.char_index
@@ -220,8 +224,9 @@ def process(params):
     char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim)
 
     print('Saving to TF Records...')
-    write_as_tf_record(train_record_path, train_contexts, train_answers)
-    write_as_tf_record(dev_record_path, dev_contexts, dev_answers)
+    write_as_tf_record(train_record_path, train_contexts, train_answers, params)
+    write_as_tf_record(dev_record_path, dev_contexts, dev_answers, params)
+    write_as_tf_record(test_record_path, dev_contexts, dev_answers, params)
     examples = get_examples(train_contexts, train_answers)
 
     train_contexts = util.remove_keys(train_contexts, context_keys_to_remove)
@@ -234,6 +239,8 @@ def process(params):
     util.save_json(train_answers_path, train_answers)
     util.save_json(dev_contexts_path, dev_contexts)
     util.save_json(dev_answers_path, dev_answers)
+    util.save_json(test_contexts_path, dev_contexts)
+    util.save_json(test_answers_path, dev_answers)
     # Save a random sample of the data.
     util.save_json(examples_path, examples)
     # Save the word index mapping of word:index for both the pre-trained and trainable embeddings.
