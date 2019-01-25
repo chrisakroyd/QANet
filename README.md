@@ -70,10 +70,11 @@ Here are the collected results from this repository and the original paper.
 |      Model     | Training Steps | Size | Attention Heads | Data Size (aug) |  EM  |  F1    | Time |
 |:--------------:|:--------------:|:----:|:---------------:|:---------------:|:----: |:----:  |:----:|
 |This repository* |     30,000     |  128  |        1        |   87k (no aug)  | 69.9 | 79.0  | 3h 9m|
-|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 70.7 | 80.1  | 6h 56m |
-|This repository* |     150,000     |  128  |        8        |   87k (no aug)  | 71.1| 80.3 | 17h 34m|
+|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 71.4 | 80.3  | 6h 10m |
+|This repository* |     150,000     |  128  |        8        |   87k (no aug)  | 72.9| 81.6 | 16h 55m|
 |[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|1|87k (no aug)| 70.7 | 79.8 | - |
-|[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (measured)*|60,000|128|1|87k (no aug)| |  |
+|[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|8|87k (no aug)| 70.8 | 80.1 | - |
+|[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (measured)*|60,000|128|1|87k (no aug)| 70.4| 79.2| 11h 32m|
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     35,000     |  128 |        8        |   87k (no aug)  |  NA  | 77.0 | 3h 00m
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     150,000    |  128 |        8        |   87k (no aug)  | 73.6 | 82.7 | 18h 00m
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     340,000    |  128 |        8        |    240k (aug)   | 75.1 | 83.8 | -
@@ -121,11 +122,10 @@ Here are the collected results from this repository and the original paper.
 #### Demo
 - [x] Demo UI.
 - [x] Start / End Pointer word heatmap.
-- [ ] Context-to-query and Query-to-context attention visualisation.
 - [ ] Tensorflow.js + running in the browser (long term goal).
 
 #### Docs
-- [ ] Actually add documentation.
+- [x] Actually add documentation.
 
 ## FAQ
 
@@ -140,7 +140,10 @@ Yes! As long as the file storing the vectors is formatted like a GloVE or FastTe
 
 #### I am getting out-of-memory errors, what is wrong?
 
-Generally this means you the model is too big to fit into GPU memory, try reducing the character dimension, hidden size or the batch size. Otherwise I'm working on adding support for [Gradient Checkpointing](https://github.com/openai/gradient-checkpointing) and a more memory-efficient multi-head attention implementation.
+This issue happens because the gradient calculation for the multi-head attention can be quite expensive, especially
+when used in tandem with a high max_tokens. The best way to avoid this is to, reduce the character dimension, hidden size
+or the batch size or max_tokens. Otherwise I'm working on adding support for [Gradient Checkpointing](https://github.com/openai/gradient-checkpointing)
+and a more memory-efficient multi-head attention implementation.
 
 #### What is Spacy being used for?
 Spacy provides much better tokenization out of the box vs nltk or simply splitting on whitespace.

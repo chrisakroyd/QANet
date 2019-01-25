@@ -75,7 +75,6 @@ def clean(text):
         Returns:
             Cleaned string.
     """
-    text = normalize(text)
     text = space_before.sub(r" \1", text)
     text = elipsiss.sub('.', text)
     text = apostrophe_like.sub("'", text)
@@ -87,7 +86,7 @@ def clean(text):
 
     text = wiki_noise.sub('', text)
     text = text.strip()
-
+    text = normalize(text)
     text = multi_spaces.sub(' ', text)
 
     return text

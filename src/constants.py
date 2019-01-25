@@ -67,6 +67,7 @@ class FileNames:
     TF_RECORD = '{name}.tfrecord'
     TRAIN = 'train'
     DEV = 'dev'
+    TEST = 'test'
 
 
 class DirNames:
@@ -82,8 +83,8 @@ class DirNames:
     """
     CHECKPOINTS = 'checkpoints'
     LOGS = 'logs'
-    RECORDS = 'records'
-    PROCESSED = 'processed_{}'
+    RAW = 'raw'
+    PROCESSED = 'processed'
     TRANSLATED = 'translated_{data}_{lang}'
     EMBEDDINGS = 'embeddings'
     SQUAD_1 = Datasets.SQUAD_1

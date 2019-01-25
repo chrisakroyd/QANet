@@ -8,6 +8,11 @@ from download import download
 
 def main(sess_config, flags):
     params = flags.FLAGS
+
+    if params.help:
+        print(params)
+        exit(0)
+
     mode = params.mode.lower().strip()
 
     if mode == constants.Modes.TRAIN:
@@ -20,7 +25,7 @@ def main(sess_config, flags):
         test(sess_config, params)
     elif mode == constants.Modes.DEMO:
         app = demo(sess_config, params)
-        app.run(port=params.demo_server_port)
+        app.run(port=5000)
     elif mode == constants.Modes.DOWNLOAD:
         download(params)
     else:
