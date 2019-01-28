@@ -32,8 +32,8 @@ def train(sess_config, params, debug=False):
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
 
         placeholders = iterator.get_next()
-        qanet_inputs = train_utils.inputs_as_tuple(placeholders)
-        y_start, y_end, id_tensor = train_utils.labels_as_tuple(placeholders)
+        qanet_inputs = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
+        y_start, y_end, id_tensor = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
 
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
@@ -86,8 +86,9 @@ def train(sess_config, params, debug=False):
                 answer_id, loss, answer_start, answer_end, _ = sess.run(fetches=train_outputs,
                                                                         feed_dict={handle: train_handle})
 
-            # Cache the result of the run for train evaluation.
-            train_preds.append((answer_id, loss, answer_start, answer_end,))
+            # We cache the result of each batch so we can compute metrics on the train set.
+            train_preds.append((answer_id, loss, answer_start, answer_end, ))
+
             if global_step % params.checkpoint_every == 0:
                 val_preds = []
                 # +1 for uneven batch values, +1 for the range.

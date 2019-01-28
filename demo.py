@@ -50,7 +50,7 @@ def demo(sess_config, params):
     demo_dataset, demo_iter = pipeline.create_demo_pipeline(params, tables, pipeline_placeholders)
 
     demo_placeholders = demo_iter.get_next()
-    demo_inputs = train_utils.inputs_as_tuple(demo_placeholders)
+    demo_inputs = util.dict_keys_as_tuple(demo_placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
     _, _, start_pred, end_pred, start_prob, end_prob = qanet(demo_inputs)
     demo_outputs = [start_pred, end_pred, start_prob, end_prob]
     sess.run(tf.global_variables_initializer())

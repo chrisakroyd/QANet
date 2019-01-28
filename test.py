@@ -4,7 +4,7 @@ from src import config, constants, loaders, metrics, models, pipeline, train_uti
 
 
 def test(sess_config, params):
-    _, out_dir, model_dir, log_dir = util.train_paths(params)
+    out_dir, model_dir, log_dir = util.train_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
 
@@ -27,8 +27,8 @@ def test(sess_config, params):
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
         placeholders = iterator.get_next()
         is_training = tf.placeholder_with_default(True, shape=())
-        qanet_inputs = train_utils.inputs_as_tuple(placeholders)
-        _, _, id_tensor = train_utils.labels_as_tuple(placeholders)
+        qanet_inputs = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
+        id_tensor = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=is_training)
 
         sess.run(tf.global_variables_initializer())

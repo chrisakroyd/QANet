@@ -128,6 +128,20 @@ def load_vocab_files(paths):
     return vocabs
 
 
+def dict_keys_as_tuple(placeholder_dict, keys=None):
+    """ Converts a dictionary to a tuple with the values ordered by the keys given by keys param.
+        Args:
+            placeholder_dict: A dict of input tensors.
+            keys: List of string keys representing the order placeholders should be returned.
+        Returns:
+            A tuple of input tensors.
+    """
+    if keys is None:
+        raise ValueError('No keys given to dict_keys_as_tuple.')
+
+    return tuple([placeholder_dict[key] for key in keys if key in placeholder_dict])
+
+
 def remove_keys(data, keys=[]):
     """ Removes specified keys from a list of dicts.
         Args:

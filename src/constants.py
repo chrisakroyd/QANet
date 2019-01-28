@@ -141,3 +141,15 @@ class ErrorMessages:
     INVALID_CONTEXT = 'Context must be longer than 0 excluding space characters.'
     INVALID_QUERY = 'Query must be longer than 0 excluding space characters.'
     OUT_OF_RANGE_ERR = 'Iterator out of range, attempted to call too many times. (Please report this error)'
+
+
+class PlaceholderKeys:
+    """ Constants for placeholder dict keys.
+        INPUT_KEYS: Keys for model input, e.g. words, characters.
+        LABEL_KEYS: Keys for labels.
+        ID_KEY: Answer id key.
+    """
+    INPUT_KEYS = ['context_words', 'context_chars', 'context_elmo', 'context_length',
+                  'query_words', 'query_chars', 'query_elmo', 'query_length']
+    LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
+    ID_KEY = ['answer_id']
