@@ -1,6 +1,5 @@
 import string
 from collections import Counter
-import numpy as np
 import spacy
 
 default_punct = set(string.punctuation)
@@ -8,7 +7,7 @@ default_punct = set(string.punctuation)
 
 class Tokenizer(object):
     def __init__(self, lower=False, filters=default_punct, max_words=25000, max_chars=2500, min_word_occurrence=-1,
-                 min_char_occurrence=-1, char_limit=16, vocab=None, word_index=None, char_index=None, oov_token='<oov>',
+                 min_char_occurrence=-1, vocab=None, word_index=None, char_index=None, oov_token='<oov>',
                  trainable_words=None, tokenizer='spacy'):
         """Constructs a Tokenizer Object.
             Args:
@@ -18,7 +17,6 @@ class Tokenizer(object):
                 max_chars: Maximum number of chars to include in the char_index.
                 min_word_occurrence: How many times a word must occur to be included in the word_index.
                 min_char_occurrence: How many times a char must occur to be included in the char_index.
-                char_limit: Max number of characters per word.
                 vocab: A list of strings that are considered our vocab e.g. list of words with embeddings.
                 word_index: A dict of word: index mappings.
                 char_index: A dict of char: index mappings.
@@ -39,7 +37,6 @@ class Tokenizer(object):
         self.lower = lower
         self.min_word_occurrence = min_word_occurrence
         self.min_char_occurrence = min_char_occurrence
-        self.char_limit = char_limit
         self.tokenizer = tokenizer
         # Flag for if we have just run the fit_text or if we have a set vocab.
         self.just_fit = False
@@ -161,107 +158,3 @@ class Tokenizer(object):
             self.update_vocab()
             self.update_indexes()
             self.just_fit = False
-
-    def get_index_word(self, word):
-        """ Maps a word to an index if its in the index else the OOV token.
-            Args:
-                word: A word string.
-            Returns:
-                An int index or index of the OOV token.
-        """
-        # Find common occurrences of the word if its not in other formats.
-        for each in (word, word.lower(), word.capitalize(), word.upper()):
-            if each in self.word_index:
-                return self.word_index[each]
-        return self.word_index[self.oov_token]
-
-    def get_index_char(self, char):
-        """ Maps a character to an index if its in the index else the OOV token.
-            Args:
-                char: A character string.
-            Returns:
-                An int index or index of the OOV token.
-        """
-        if char in self.char_index:
-            return self.char_index[char]
-        return self.char_index[self.oov_token]
-
-    def pad_sequence(self, words, chars, seq_length):
-        """ Pads a word + character sequence to the given sequence length.
-            Args:
-                words: List of integers of shape [?].
-                chars: List of integers of shape [?, ?].
-                seq_length: Desired sequence length.
-            Returns:
-                List of word ints of shape [seq_length] and a list of char ints of shape [seq_length, char_limit]
-        """
-        if len(words) < seq_length:
-            pad_num = seq_length - len(words)
-            words += [0] * pad_num
-            chars += [[0] * self.char_limit] * pad_num
-        return words, chars
-
-    def tokens_to_sequences(self, tokens, seq_length, pad=False, numpy=True):
-        """ Converts lists of tokens into lists of integers.
-
-            This function maps string tokens to their corresponding index id and optionally
-            pads to the max length in the sequence. We always pad the character dimension to
-            the limit specified during initialisation to make it much easier to handle during
-            training/loading.
-
-            Args:
-                tokens: A list of tokens to convert to integers.
-                seq_length: The max sequence length
-                numpy: Whether or not to return a list or a numpy array.
-                pad: Whether to pad each list of integers to the sequence length.
-            Returns:
-                List of word ints of shape [num_items, seq_length] and a list of
-                char ints of shape [num_items, seq_length, char_limit]
-        """
-        seq_words, seq_chars = [], []
-        self.init()
-        if not isinstance(tokens[-1], list):
-            tokens = [tokens]
-        # Work through our pre-tokenized text.
-        for text in tokens:
-            words, characters = [], []
-            for token in text:
-                words.append(self.get_index_word(token))
-                # Get all characters
-                index_chars = [self.get_index_char(char) for char in list(token)]
-                # Pad to max characters
-                if len(index_chars) < self.char_limit and pad:
-                    index_chars += [0] * (self.char_limit - len(index_chars))
-                characters.append(index_chars)
-
-            # Pad to max words with 0.
-            if pad:
-                words, characters = self.pad_sequence(words, characters, seq_length)
-            # Add to the list and limit to the max.
-            seq_words.append(words[:seq_length])
-            seq_chars.append(characters[:seq_length])
-
-        if numpy:
-            seq_words = np.array(seq_words, dtype=np.int32)
-            seq_chars = np.array(seq_chars, dtype=np.int32)
-
-        return seq_words, seq_chars
-
-    def texts_to_sequences(self, texts, seq_length, numpy=True, pad=True):
-        """ Converts text/list of text into a list of integers.
-            Args:
-                texts: A string/list of strings to convert.
-                seq_length: The max sequence length
-                numpy: Whether or not to return a list or a numpy array.
-                pad: Whether to pad each list of integers to the sequence length.
-            Returns:
-                List of word ints of shape [num_items, seq_length] and a list of
-                char ints of shape [num_items, seq_length, char_limit]
-        """
-        # Wrap in list if string to avoid having to handle separately
-        if not isinstance(texts, list):
-            texts = [texts]
-        self.init()
-        tokens = [self.tokenize(str(text)) for text in texts]
-        seq_words, seq_chars = self.tokens_to_sequences(tokens, seq_length, pad, numpy)
-        return seq_words, seq_chars

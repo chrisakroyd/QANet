@@ -34,7 +34,6 @@ def demo(sess_config, params):
 
     tokenizer = util.Tokenizer(lower=False,
                                oov_token=params.oov_token,
-                               char_limit=params.char_limit,
                                word_index=word_index,
                                char_index=char_index,
                                trainable_words=params.trainable_words,

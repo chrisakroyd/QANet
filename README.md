@@ -112,7 +112,7 @@ Here are the collected results from this repository and the original paper.
 - [x] Training and testing the model.
 - [x] Full model implementation following the original paper.
 - [x] Train with full hyperparameters (Augmented data, 8 heads, hidden units = 128).
-- [ ] Official script evaluation.
+- [x] Official script evaluation.
 - [ ] Character-to-character answer alignment from BERT (Devlin et al. 2018)
 - [ ] SQuAD 2.0 support.
 - [ ] ELMo support.
