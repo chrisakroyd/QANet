@@ -154,7 +154,6 @@ class Tokenizer(object):
         """ Initialises the vocab, word and char indices if they have not been set or need updating. """
         # Word indexes haven't been initialised or need updating.
         if (len(self.word_index) == 0 or len(self.char_index)) == 0 or self.just_fit:
-            # Add vocab + create indexes.
             self.update_vocab()
             self.update_indexes()
             self.just_fit = False

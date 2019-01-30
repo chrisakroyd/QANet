@@ -154,3 +154,28 @@ def remove_keys(data, keys=[]):
         for key in keys:
             value.pop(key, None)
     return data
+
+
+def pad_to_max_length(tokens, lengths):
+    """ Pads a batch of tokenized strings to the max length within the batch.
+        Args:
+            tokens: A list of shape [num_rows, ?]
+            lengths: A list of shape [num_rows]
+        Returns:
+            tokens with all rows padded to the max length within the batch [num_rows, max_len]
+    """
+    # If all tokens are the same length we don't need to do anything.
+    if len(set(lengths)) == 1:
+        return tokens
+    elif len(tokens) != len(lengths):
+        raise ValueError('tokens and lengths parameter are different shapes, first dimension should be equal.')
+
+    max_len = max(lengths)
+
+    for i in range(len(lengths)):
+        if lengths[i] < max_len:
+            assert len(tokens[i]) == lengths[i]
+            tokens[i] = tokens[i] + [''] * (max_len - lengths[i])
+            assert len(tokens[i]) == max_len
+
+    return tokens

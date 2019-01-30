@@ -1,5 +1,6 @@
 import math
 import numpy as np
+from src import util
 
 
 def split_text(context_tokens, max_tokens=400):
@@ -15,14 +16,7 @@ def split_text(context_tokens, max_tokens=400):
     split_tokens = np.array_split(context_tokens, num_splits)
     split_tokens = [tokens.tolist() for tokens in split_tokens]
     split_lengths = [len(tokens) for tokens in split_tokens]
-
-    # If we can't divide into n equal segments, we need to pad the unequal ones to prevent numpy throwing value errors.
-    if not len(set(split_lengths)) == 1:
-        max_len = np.max(split_lengths)
-        for i in range(len(split_lengths)):
-            if split_lengths[i] < max_len:
-                split_tokens[i] = split_tokens[i] + [''] * (max_len - split_lengths[i])
-
+    split_tokens = util.pad_to_max_length(split_tokens, split_lengths)
     return split_tokens, split_lengths
 
 
