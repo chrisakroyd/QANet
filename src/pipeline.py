@@ -108,8 +108,6 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
 def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True):
     """ Creates a dict of key: shape mappings for padding batches.
 
-        @TODO This is a pretty ugly solution to support labelled/unlabelled modes, refactor target?
-
         Args:
             max_context: Max size of the context, -1 to pad to max within the batch.
             max_query: Max size of the query, -1 to pad to max within the batch.
@@ -165,7 +163,7 @@ def create_pipeline(params, tables, record_paths, training=True):
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
-    parallel_calls = num_parallel_calls(params)
+    parallel_calls = get_num_parallel_calls(params)
 
     data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls)
     data = data.cache()
@@ -213,7 +211,7 @@ def create_demo_pipeline(params, tables, data):
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
-    parallel_calls = num_parallel_calls(params)
+    parallel_calls = get_num_parallel_calls(params)
 
     data = tf.data.Dataset.from_tensor_slices(dict(data))
     data = index_lookup(data, tables, char_limit=params.char_limit,
@@ -230,16 +228,19 @@ def create_demo_pipeline(params, tables, data):
 
 
 def create_placeholders():
-    return {
-        'context_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string, name='context_tokens'),
-        'context_length': tf.placeholder(shape=(None, ), dtype=tf.int32, name='context_length'),
-        'query_tokens': tf.placeholder(shape=(None, None, ), dtype=tf.string, name='query_tokens'),
-        'query_length': tf.placeholder(shape=(None, ), dtype=tf.int32, name='query_length')
+    """ Creates a dict of placeholder tensors for use in demo mode. """
+    placeholders = {
+        'context_tokens': tf.placeholder(shape=(None, None,), dtype=tf.string, name=' context_tokens'),
+        'context_length': tf.placeholder(shape=(None,), dtype=tf.int32, name='context_length'),
+        'query_tokens': tf.placeholder(shape=(None, None,), dtype=tf.string, name='query_tokens'),
+        'query_length': tf.placeholder(shape=(None,), dtype=tf.int32, name='query_length')
     }
 
+    return placeholders
 
-def num_parallel_calls(params):
-    # If we aren't given a parallel calls parameter, default to the systems CPU count.
+
+def get_num_parallel_calls(params):
+    """ Calculates the number of parallel calls we can make, if no number given returns the CPU count. """
     parallel_calls = params.parallel_calls
     if parallel_calls < 0:
         parallel_calls = os.cpu_count()

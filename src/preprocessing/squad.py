@@ -4,8 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from src import preprocessing as prepro, util
 
-context_keys_to_remove = ['context_tokens']
-answer_keys_to_remove = ['query_tokens', 'query']
+keys_to_remove = ['tokens', 'length', 'query', 'elmo']
 
 
 def convert_idx(text, tokens):
@@ -82,8 +81,8 @@ def fit_and_extract(data_set, tokenizer):
                     'answer_id': answer_id,
                     'context_id': context_id,
                     'query': query_clean,
-                    'query_tokens': query_tokens,
-                    'query_length': len(query_tokens),
+                    'tokens': query_tokens,
+                    'length': len(query_tokens),
                     'orig_answers': orig_answers,
                     'answers': answer_texts,
                     'answer_starts': answer_starts[-1],
@@ -97,8 +96,8 @@ def fit_and_extract(data_set, tokenizer):
             contexts[context_id] = {
                 'id': context_id,
                 'context': context_clean,
-                'context_tokens': context_tokens,
-                'context_length': len(context_tokens),
+                'tokens': context_tokens,
+                'length': len(context_tokens),
                 'word_spans': spans,
             }
 
@@ -111,6 +110,37 @@ def fit_and_extract(data_set, tokenizer):
     return contexts, queries, tokenizer
 
 
+def create_record(context, query):
+    """ Creates a formatted tf.train Example for writing in a .tfrecord file. """
+    encoded_context = [m.encode('utf-8') for m in context['tokens']]
+    encoded_query = [m.encode('utf-8') for m in query['tokens']]
+
+    context_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_context))
+    context_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[context['length']]))
+    query_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_query))
+    query_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['length']]))
+    answer_starts = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['answer_starts']]))
+    answer_ends = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['answer_ends']]))
+    answer_id = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['answer_id']]))
+
+    features = {
+        'context_tokens': context_tokens,
+        'context_length': context_length,
+        'query_tokens': query_tokens,
+        'query_length': query_length,
+        'answer_starts': answer_starts,
+        'answer_ends': answer_ends,
+        'answer_id': answer_id,
+    }
+
+    if 'is_impossible' in query:
+        features['is_impossible'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['is_impossible']]))
+
+    record = tf.train.Example(features=tf.train.Features(feature=features))
+
+    return record
+
+
 def write_as_tf_record(path, contexts, queries, params, skip_too_long=True):
     """ Shuffles the queries and writes out the context + queries as a .tfrecord file.
 
@@ -121,47 +151,20 @@ def write_as_tf_record(path, contexts, queries, params, skip_too_long=True):
             params: A dictionary of parameters.
             skip_too_long: Skip rows when either the query or context if their length is above max_tokens.
     """
-    records = []
     shuffled = list(queries.values())
     random.shuffle(shuffled)
 
-    for data in shuffled:
-        context = contexts[data['context_id']]
-        num_context_tokens = context['context_length']
-        num_query_tokens = data['query_length']
-
-        if (num_context_tokens > params.max_tokens or num_query_tokens > params.max_tokens) and skip_too_long:
-            continue
-
-        encoded_context = [m.encode('utf-8') for m in context['context_tokens']]
-        encoded_query = [m.encode('utf-8') for m in data['query_tokens']]
-
-        context_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_context))
-        context_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[num_context_tokens]))
-        query_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_query))
-        query_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[num_query_tokens]))
-        answer_starts = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['answer_starts']]))
-        answer_ends = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['answer_ends']]))
-        answer_id = tf.train.Feature(int64_list=tf.train.Int64List(value=[data['answer_id']]))
-
-        features = {
-            'context_tokens': context_tokens,
-            'context_length': context_length,
-            'query_tokens': query_tokens,
-            'query_length': query_length,
-            'answer_starts': answer_starts,
-            'answer_ends': answer_ends,
-            'answer_id': answer_id,
-        }
-
-        if params.use_elmo:
-            raise NotImplementedError('ElMo not yet implemented.')
-
-        record = tf.train.Example(features=tf.train.Features(feature=features))
-        records.append(record)
-
     with tf.python_io.TFRecordWriter(path) as writer:
-        for record in records:
+        for data in shuffled:
+            context_id = data['context_id']
+            context = contexts[context_id]
+            num_context_tokens = context['length']
+            num_query_tokens = data['length']
+
+            if (num_context_tokens > params.max_tokens or num_query_tokens > params.max_tokens) and skip_too_long:
+                continue
+
+            record = create_record(context, data)
             writer.write(record.SerializeToString())
 
 
@@ -197,7 +200,6 @@ def process(params):
                                vocab=vocab,
                                lower=False,
                                oov_token=params.oov_token,
-                               char_limit=params.char_limit,
                                min_word_occurrence=params.min_word_occur,
                                min_char_occurrence=params.min_char_occur,
                                trainable_words=params.trainable_words,
@@ -226,13 +228,13 @@ def process(params):
     print('Saving to TF Records...')
     write_as_tf_record(train_record_path, train_contexts, train_answers, params)
     write_as_tf_record(dev_record_path, dev_contexts, dev_answers, params)
-    write_as_tf_record(test_record_path, dev_contexts, dev_answers, params)
+    write_as_tf_record(test_record_path, dev_contexts, dev_answers, params, skip_too_long=False)
     examples = get_examples(train_contexts, train_answers)
 
-    train_contexts = util.remove_keys(train_contexts, context_keys_to_remove)
-    dev_contexts = util.remove_keys(dev_contexts, context_keys_to_remove)
-    train_answers = util.remove_keys(train_answers, answer_keys_to_remove)
-    dev_answers = util.remove_keys(dev_answers, answer_keys_to_remove)
+    train_contexts = util.remove_keys(train_contexts, keys_to_remove)
+    dev_contexts = util.remove_keys(dev_contexts, keys_to_remove)
+    train_answers = util.remove_keys(train_answers, keys_to_remove)
+    dev_answers = util.remove_keys(dev_answers, keys_to_remove)
 
     # Save the generated data
     util.save_json(train_contexts_path, train_contexts)
@@ -241,14 +243,12 @@ def process(params):
     util.save_json(dev_answers_path, dev_answers)
     util.save_json(test_contexts_path, dev_contexts)
     util.save_json(test_answers_path, dev_answers)
-    # Save a random sample of the data.
     util.save_json(examples_path, examples)
     # Save the word index mapping of word:index for both the pre-trained and trainable embeddings.
     util.save_json(word_index_path, word_index)
     util.save_json(char_index_path, char_index)
     util.save_json(trainable_index_path, trainable_index)
-    # Save the trainable embeddings matrix.
+    # Save embeddings
     np.save(trainable_embeddings_path, trainable_matrix)
-    # Save the full embeddings matrix
     np.save(word_embeddings_path, embedding_matrix)
     np.save(char_embeddings_path, char_matrix)
