@@ -167,10 +167,12 @@ def create_pipeline(params, tables, record_paths, training=True):
 
     data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls)
     data = data.cache()
+
     if training:
         data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=params.shuffle_buffer_size))
     else:
         data = data.repeat()
+
     # Perform word -> index mapping.
     data = index_lookup(data, tables, char_limit=params.char_limit,
                         num_parallel_calls=parallel_calls)

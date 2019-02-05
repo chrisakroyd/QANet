@@ -83,7 +83,6 @@ class DirNames:
     """
     CHECKPOINTS = 'checkpoints'
     LOGS = 'logs'
-    RAW = 'raw'
     PROCESSED = 'processed'
     TRANSLATED = 'translated_{data}_{lang}'
     EMBEDDINGS = 'embeddings'

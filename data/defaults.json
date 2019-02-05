@@ -4,6 +4,7 @@
   "run_name": "cakroyd_qanet",
   "embeddings_path": "./data/embeddings/glove.840B.300d.txt",
   "data_dir": "./data/",
+  "raw_data_dir": "./data/raw",
   "models_dir": "./models/",
   "demo_server_port": 5000,
   "embed_dim": 300,
@@ -52,5 +53,5 @@
   "ema_decay": 0.999,
   "train_steps": 60000,
   "checkpoint_every": 1000,
-  "write_answer_file": true
+  "write_answer_file": false
 }

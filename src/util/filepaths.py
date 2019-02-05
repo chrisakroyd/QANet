@@ -21,8 +21,7 @@ def raw_data_directory(params, dataset=None):
     if dataset is None:
         dataset = params.dataset
 
-    data_dir, _, _ = get_directories(params)
-    raw_data_dir = os.path.join(data_dir, constants.DirNames.RAW, dataset)
+    raw_data_dir = os.path.join(os.path.abspath(params.raw_data_dir), dataset)
     return raw_data_dir
 
 

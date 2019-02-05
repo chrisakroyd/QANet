@@ -33,6 +33,8 @@ def model_config(defaults):
     flags.DEFINE_string('embeddings_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
     flags.DEFINE_string('data_dir', defaults.data_dir,
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
+    flags.DEFINE_string('raw_data_dir', defaults.raw_data_dir,
+                        'Directory to save/load raw data from.')
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
     flags.DEFINE_string('models_dir', defaults.models_dir, 'Directory to save the models, logs and answer files.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
