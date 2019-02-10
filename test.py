@@ -28,7 +28,7 @@ def test(sess_config, params):
         placeholders = iterator.get_next()
         is_training = tf.placeholder_with_default(True, shape=())
         qanet_inputs = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
-        id_tensor = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
+        id_tensor = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.ID_KEY)[0]
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=is_training)
 
         sess.run(tf.global_variables_initializer())
