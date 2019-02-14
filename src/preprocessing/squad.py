@@ -12,10 +12,20 @@ def convert_idx(text, tokens):
     spans = []
 
     for token in tokens:
-        current = text.find(token, current)
+        next_toke_start = text.find(token, current)
+
+        if len(token) == 1 and prepro.is_dash(token):
+            if prepro.is_dash(text[current]):
+                current = current
+            elif prepro.is_dash(text[current + 1]):
+                current = current + 1
+        else:
+            current = next_toke_start
+
         if current < 0:
             print('Token {} cannot be found'.format(token))
             raise ValueError('Could not find token.')
+
         spans.append((current, current + len(token)))
         current += len(token)
     return spans
@@ -34,10 +44,13 @@ def fit_and_extract(data_set, tokenizer):
 
     for data in tqdm(data_set['data']):
         for question_answer in data['paragraphs']:
-            context_clean = question_answer['context'].strip()
+            context_orig = question_answer['context'].strip()
+            context_clean = prepro.clean(question_answer['context'].strip())
             # Fit the tokenizer on the cleaned version of the context.
             context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
             spans = convert_idx(context_clean, context_tokens)
+
+            token_orig_map = convert_idx(context_orig, context_tokens)
 
             for qa in question_answer['qas']:
                 query_clean = qa['question'].strip()
@@ -46,26 +59,31 @@ def fit_and_extract(data_set, tokenizer):
                 answer_starts, answer_ends, answer_texts, orig_answers = [], [], [], []
 
                 for answer in qa['answers']:
-                    answer_text = answer['text'].strip()
+                    answer_orig = answer['text'].strip()
+                    answer_text = prepro.clean(answer['text'].strip())
                     answer_start = answer['answer_start']
-                    answer_end = answer_start + len(answer_text)
+                    answer_end = answer_start + len(answer_orig)
 
                     if not context_clean.find(answer_text) >= 0:
                         print('Cannot find answer, skipping...')
                         skipped += 1
                         continue
 
-                    orig_answers.append(answer['text'])
-                    answer_texts.append(answer_text)
                     answer_span = []
 
-                    for i, span in enumerate(spans):
+                    for i, span in enumerate(token_orig_map):
                         if not (answer_end <= span[0] or answer_start >= span[1]):
                             answer_span.append(i)
+
+                    if len(answer_span) == 0:
+                        print('Cannot find answer, skipping...')
+                        continue
 
                     assert answer_span[-1] >= answer_span[0]
                     assert len(answer_span) > 0
 
+                    orig_answers.append(answer['text'])
+                    answer_texts.append(answer_text)
                     answer_starts.append(answer_span[0])
                     answer_ends.append(answer_span[-1])
 
@@ -80,7 +98,8 @@ def fit_and_extract(data_set, tokenizer):
                     'id': qa['id'],
                     'answer_id': answer_id,
                     'context_id': context_id,
-                    'query': query_clean,
+                    'orig_text': qa['question'],
+                    'text': query_clean,
                     'tokens': query_tokens,
                     'length': len(query_tokens),
                     'orig_answers': orig_answers,
@@ -95,10 +114,12 @@ def fit_and_extract(data_set, tokenizer):
 
             contexts[context_id] = {
                 'id': context_id,
-                'context': context_clean,
+                'orig_text': context_orig,
+                'text': context_clean,
                 'tokens': context_tokens,
                 'length': len(context_tokens),
                 'word_spans': spans,
+                'token_to_orig_map': token_orig_map,
             }
 
             context_id += 1
@@ -172,7 +193,7 @@ def get_examples(contexts, queries, num_examples=1000):
     shuffled = list(queries.values())
     random.shuffle(shuffled)
     shuffled = shuffled[:num_examples]
-    examples = [{'context': contexts[data['context_id']]['context'], 'query': data['query']} for data in shuffled]
+    examples = [{'context': contexts[data['context_id']]['text'], 'query': data['text']} for data in shuffled]
     return examples
 
 

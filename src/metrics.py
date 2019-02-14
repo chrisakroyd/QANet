@@ -62,8 +62,8 @@ def get_answer_data(contexts, answers, context_mapping, answer_ids, answer_start
     for answer_id, start, end in zip(answer_ids, answer_starts, answer_ends):
         answer_id = str(answer_id)
         context_id = str(context_mapping[answer_id])
-        context = contexts[context_id]['context']
-        spans = contexts[context_id]['word_spans']
+        context = contexts[context_id]['orig_text']
+        spans = contexts[context_id]['token_to_orig_map']
 
         answer_texts[answer_id] = {
             'prediction': context[spans[start][0]: spans[end][-1]],

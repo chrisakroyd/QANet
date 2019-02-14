@@ -12,19 +12,15 @@ articles = re.compile(r'\b(a|an|the)\b')
 apostrophe = re.compile(r"('')")
 # Should filter out wiki style references e.g. [3], [123], [citation needed]
 double_apostrophe = re.compile(r"('')")
-apostrophe_like = re.compile(r'`')
+apostrophe_like = re.compile(r'(`)')
 multi_spaces = re.compile(r'\s{2,}')
-elipsiss = re.compile(r'[.]{2,}')
+elipsiss = re.compile(r'([.]{2,})')
 
 space_before = re.compile(r'([:$\\])')
 
 # Should filter out wiki style references e.g. [3], [123], [citation needed]
 wiki_noise = re.compile(
     r'\[(((not)|(original)|(when)|(dubious)|(better))(.*?)|(([Ff]ull )?(citation|verification|year) needed)|(update)|((([Nn][Bb])|([Nn](ote)?|[Ww]eb))?\s\d+))\]')
-
-# We need to split words and digits, e.g. 14-story -> 14 - story
-digit_word = re.compile(r'(\d+)-(\w+)')
-word_digit = re.compile(r'(\w+)-(\d+)')
 
 double_punct = re.compile(r'(\w+[.,\/#!$%~\'\"^&\*;:{}=\-_`~()\[\]])([.,\/#!$%~\'\"^&\*;:{}=\-_`~()\[\]]\w+)')
 
@@ -58,7 +54,7 @@ def normalize(text):
         if is_whitespace(char):
             out_text.append(' ')
         elif is_dash(char):
-            out_text.append('-')
+            out_text.append(' - ')
         else:
             out_text.append(char)
 
@@ -76,13 +72,10 @@ def clean(text):
             Cleaned string.
     """
     text = space_before.sub(r" \1", text)
-    text = elipsiss.sub('.', text)
-    text = apostrophe_like.sub("'", text)
+    text = elipsiss.sub(r' \1 ', text)
+    text = apostrophe_like.sub(r" \1", text)
 
     text = double_punct.sub(r'\1 \2', text)
-
-    text = digit_word.sub(r'\1 - \2', text)
-    text = word_digit.sub(r'\1 - \2', text)
 
     text = wiki_noise.sub('', text)
     text = text.strip()
