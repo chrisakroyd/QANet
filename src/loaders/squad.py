@@ -12,7 +12,7 @@ def load_answers(answers):
     context_mapping = {}
 
     for key, value in answers.items():
-        answer_cache[key] = value['orig_answers']
+        answer_cache[key] = value['orig_answer_texts']
         context_mapping[key] = value['context_id']
 
     assert len(answer_cache) == len(answers) == len(context_mapping)

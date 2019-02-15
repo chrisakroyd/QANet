@@ -8,8 +8,11 @@ default_punct = set(string.punctuation)
 class Tokenizer(object):
     def __init__(self, lower=False, filters=default_punct, max_words=25000, max_chars=2500, min_word_occurrence=-1,
                  min_char_occurrence=-1, vocab=None, word_index=None, char_index=None, oov_token='<oov>',
-                 trainable_words=None, tokenizer='spacy'):
-        """Constructs a Tokenizer Object.
+                 trainable_words=None):
+        """
+            Constructs a Tokenizer Object, this is a wrapper around Spacy which tracks word/character usage as well
+            as handling trainable words, unknown word tokens and filters.
+
             Args:
                 lower: Whether to lower case all strings.
                 filters: Set, list or string of any punctuation we should ignore.
@@ -22,7 +25,6 @@ class Tokenizer(object):
                 char_index: A dict of char: index mappings.
                 oov_token: Token to replace out of vocabulary words/chars with.
                 trainable_words: A list of words which we want to have trainable embeddings.
-                tokenizer: The tokenizer we should use, supports spacy, nltk and whitespace split.
         """
         self.word_counter = Counter()
         self.char_counter = Counter()
@@ -37,15 +39,11 @@ class Tokenizer(object):
         self.lower = lower
         self.min_word_occurrence = min_word_occurrence
         self.min_char_occurrence = min_char_occurrence
-        self.tokenizer = tokenizer
         # Flag for if we have just run the fit_text or if we have a set vocab.
         self.just_fit = False
         self.given_vocab = vocab is not None
 
-        if self.tokenizer == 'spacy':
-            self.nlp = spacy.load('en_core_web_sm', disable=['tagger', 'ner', 'parser'])
-        else:
-            raise ValueError('Unknown tokenizer scheme.')
+        self.nlp = spacy.load('en_core_web_sm', disable=['tagger', 'ner', 'parser'])
 
         if not isinstance(filters, set):
             if isinstance(filters, str):
@@ -65,9 +63,10 @@ class Tokenizer(object):
         """
         if self.lower:
             text = text.lower()
+
         tokens = []
         for token in self.nlp(text):
-            text = token.text if self.tokenizer == 'spacy' else token
+            text = token.text
             if text not in self.filters and len(text) > 0:
                 tokens.append(text)
 

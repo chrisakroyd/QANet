@@ -8,12 +8,14 @@ keys_to_remove = ['tokens', 'length', 'query', 'elmo']
 
 
 def convert_idx(text, tokens):
+    """ Maps each token to its character offset within the text. """
     current = 0
     spans = []
 
     for token in tokens:
         next_toke_start = text.find(token, current)
 
+        # We normalize all dash characters (e.g. en dash, em dash to -) which requires special handling when mapping.
         if len(token) == 1 and prepro.is_dash(token):
             if prepro.is_dash(text[current]):
                 current = current
@@ -22,7 +24,7 @@ def convert_idx(text, tokens):
         else:
             current = next_toke_start
 
-        if current < 0:
+        if current == -1:
             print('Token {} cannot be found'.format(token))
             raise ValueError('Could not find token.')
 
@@ -31,83 +33,40 @@ def convert_idx(text, tokens):
     return spans
 
 
-def fit_and_extract(data_set, tokenizer):
-    """ Extracts context + query tokens and flattens squad data structure.
-        Args:
-            data_set: Either train/dev raw squad data.
-            tokenizer: A Tokenizer instance.
-        Returns:
-            Contexts, Queries and the tokenizer.
+def read_squad_examples(path):
     """
+        Loads squad examples and flattens the data into two dicts, one for contexts + one for questions.
+        Args:
+            path: A filepath to a squad v1 or v2 .json file.
+        Returns:
+            Two dicts of unprocessed data, one containing contexts and one containing question/answer pairs.
+    """
+    squad_data = util.load_json(path)
+
     contexts, queries = {}, {}
-    context_id, answer_id, total, skipped = 1, 1, 0, 0
+    context_id, answer_id = 1, 1
 
-    for data in tqdm(data_set['data']):
-        for question_answer in data['paragraphs']:
-            context_orig = question_answer['context'].strip()
-            context_clean = prepro.clean(question_answer['context'].strip())
-            # Fit the tokenizer on the cleaned version of the context.
-            context_tokens = tokenizer.fit_on_texts(context_clean)[-1]
-            spans = convert_idx(context_clean, context_tokens)
+    for data in squad_data['data']:
+        for paragraph in data['paragraphs']:
+            context_orig = paragraph['context'].strip()
 
-            token_orig_map = convert_idx(context_orig, context_tokens)
+            for qa in paragraph['qas']:
+                orig_ques = qa['question'].strip()
+                orig_answers = qa['answers']
 
-            for qa in question_answer['qas']:
-                query_clean = qa['question'].strip()
-                query_tokens = tokenizer.fit_on_texts(query_clean)[-1]
-                total += 1
-                answer_starts, answer_ends, answer_texts, orig_answers = [], [], [], []
-
-                for answer in qa['answers']:
-                    answer_orig = answer['text'].strip()
-                    answer_text = prepro.clean(answer['text'].strip())
-                    answer_start = answer['answer_start']
-                    answer_end = answer_start + len(answer_orig)
-
-                    if not context_clean.find(answer_text) >= 0:
-                        print('Cannot find answer, skipping...')
-                        skipped += 1
-                        continue
-
-                    answer_span = []
-
-                    for i, span in enumerate(token_orig_map):
-                        if not (answer_end <= span[0] or answer_start >= span[1]):
-                            answer_span.append(i)
-
-                    if len(answer_span) == 0:
-                        print('Cannot find answer, skipping...')
-                        continue
-
-                    assert answer_span[-1] >= answer_span[0]
-                    assert len(answer_span) > 0
-
-                    orig_answers.append(answer['text'])
-                    answer_texts.append(answer_text)
-                    answer_starts.append(answer_span[0])
-                    answer_ends.append(answer_span[-1])
-
-                assert len(answer_starts) == len(answer_ends) == len(answer_texts) == len(orig_answers)
-                assert answer_id not in queries
-
-                if len(answer_starts) == 0 or len(answer_ends) == 0:
-                    skipped += 1
-                    continue
-
-                queries[answer_id] = {
+                query_dict = {
                     'id': qa['id'],
                     'answer_id': answer_id,
                     'context_id': context_id,
-                    'orig_text': qa['question'],
-                    'text': query_clean,
-                    'tokens': query_tokens,
-                    'length': len(query_tokens),
+                    'orig_text': orig_ques,
                     'orig_answers': orig_answers,
-                    'answers': answer_texts,
-                    'answer_starts': answer_starts[-1],
-                    'answer_ends': answer_ends[-1],
                 }
 
+                if 'is_impossible' in qa:
+                    queries['is_impossible'] = qa['is_impossible']
+
+                assert answer_id not in queries
+                queries[answer_id] = query_dict
                 answer_id += 1
 
             assert context_id not in contexts
@@ -115,20 +74,103 @@ def fit_and_extract(data_set, tokenizer):
             contexts[context_id] = {
                 'id': context_id,
                 'orig_text': context_orig,
-                'text': context_clean,
-                'tokens': context_tokens,
-                'length': len(context_tokens),
-                'word_spans': spans,
-                'token_to_orig_map': token_orig_map,
             }
 
             context_id += 1
 
-    print('Total Questions: {}'.format(total))
-    print('Total Answers: {}'.format(len(queries)))
-    print('Total Skipped: {}'.format(skipped))
+    return contexts, queries
 
-    return contexts, queries, tokenizer
+
+def fit_and_extract(path, tokenizer, skip_on_errors=True):
+    """ Loads squad file, flattens the data structure, fits the tokenizer + preprocesses the data.
+        Args:
+            path: A filepath to a squad v1 or v2 .json file.
+            tokenizer: A Tokenizer instance.
+            skip_on_errors: Whether or not to include answers which can't be found in the data.
+        Returns:
+            Two dicts of processed data, one containing contexts and one containing question/answer pairs.
+    """
+    contexts, queries = read_squad_examples(path)
+    processed_queries = {}
+
+    for key, context in contexts.items():
+        orig_text = context['orig_text'].strip()
+        clean_text = prepro.clean(orig_text)
+        tokens = tokenizer.fit_on_texts(clean_text)[-1]
+        token_orig_map = convert_idx(orig_text, tokens)
+
+        context.update({
+            'text': clean_text,
+            'tokens': tokens,
+            'length': len(tokens),
+            'token_to_orig_map': token_orig_map,
+        })
+
+    for key, query in tqdm(queries.items()):
+        context = contexts[query['context_id']]
+        orig_text = query['orig_text'].strip()
+        clean_text = prepro.clean(orig_text)
+
+        query_tokens = tokenizer.fit_on_texts(clean_text)[-1]
+        answer_starts, answer_ends, answer_texts, orig_answer_texts = [], [], [], []
+
+        for answer in query['orig_answers']:
+            answer_orig = answer['text'].strip()
+            answer_text = prepro.clean(answer_orig)
+            answer_start = answer['answer_start']
+            answer_end = answer_start + len(answer_orig)
+
+            # Soft warning, not necessarily a failure as the answer may not be exactly present or due to unicode errors
+            # e.g. answer_text = Destiny Fulfilled. when only present in text as Destiny Fulfilled ...
+            if context['text'].find(answer_text) == -1:
+                print('Cannot find answer in text for question id {}'.format(query['id']))
+
+            answer_span = []
+
+            for i, span in enumerate(context['token_to_orig_map']):
+                if not (answer_end <= span[0] or answer_start >= span[1]):
+                    answer_span.append(i)
+
+            # Usually as a result of mis-labelling in the dataset, we skip for train but include in dev/test modes.
+            if len(answer_span) == 0:
+                if skip_on_errors:
+                    print('Cannot find span in text for question id {}'.format(query['id']))
+                    continue
+                else:
+                    answer_span.append((0, 0, ))  # If we don't skip simply use this placeholder pointer.
+
+            assert answer_span[-1] >= answer_span[0]
+
+            orig_answer_texts.append(answer_orig)
+            answer_texts.append(answer_text)
+            answer_starts.append(answer_span[0])
+            answer_ends.append(answer_span[-1])
+
+        assert len(answer_starts) == len(answer_ends) == len(answer_texts)
+
+        if len(answer_starts) == 0 or len(answer_ends) == 0:
+            continue
+
+        query.update({
+            'text': orig_text,
+            'tokens': query_tokens,
+            'length': len(query_tokens),
+            'orig_answer_texts': orig_answer_texts,
+            'answers': answer_texts,
+            'answer_starts': answer_starts[-1],
+            'answer_ends': answer_ends[-1],
+        })
+
+        processed_queries[key] = query
+
+    total = len(queries)
+    processed = len(processed_queries)
+
+    print('Total: {}'.format(total))
+    print('Total Answers: {}'.format(processed))
+    print('Total Skipped: {}'.format(total - processed))
+
+    return contexts, processed_queries, tokenizer
 
 
 def create_record(context, query):
@@ -190,6 +232,7 @@ def write_as_tf_record(path, contexts, queries, params, skip_too_long=True):
 
 
 def get_examples(contexts, queries, num_examples=1000):
+    """ Gets a subsample of the contexts/queries.  """
     shuffled = list(queries.values())
     random.shuffle(shuffled)
     shuffled = shuffled[:num_examples]
@@ -226,12 +269,9 @@ def process(params):
                                trainable_words=params.trainable_words,
                                filters=None)
 
-    train = util.load_json(train_raw_path)
-    dev = util.load_json(dev_raw_path)
-
     print('Processing...')
-    train_contexts, train_answers, tokenizer = fit_and_extract(train, tokenizer)
-    dev_contexts, dev_answers, tokenizer = fit_and_extract(dev, tokenizer)
+    train_contexts, train_answers, tokenizer = fit_and_extract(train_raw_path, tokenizer)
+    dev_contexts, dev_answers, tokenizer = fit_and_extract(dev_raw_path, tokenizer, skip_on_errors=False)
     tokenizer.init()
     word_index = tokenizer.word_index
     char_index = tokenizer.char_index
