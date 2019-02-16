@@ -70,7 +70,7 @@ Here are the collected results from this repository and the original paper.
 |      Model     | Training Steps | Size | Attention Heads | Data Size (aug) |  EM  |  F1    | Time |
 |:--------------:|:--------------:|:----:|:---------------:|:---------------:|:----: |:----:  |:----:|
 |This repository* |     30,000     |  128  |        1        |   87k (no aug)  | 69.9 | 79.0  | 3h 9m|
-|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 71.4 | 80.3  | 6h 10m |
+|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 71.2 | 80.2  | 6h 49m |
 |This repository* |     150,000     |  128  |        8        |   87k (no aug)  | 72.9| 81.6 | 16h 55m|
 |[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|1|87k (no aug)| 70.7 | 79.8 | - |
 |[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|8|87k (no aug)| 70.8 | 80.1 | - |

@@ -1,10 +1,12 @@
+import random
 import numpy as np
 import tensorflow as tf
 from collections import Counter
 from src import preprocessing
 
 
-def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, global_step=0):
+def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, global_step=0,
+                  subsample_ratio=None):
     """ Calculates F1, EM and loss over a list of predictions.
         Args:
             preds: list of tuples containing start + end pointers, answer ids and loss.
@@ -14,11 +16,15 @@ def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, wri
             data_type: String for whether we are in train/val.
             writer: Summary Writer object.
             global_step: Current step.
+            subsample_ratio: Float between 0.0 and 1.0, percentage of predictions to run evaluation on.
         Returns:
             A dictionary of metrics and a dict of id: predicted_text
     """
     answer_texts = {}
     losses = []
+
+    if subsample_ratio is not None:
+        preds = [preds[i] for i in random.sample(range(len(preds)), int(len(preds) * subsample_ratio))]
 
     for pred in preds:
         answer_ids, loss, answer_starts, answer_ends = pred
@@ -26,6 +32,7 @@ def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, wri
                                       answer_starts.tolist(), answer_ends.tolist())
         answer_texts.update(answer_data)
         losses.append(loss)
+
     metrics = evaluate(answer_texts)
     metrics['loss'] = np.mean(losses)
     add_metric_summaries(metrics, data_type, writer, global_step)

@@ -101,7 +101,7 @@ def train(sess_config, params, debug=False):
                     val_preds.append((answer_id, loss, answer_start, answer_end,))
 
                 metrics.evaluate_list(train_preds, train_spans, train_answers, train_ctxt_mapping, 'train', writer,
-                                      global_step)
+                                      global_step, subsample_ratio=0.1)
                 metrics.evaluate_list(val_preds, val_spans, val_answers, val_ctxt_mapping, 'val', writer,
                                       global_step)
                 train_preds = []
