@@ -5,8 +5,8 @@ import unicodedata
 # TODO: Revisit this and clean it up a bit.
 
 # Regexes
-# Treat \t, \n and \r as whitespace despite being control characters.
-whitespace_chars = {' ', '\t', '\n', '\r'}
+# Treat \t, \n and \r as whitespace despite being control characters as well as zero-width characters.
+whitespace_chars = {' ', '\t', '\n', '\r', '\u200b', '\u200c', '\u200d', '\ufeff', '\u200e'}
 dash_chars = {'-'}
 articles = re.compile(r'\b(a|an|the)\b')
 apostrophe = re.compile(r"('')")
@@ -20,9 +20,12 @@ space_before = re.compile(r'([:$\\])')
 
 # Should filter out wiki style references e.g. [3], [123], [citation needed]
 wiki_noise = re.compile(
-    r'\[(((not)|(original)|(when)|(dubious)|(better))(.*?)|(([Ff]ull )?(citation|verification|year) needed)|(update)|((([Nn][Bb])|([Nn](ote)?|[Ww]eb))?\s\d+))\]')
+    r'\[(((not)|(original)|(when)|(dubious)|(better)|(additional))(.*?)|(([Ff]ull )?(citation|verification|year|clarification) needed)|(vague)|(update)|(contradictory)|(specify)|(page needed)|(((by )|(according to ))?(who(m)?)\?)|((([Nn][Bb])|([Nn](ote)?|[Ww]eb))?\s\d+)|([A-Za-z]))\]')
 
 double_punct = re.compile(r'(\w+[.,\/#!$%~\'\"^&\*;:{}=\-_`~()\[\]])([.,\/#!$%~\'\"^&\*;:{}=\-_`~()\[\]]\w+)')
+
+space_before_paren = re.compile(r'(\w+|[^\w\s])(\((\w+))')
+space_after_paren = re.compile(r'(\))(\w+)')
 
 
 def text_span(text, spans, start_pointer, end_pointer):
@@ -55,6 +58,8 @@ def normalize(text):
             out_text.append(' ')
         elif is_dash(char):
             out_text.append(' - ')
+        elif is_math_symbol(char):
+            out_text.append(' {} '.format(char))
         else:
             out_text.append(char)
 
@@ -78,6 +83,10 @@ def clean(text):
     text = double_punct.sub(r'\1 \2', text)
 
     text = wiki_noise.sub('', text)
+
+    text = space_before_paren.sub(r"\1 \2", text)
+    text = space_after_paren.sub(r"\1 \2", text)
+
     text = text.strip()
     text = normalize(text)
     text = multi_spaces.sub(' ', text)
@@ -97,6 +106,12 @@ def is_dash(char):
     """ Checks if the unicode character is a dash character """
     cat = unicodedata.category(char)
     return char in dash_chars or cat == 'Pd'
+
+
+def is_math_symbol(char):
+    """ Checks if the unicode character is a math symbol """
+    cat = unicodedata.category(char)
+    return cat == 'Sm'
 
 
 def is_invalid(char):
