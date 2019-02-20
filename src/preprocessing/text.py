@@ -45,7 +45,6 @@ def normalize(text):
             Cleaned string.
     """
     text = text.strip()
-
     text = list(text)
     # Normalize spaces + remove invalid characters.
     out_text = []

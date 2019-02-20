@@ -43,7 +43,7 @@ class Tokenizer(object):
         self.just_fit = False
         self.given_vocab = vocab is not None
 
-        self.nlp = spacy.load('en_core_web_sm', disable=['tagger', 'ner', 'parser'])
+        self.nlp = spacy.load('en_core_web_sm', disable=['parser'])
 
         if not isinstance(filters, set) and filters is not None:
             self.filters = set(filters)
@@ -59,26 +59,38 @@ class Tokenizer(object):
                 error_correct: If we have a vocab, attempts to correct minor errors against it. e.g. Token is steve
                                but vocab only has Steve -> We replace steve with Steve. If in the vocab we do nothing.
             returns:
-                List of tokenized text.
+                Two lists, a list of original tokens and a list of corrected tokens.
         """
         if self.lower:
             text = text.lower()
 
-        tokens = []
+        original_tokens = []
+        modified_tokens = []
+
         for token in self.nlp(text):
             text = token.text
+            token_corrected = False
 
             if self.given_vocab and error_correct and text not in self.vocab:
-                # We generate a short list of candidate words
+                # We generate a short list of candidate words and replace the
+                # original text if any of them are in the vocab.
                 for word in (text.lower(), text.capitalize(), text.lower().capitalize(), text.upper(), token.lemma_):
                     if word in self.vocab:
                         text = word
+                        token_corrected = True
                         break
 
             if text not in self.filters and len(text) > 0:
-                tokens.append(text)
+                if token_corrected:
+                    original_tokens.append(token.text)
+                    modified_tokens.append(text)
+                else:
+                    original_tokens.append(text)
+                    modified_tokens.append(text)
 
-        return tokens
+        assert len(original_tokens) == len(modified_tokens)
+
+        return original_tokens, modified_tokens
 
     def fit_on_texts(self, texts, error_correct=True):
         """ Counts word/character occurrence.
@@ -87,21 +99,22 @@ class Tokenizer(object):
                 error_correct: If we have a vocab, attempts to correct minor errors against it. e.g. Token is steve
                                but vocab only has Steve -> We replace steve with Steve. If in the vocab we do nothing.
             returns:
-                List of tokenized text.
+                A list of tuples containing tokens and modified tokens.
         """
         tokenized = []
         if not isinstance(texts, list):
             texts = [texts]
 
         for text in texts:
-            tokens = self.tokenize(text, error_correct)
+            tokens, modified_tokens = self.tokenize(text, error_correct)
 
-            for token in tokens:
+            for token in modified_tokens:
                 self.word_counter[token] += 1
                 for char in list(token):
                     self.char_counter[char] += 1
 
-            tokenized.append(tokens)
+            tokenized.append((tokens, modified_tokens, ))
+
         self.just_fit = True
         return tokenized
 

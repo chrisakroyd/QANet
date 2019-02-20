@@ -16,6 +16,7 @@ def convert_idx(text, tokens):
         next_toke_start = text.find(token, current)
 
         # We normalize all dash characters (e.g. en dash, em dash to -) which requires special handling when mapping.
+        # TODO: @cakroyd look at this and improve implementation.
         if len(token) == 1 and prepro.is_dash(token):
             if prepro.is_dash(text[current]):
                 current = current
@@ -93,16 +94,16 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
     contexts, queries = read_squad_examples(path)
     processed_queries = {}
 
-    for key, context in contexts.items():
+    for key, context in tqdm(contexts.items()):
         orig_text = context['orig_text'].strip()
         clean_text = prepro.clean(orig_text)
-        tokens = tokenizer.fit_on_texts(clean_text)[-1]
+        tokens, modified_tokens = tokenizer.fit_on_texts(clean_text, error_correct=True)[-1]
         token_orig_map = convert_idx(orig_text, tokens)
 
         context.update({
             'text': clean_text,
-            'tokens': tokens,
-            'length': len(tokens),
+            'tokens': modified_tokens,
+            'length': len(modified_tokens),
             'token_to_orig_map': token_orig_map,
         })
 
@@ -111,7 +112,7 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
         orig_text = query['orig_text'].strip()
         clean_text = prepro.clean(orig_text)
 
-        query_tokens = tokenizer.fit_on_texts(clean_text)[-1]
+        tokens, modified_tokens = tokenizer.fit_on_texts(clean_text, error_correct=True)[-1]
         answer_starts, answer_ends, answer_texts, orig_answer_texts = [], [], [], []
 
         for answer in query['orig_answers']:
@@ -123,7 +124,7 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
             # Soft warning, not necessarily a failure as the answer may not be exactly present or due to unicode errors
             # e.g. answer_text = Destiny Fulfilled. when only present in text as Destiny Fulfilled ...
             if context['text'].find(answer_text) == -1:
-                print('Cannot find answer in text for question id {}'.format(query['id']))
+                print('Cannot find exact answer in text for question id {}'.format(query['id']))
 
             answer_span = []
 
@@ -134,7 +135,7 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
             # Usually as a result of mis-labelling in the dataset, we skip for train but include in dev/test modes.
             if len(answer_span) == 0:
                 if skip_on_errors:
-                    print('Cannot find span in text for question id {}'.format(query['id']))
+                    print('Cannot find answer span for question id {}'.format(query['id']))
                     continue
                 else:
                     answer_span.append((0, 0, ))  # If we don't skip simply use this placeholder pointer.
@@ -153,8 +154,8 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
 
         query.update({
             'text': orig_text,
-            'tokens': query_tokens,
-            'length': len(query_tokens),
+            'tokens': modified_tokens,
+            'length': len(modified_tokens),
             'orig_answer_texts': orig_answer_texts,
             'answers': answer_texts,
             'answer_starts': answer_starts[-1],
