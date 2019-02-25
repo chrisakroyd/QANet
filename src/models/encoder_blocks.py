@@ -37,11 +37,11 @@ class EncoderBlock(tf.keras.Model):
         self.total_sub_layers = (conv_layers + 2) * total_blocks
 
         # Block has 4 components, position encoding, n conv layers, a self-attention layer and a feed forward layer.
-        self.position_encoding = layers.PositionEncoding()
         # Can have n convs, create a list of conv blocks to iterate through incrementing their block_ids.
         self.conv_layers = [layers.SublayerConnection(SeparableConv1D(filters=hidden_size,
                                                                       kernel_size=kernel_size,
                                                                       padding='same',
+                                                                      kernel_initializer=layers.create_initializer(),
                                                                       activation='relu'),
                                                       dropout=dropout,
                                                       sublayer=(self.block_start_id + i),
@@ -74,12 +74,13 @@ class EncoderBlock(tf.keras.Model):
                 training: Boolean flag for training mode.
                 mask: A boolean mask tensor.
         """
-        x = self.position_encoding(x, training=training, mask=mask)
         for conv in self.conv_layers:
             x = conv(x, training=training, mask=mask)
+
         x = self.self_attention(x, training=training, mask=mask)
         x = self.feed_forward(x, training=training, mask=mask)
         x = self.output_normalization(x)
+
         return x
 
 
@@ -107,6 +108,8 @@ class EncoderBlockStack(tf.keras.Model):
                                  kernel_size=1,
                                  padding='same')
 
+        self.position_encoding = layers.PositionEncoding()
+
         self.blocks = [EncoderBlock(conv_layers=conv_layers, kernel_size=kernel_size,
                                     hidden_size=hidden_size, heads=heads,
                                     dropout=dropout, attn_dropout=attn_dropout, block_number=i, total_blocks=blocks,
@@ -124,6 +127,8 @@ class EncoderBlockStack(tf.keras.Model):
         # Map down to internal dimensionality if input isn't already in it.
         if not self.hidden_size == x.shape[-1]:
             x = self.projection(x)
+
+        x = self.position_encoding(x, training=training, mask=mask)
 
         for block in self.blocks:
             x = block(x, training=training, mask=mask)
