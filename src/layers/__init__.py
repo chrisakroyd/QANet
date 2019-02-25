@@ -7,4 +7,4 @@ from .output_layer import OutputLayer
 from .position_encoding import PositionEncoding
 from .prediction import PredictionHead
 from .sublayer_connection import SublayerConnection
-from .utils import apply_mask, create_mask
+from .utils import apply_mask, create_mask, create_initializer

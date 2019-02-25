@@ -30,10 +30,18 @@ class MultiHeadAttention(Layer):
         self.num_heads = num_heads
         self.hidden_size = hidden_size
         # Linear mappings
-        self.queries_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
-        self.keys_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
-        self.values_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
-        self.output_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False)
+        self.queries_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
+                                    kernel_initializer=layers.create_initializer(),)
+
+        self.keys_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
+                                 kernel_initializer=layers.create_initializer(),)
+
+        self.values_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
+                                   kernel_initializer=layers.create_initializer(),)
+
+        self.output_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
+                                   kernel_initializer=layers.create_initializer(),)
+
         # square root of key depth Attention is all you Need, 3.2.1
         self.depth = (self.hidden_size // self.num_heads)
         self.scaling_factor = self.depth ** -0.5
@@ -86,6 +94,8 @@ class MultiHeadAttention(Layer):
         query *= self.scaling_factor
         # Calculate the dot product attention for each head
         logits = tf.matmul(query, key, transpose_b=True)
+
+        # TODO: use tf.split to split tensor into constituent elements + operate over each independently.
 
         # Optionally apply a mask.
         if mask is not None:

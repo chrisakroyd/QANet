@@ -72,7 +72,8 @@ class EmbeddingLayer(tf.keras.Model):
                                                                                        verify_shape=True),
                                         name='char_embedding')
 
-        self.char_conv = Conv1D(char_dim, kernel_size=kernel_size, activation='relu', padding='same', name='char_conv')
+        self.char_conv = Conv1D(char_dim, kernel_size=kernel_size, activation='relu', padding='same', name='char_conv',
+                                kernel_initializer=layers.create_initializer(),)
 
         self.word_dropout = Dropout(word_dropout)
         self.char_dropout = Dropout(char_dropout)

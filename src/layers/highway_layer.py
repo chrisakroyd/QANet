@@ -1,4 +1,5 @@
 from tensorflow.keras.layers import Conv1D, Dropout, Layer
+from src import layers
 
 
 class HighwayLayer(Layer):
@@ -25,6 +26,7 @@ class HighwayLayer(Layer):
                            strides=1,
                            use_bias=self.use_bias,
                            padding='same',
+                           kernel_initializer=layers.create_initializer(),
                            activation='sigmoid',
                            name='gate')
 
@@ -33,8 +35,10 @@ class HighwayLayer(Layer):
                             strides=1,
                             use_bias=self.use_bias,
                             padding='same',
+                            kernel_initializer=layers.create_initializer(),
                             activation='relu',
                             name='activation')
+
         super(HighwayLayer, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):

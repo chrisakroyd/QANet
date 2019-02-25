@@ -36,17 +36,17 @@ class ContextQueryAttention(Layer):
 
         self.W0 = self.add_weight(name='W0',
                                   shape=(hidden_size, 1),
-                                  initializer='glorot_uniform',
+                                  initializer=layers.create_initializer(),
                                   trainable=True)
 
         self.W1 = self.add_weight(name='W1',
                                   shape=(hidden_size, 1),
-                                  initializer='glorot_uniform',
+                                  initializer=layers.create_initializer(),
                                   trainable=True)
 
         self.W2 = self.add_weight(name='W2',
                                   shape=(1, 1, hidden_size),
-                                  initializer='glorot_uniform',
+                                  initializer=layers.create_initializer(),
                                   trainable=True)
 
         if self.use_bias:

@@ -27,3 +27,8 @@ def apply_mask(inputs, mask, mask_value=-1e12):
     """
     # Invert mask, fill with mask value and apply to inputs
     return inputs + (1.0 - tf.cast(mask, dtype=tf.float32)) * mask_value
+
+
+def create_initializer(initializer_range=0.02):
+    """Creates a `truncated_normal_initializer` with the given range."""
+    return tf.truncated_normal_initializer(stddev=initializer_range)

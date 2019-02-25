@@ -1,4 +1,5 @@
 from tensorflow.keras.layers import Conv1D, Dropout, Layer
+from src import layers
 
 
 class FeedForwardLayer(Layer):
@@ -19,6 +20,7 @@ class FeedForwardLayer(Layer):
         self.conv_ff_1 = Conv1D(inner_size,
                                 kernel_size=1,
                                 padding='same',
+                                kernel_initializer=layers.create_initializer(),
                                 name='conv_ff_1',
                                 activation='relu')
 
@@ -27,6 +29,7 @@ class FeedForwardLayer(Layer):
         self.conv_ff_2 = Conv1D(hidden_size,
                                 kernel_size=1,
                                 padding='same',
+                                kernel_initializer=layers.create_initializer(),
                                 name='conv_ff_2')
 
     def call(self, x, training=None, mask=None):
