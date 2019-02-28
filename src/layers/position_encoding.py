@@ -23,12 +23,12 @@ class PositionEncoding(Layer):
 
     def call(self, x, training=None, mask=None):
         length, channels = self.compute_input_shape(x)
-        position = tf.to_float(tf.range(length))
+        position = tf.cast(tf.range(length), dtype=tf.float32)
         num_timescales = channels // 2
         # Generate the signal with cos + sin waves.
-        log_timescale_increment = (tf.log(self.max_timescale / self.min_timescale) / (tf.to_float(num_timescales) - 1))
+        log_timescale_increment = (tf.log(self.max_timescale / self.min_timescale) / (tf.cast(num_timescales, dtype=tf.float32) - 1))
         inv_timescales = self.min_timescale * tf.exp(
-            tf.to_float(tf.range(num_timescales)) * -log_timescale_increment)
+            tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale_increment)
         scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
         signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
         signal = tf.pad(signal, [[0, 0], [0, tf.mod(channels, 2)]])

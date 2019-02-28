@@ -15,8 +15,8 @@ class EncoderBlock(tf.keras.Model):
 
             Each block after the position encoding is wrapped with a SublayerConnection which implments
             common functionality for the residual connection, layer norm and dropout. This gives each 'block' the
-            structure input -> LayerNorm -> WrappedLayer -> Dropout -> residual. It also implements the
-            regularization method layer dropout from the paper "Deep Networks with Stochastic Depth"
+            structure input -> LayerNorm -> WrappedLayer -> Dropout -> residual. It also implements
+            layer dropout from the paper "Deep Networks with Stochastic Depth"
             (https://arxiv.org/pdf/1603.09382.pdf).
 
             Args:
@@ -85,8 +85,8 @@ class EncoderBlock(tf.keras.Model):
 
 
 class EncoderBlockStack(tf.keras.Model):
-    def __init__(self, blocks, conv_layers, kernel_size, hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1, ff_inner_size=128,
-                 **kwargs):
+    def __init__(self, blocks, conv_layers, kernel_size, hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1,
+                 ff_inner_size=128, **kwargs):
         """ Builds a stack of encoder blocks and handles input projection + output dropout.
 
             Wrapper around EncoderBlock that includes functionality for optional input projection,
@@ -134,4 +134,5 @@ class EncoderBlockStack(tf.keras.Model):
             x = block(x, training=training, mask=mask)
 
         x = self.dropout(x, training=training)
+
         return x

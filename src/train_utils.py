@@ -65,7 +65,7 @@ def inverse_exponential_warmup(learn_rate, warmup_steps=1000, global_step=None):
     if global_step is None:
         global_step = tf.train.get_global_step()
 
-    lr_decay = learn_rate / tf.log(tf.to_float(warmup_steps)) * tf.log(tf.to_float(global_step) + 1)
+    lr_decay = learn_rate / tf.log(tf.cast(warmup_steps, dtype=tf.float32)) * tf.log(tf.cast(global_step, dtype=tf.float32) + 1)
     return tf.minimum(learn_rate, lr_decay)
 
 
