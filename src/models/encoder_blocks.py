@@ -38,32 +38,32 @@ class EncoderBlock(tf.keras.Model):
 
         # Block has 4 components, position encoding, n conv layers, a self-attention layer and a feed forward layer.
         # Can have n convs, create a list of conv blocks to iterate through incrementing their block_ids.
-        self.conv_layers = [layers.SublayerConnection(SeparableConv1D(filters=hidden_size,
-                                                                      kernel_size=kernel_size,
-                                                                      padding='same',
-                                                                      kernel_initializer=layers.create_initializer(),
-                                                                      activation='relu'),
-                                                      dropout=dropout,
-                                                      sublayer=(self.block_start_id + i),
-                                                      total_sublayers=self.total_sub_layers,
-                                                      name='conv_block_%d' % (self.block_start_id + i))
+        self.conv_layers = [layers.SublayerWrapper(SeparableConv1D(filters=hidden_size,
+                                                                   kernel_size=kernel_size,
+                                                                   padding='same',
+                                                                   kernel_initializer=layers.create_initializer(),
+                                                                   activation='relu'),
+                                                   dropout=dropout,
+                                                   sublayer=(self.block_start_id + i),
+                                                   total_sublayers=self.total_sub_layers,
+                                                   name='conv_block_%d' % (self.block_start_id + i))
                             for i in range(conv_layers)]
 
-        self.self_attention = layers.SublayerConnection(layers.MultiHeadAttention(hidden_size,
-                                                                                  num_heads=heads,
-                                                                                  dropout=attn_dropout,
-                                                                                  self_attention=True),
-                                                        sublayer=self.self_attention_id,
-                                                        total_sublayers=self.total_sub_layers,
-                                                        dropout=dropout,
-                                                        name='self_attention_%d' % self.self_attention_id)
+        self.self_attention = layers.SublayerWrapper(layers.MultiHeadAttention(hidden_size,
+                                                                               num_heads=heads,
+                                                                               dropout=attn_dropout,
+                                                                               self_attention=True),
+                                                     sublayer=self.self_attention_id,
+                                                     total_sublayers=self.total_sub_layers,
+                                                     dropout=dropout,
+                                                     name='self_attention_%d' % self.self_attention_id)
 
-        self.feed_forward = layers.SublayerConnection(layers.FeedForwardLayer(hidden_size, inner_size=ff_inner_size,
-                                                                              dropout=dropout),
-                                                      sublayer=self.feed_forward_id,
-                                                      total_sublayers=self.total_sub_layers,
-                                                      dropout=dropout,
-                                                      name='feed_forward_%d' % self.feed_forward_id)
+        self.feed_forward = layers.SublayerWrapper(layers.FeedForwardLayer(hidden_size, inner_size=ff_inner_size,
+                                                                           dropout=dropout),
+                                                   sublayer=self.feed_forward_id,
+                                                   total_sublayers=self.total_sub_layers,
+                                                   dropout=dropout,
+                                                   name='feed_forward_%d' % self.feed_forward_id)
 
         self.output_normalization = layers.LayerNorm()
 
