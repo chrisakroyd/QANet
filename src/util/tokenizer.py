@@ -119,17 +119,17 @@ class Tokenizer(object):
         return tokenized
 
     def update_indexes(self):
-        """ Creates word, character and handles trainable words.
+        """ Creates word, character indexes and handles trainable words.
 
             To facilitate trainable embeddings only for a subset of word and OOV tokens we need a special way of
             handling the word and char index creation. We create the word indexes as normal, but instead of assigning
             trainable word ids based on how often it occurs they are always assigned to the highest Id's. For details
             on why refer to docstrings in src/models/embedding_layer.
         """
-        print('Total Words: %d' % len(self.word_counter))
+        print('Total Unique Words: %d' % len(self.word_counter))
         sorted_words = self.word_counter.most_common(self.max_words)
         sorted_chars = self.char_counter.most_common(self.max_chars)
-        # Create list of words/chars that occur greater than min and are in the vocab or not filtered.
+
         word_index = [word for (word, count) in sorted_words if count > self.min_word_occurrence and
                       word in self.vocab and word not in self.filters and word not in self.trainable_words]
 
@@ -138,15 +138,17 @@ class Tokenizer(object):
         char_index = [char for (char, count) in sorted_chars if count > self.min_char_occurrence and
                       char not in self.filters]
 
-        # Give each word id's in continuous range 1 to index length + convert to dict.
+        # Put all the Ids in a continues range from 1 to len(vocab), this is necessary to keep indices in sync.
         word_index = {word: i for i, word in enumerate(word_index, start=1)}
         char_index = {char: i for i, char in enumerate(char_index, start=1)}
-        # Add any trainable words to the end of the index (Therefore can exceed max_words)
+
+        # Add any trainable words to the end of the index (Refer to src/models/embedding_layer for a full reason why)
         vocab_size = len(word_index)
         for i, word in enumerate(self.trainable_words, start=1):
             assert (vocab_size + i) not in word_index.values()
             word_index[word] = vocab_size + i
-        # Add OOV token to the word + char index (Always have an OOV token).
+
+        # Add OOV token to the word + char index (So we always have an OOV token in the vocab).
         if self.oov_token not in word_index:
             assert len(word_index) + 1 not in word_index.values()
             word_index[self.oov_token] = len(word_index) + 1  # Add OOV as the last character

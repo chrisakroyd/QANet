@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from src import preprocessing as prepro, util
 
-keys_to_remove = ['tokens', 'length', 'query', 'elmo']
+keys_to_remove = ['tokens', 'length', 'query', 'elmo', 'orig_tokens']
 
 
 def convert_idx(text, tokens):
@@ -102,6 +102,7 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
 
         context.update({
             'text': clean_text,
+            'orig_tokens': tokens,
             'tokens': modified_tokens,
             'length': len(modified_tokens),
             'token_to_orig_map': token_orig_map,

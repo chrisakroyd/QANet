@@ -3,12 +3,13 @@ import tensorflow as tf
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
-def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4):
+def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_impossible=False):
     """ Creates a dataset from a TFRecord file.
         Args:
             filenames: A list of paths to .tfrecord files.
             buffer_size: Number of records to buffer.
             num_parallel_calls: How many functions we run in parallel.
+            is_impossible: Whether this record file has an is_impossible key.
         Returns:
             A `tf.data.Dataset` object.
     """
@@ -24,6 +25,9 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4):
         'answer_ends': int_feature,
         'answer_id': int_feature,
     }
+
+    if is_impossible:
+        features.update({'is_impossible': int_feature})
 
     def parse(proto):
         return tf.parse_single_example(proto, features=features)
@@ -64,8 +68,8 @@ def index_lookup(data, tables, char_limit=16, num_parallel_calls=4, has_labels=T
         # with the addition of 1 to again treat padding as 0 without needing to define a padding character.
         context_chars = tf.string_split(fields['context_tokens'], delimiter='')
         query_chars = tf.string_split(fields['query_tokens'], delimiter='')
-        context_chars = tf.sparse.to_dense(char_table.lookup(context_chars), default_value=-1) + 1
-        query_chars = tf.sparse.to_dense(char_table.lookup(query_chars), default_value=-1) + 1
+        context_chars = tf.sparse.to_dense(char_table.lookup(context_chars)) + 1
+        query_chars = tf.sparse.to_dense(char_table.lookup(query_chars)) + 1
         context_chars = context_chars[:, :char_limit]
         query_chars = query_chars[:, :char_limit]
 
@@ -105,7 +109,7 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
     return bucket_ranges
 
 
-def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True):
+def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True, is_impossible=False):
     """ Creates a dict of key: shape mappings for padding batches.
 
         Args:
@@ -113,6 +117,7 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
             max_query: Max size of the query, -1 to pad to max within the batch.
             max_characters: Max number of characters, -1 to pad to max within the batch.
             has_labels: Include padded shape for answer_starts and answer_ends.
+            is_impossible: Whether this record file has an is_impossible key.
         Returns:
             A dict mapping of key: shape
     """
@@ -130,6 +135,12 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
             'answer_ends': [],
             'answer_id': []
         })
+
+    if is_impossible:
+        shape_dict.update({
+            'is_impossible': [],
+        })
+
     return shape_dict
 
 
@@ -149,7 +160,7 @@ def create_lookup_tables(vocabs):
     return tables
 
 
-def create_pipeline(params, tables, record_paths, training=True):
+def create_pipeline(params, tables, record_paths, training=True, is_impossible=False):
     """ Function that creates an input pipeline for train/eval.
 
         Optionally uses bucketing to generate batches of a similar length. Output tensors
@@ -160,12 +171,13 @@ def create_pipeline(params, tables, record_paths, training=True):
             tables: A tuple of contrib.lookup tables mapping string words to indices and string characters to indices.
             record_paths: A list of string filepaths for .tfrecord files.
             training: Boolean value signifying whether we are in train mode.
+            is_impossible: Whether this pipeline is for a dataset which contains impossible records (Squad 2.0).
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
     parallel_calls = get_num_parallel_calls(params)
 
-    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls)
+    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls, is_impossible=is_impossible)
     data = data.cache()
 
     if training:
@@ -188,7 +200,7 @@ def create_pipeline(params, tables, record_paths, training=True):
                                                            bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
                                                            bucket_boundaries=buckets))
     else:
-        padded_shapes = get_padded_shapes(max_characters=params.char_limit)
+        padded_shapes = get_padded_shapes(max_characters=params.char_limit, is_impossible=is_impossible)
         data = data.padded_batch(
             batch_size=params.batch_size,
             padded_shapes=padded_shapes,
