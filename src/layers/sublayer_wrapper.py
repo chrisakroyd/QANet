@@ -4,7 +4,7 @@ from src import layers
 
 
 class SublayerWrapper(Layer):
-    def __init__(self, layer, dropout, sublayer, total_sublayers, dropout_every=1, use_layer_dropout=True, **kwargs):
+    def __init__(self, layer, dropout, sublayer=1, total_sublayers=1, dropout_every=1, use_layer_dropout=True, **kwargs):
         """ SublayerWrapper
 
             Every sublayer in QANet follows the rough template input -> LayerNorm -> Layer -> Dropout -> residual,
@@ -25,8 +25,10 @@ class SublayerWrapper(Layer):
         self.use_dropout = sublayer % dropout_every == 0
 
         self.use_layer_dropout = use_layer_dropout
-        self.layer_survival_prob = 1 - (float(sublayer) / float(total_sublayers) * dropout)
-        self.bernoulli = tf.distributions.Bernoulli(probs=self.layer_survival_prob, dtype=tf.float32)
+
+        if self.use_layer_dropout:
+            self.layer_survival_prob = 1 - (float(sublayer) / float(total_sublayers) * dropout)
+            self.bernoulli = tf.distributions.Bernoulli(probs=self.layer_survival_prob, dtype=tf.float32)
 
         if self.use_dropout:
             self.dropout = Dropout(dropout)

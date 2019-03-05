@@ -16,7 +16,7 @@ class FeedForwardLayer(Layer):
         """
         super(FeedForwardLayer, self).__init__(**kwargs)
         self.filters = hidden_size
-        # Optionally increase non-linear layer units by a multiplier
+
         self.conv_ff_1 = Conv1D(inner_size,
                                 kernel_size=1,
                                 padding='same',

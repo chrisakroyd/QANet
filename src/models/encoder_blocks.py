@@ -31,10 +31,10 @@ class EncoderBlock(tf.keras.Model):
         """
         super(EncoderBlock, self).__init__(**kwargs)
         # These Ids and counts are for determining layer dropout, higher layers == more chance of dropout
-        self.block_start_id = (block_number * (conv_layers + 2)) + 1  # Start from one
+        self.block_start_id = (block_number * conv_layers) + 1  # Start from one
         self.self_attention_id = (self.block_start_id + conv_layers)
         self.feed_forward_id = self.self_attention_id + 1
-        self.total_sub_layers = (conv_layers + 2) * total_blocks
+        self.total_sub_layers = conv_layers * total_blocks
 
         # Block has 4 components, position encoding, n conv layers, a self-attention layer and a feed forward layer.
         # Can have n convs, create a list of conv blocks to iterate through incrementing their block_ids.
@@ -53,15 +53,13 @@ class EncoderBlock(tf.keras.Model):
                                                                                num_heads=heads,
                                                                                dropout=attn_dropout,
                                                                                self_attention=True),
-                                                     sublayer=self.self_attention_id,
-                                                     total_sublayers=self.total_sub_layers,
+                                                     use_layer_dropout=False,
                                                      dropout=dropout,
                                                      name='self_attention_%d' % self.self_attention_id)
 
         self.feed_forward = layers.SublayerWrapper(layers.FeedForwardLayer(hidden_size, inner_size=ff_inner_size,
                                                                            dropout=dropout),
-                                                   sublayer=self.feed_forward_id,
-                                                   total_sublayers=self.total_sub_layers,
+                                                   use_layer_dropout=False,
                                                    dropout=dropout,
                                                    name='feed_forward_%d' % self.feed_forward_id)
 
