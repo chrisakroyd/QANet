@@ -29,20 +29,20 @@ class MultiHeadAttention(Layer):
         self.self_attention = self_attention
         self.num_heads = num_heads
         self.hidden_size = hidden_size
-        # Linear mappings
+
         self.queries_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
-                                    kernel_initializer=layers.create_initializer(),)
+                                    kernel_initializer=layers.create_initializer())
 
         self.keys_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
-                                 kernel_initializer=layers.create_initializer(),)
+                                 kernel_initializer=layers.create_initializer())
 
         self.values_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
-                                   kernel_initializer=layers.create_initializer(),)
+                                   kernel_initializer=layers.create_initializer())
 
         self.output_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
-                                   kernel_initializer=layers.create_initializer(),)
+                                   kernel_initializer=layers.create_initializer())
 
-        # square root of key depth Attention is all you Need, 3.2.1
+        # Square root of key depth Attention is all you Need, Section 3.2.1
         self.depth = (self.hidden_size // self.num_heads)
         self.scaling_factor = self.depth ** -0.5
 
@@ -61,13 +61,13 @@ class MultiHeadAttention(Layer):
         """
         # Split the last dimension + transpose result
         x = tf.reshape(x, shape=(batch_size, length, self.num_heads, self.depth))
-        return tf.transpose(x, perm=(0, 2, 1, 3))
+        return tf.transpose(x, perm=(0, 2, 1, 3))  # --> [batch_size, num_heads, length, depth]
 
     def combine_heads(self, x, batch_size, length):
         """ Given a tensor, combines the attention heads and returns a tensor
             of shape [batch_size, seq_length, depth]
         """
-        x = tf.transpose(x, perm=(0, 2, 1, 3))  # --> [batch, length, num_heads, depth]
+        x = tf.transpose(x, perm=(0, 2, 1, 3))  # --> [batch_size, length, num_heads, depth]
         return tf.reshape(x, shape=(batch_size, length, self.hidden_size))
 
     def call(self, x, training=None, mask=None):
@@ -83,31 +83,26 @@ class MultiHeadAttention(Layer):
         else:
             x, y = x
 
-        batch_size, length = self.compute_input_shape(x)
-        query, key, values = (self.queries_layer(x), self.keys_layer(y), self.values_layer(y))
-        # Split into n heads, allows model to jointly attend to different positions.
-        query = self.split_heads(query, batch_size, length)
-        key = self.split_heads(key, batch_size, length)
-        values = self.split_heads(values, batch_size, length)
+        batch_size, length_x = self.compute_input_shape(x)
+        _, length_y = self.compute_input_shape(y)
+        query, key, values = self.queries_layer(x), self.keys_layer(y), self.values_layer(y)
 
-        # Query is scaled to prevent large dot products.
+        query = self.split_heads(query, batch_size, length_x)
+        key = self.split_heads(key, batch_size, length_y)
+        values = self.split_heads(values, batch_size, length_y)
+
         query *= self.scaling_factor
-        # Calculate the dot product attention for each head
         logits = tf.matmul(query, key, transpose_b=True)
 
-        # TODO: use tf.split to split tensor into constituent elements + operate over each independently.
-
-        # Optionally apply a mask.
         if mask is not None:
             mask = tf.expand_dims(tf.expand_dims(mask, axis=1), axis=1)  # reshape mask to [bs, 1, 1, num_heads]
             logits = layers.apply_mask(logits, mask)
 
-        # Calculate attention weights + apply dropout.
         weights = self.softmax(logits)
         weights = self.dropout(weights, training=training)
         attention = tf.matmul(weights, values)
-        # Recombine the heads + run result through output layer.
-        attention = self.combine_heads(attention, batch_size, length)
+
+        attention = self.combine_heads(attention, batch_size, length_x)
         attention = self.output_layer(attention)
 
         return attention

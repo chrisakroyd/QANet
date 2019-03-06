@@ -95,23 +95,23 @@ class EmbeddingLayer(tf.keras.Model):
         char_shape = tf.shape(chars)
         num_words, num_chars = char_shape[1], char_shape[2]
         # @TODO Look into using a Conv2D or Separable Conv for character dropout.
-        word_embedding = self.word_embedding(words)  # [bs, len_words, embed_dim]
-        char_embedding = self.char_embedding(chars)  # [bs, len_words, len_chars, char_dim]
-        char_embedding = tf.reshape(char_embedding, shape=(-1, num_chars, self.char_dim,))
+        word_embedding = self.word_embedding(words)  # [batch_size, len_words, embed_dim]
+        char_embedding = self.char_embedding(chars)  # [batch_size, len_words, len_chars, char_dim]
+        char_embedding = tf.reshape(char_embedding, shape=(-1, num_chars, self.char_dim,))  # [batch_size, len_words * len_chars, char_dim]
         char_embedding = self.char_dropout(char_embedding, training=training)
         # Treat each character as a channel + reduce to the max representation.
-        char_embedding = self.char_conv(char_embedding)  # [bs, len_words, len_chars, char_dim]
+        char_embedding = self.char_conv(char_embedding)  # [batch_size, len_words * len_chars, char_dim]
         char_embedding = tf.reduce_max(char_embedding, axis=1)  # [bs, len_words, char_dim]
-        char_embedding = tf.reshape(char_embedding, shape=(-1, num_words, self.char_dim,))
+        char_embedding = tf.reshape(char_embedding, shape=(-1, num_words, self.char_dim,))  # [batch_size, len_words, char_dim]
         # Create a tensor full of indexes between 0 and the total number of trainable words + embed.
         trainable_embedding = self.trainable_embedding(words - self.word_range)
         trainable_embedding = self.relu(trainable_embedding)
         word_embedding = tf.add(word_embedding, trainable_embedding)
         word_embedding = self.word_dropout(word_embedding, training=training)
         # Concat the word + char embeddings to form a vector of embed_dim + char_dim at each position.
-        embedding = tf.concat([word_embedding, char_embedding], axis=2)
+        embedding = tf.concat([word_embedding, char_embedding], axis=2)  # [batch_size, len_words, embed_dim + char_dim]
 
         embedding = self.highway_1(embedding, training=training, mask=mask)
         embedding = self.highway_2(embedding, training=training, mask=mask)
 
-        return embedding
+        return embedding  # [batch_size, len_words, embed_dim + char_dim]
