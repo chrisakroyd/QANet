@@ -44,7 +44,7 @@
   "gradient_clip": 5.0,
   "learn_rate": 0.001,
   "use_cosine_decay": false,
-  "warmup_scheme": "inverse_exp",
+  "warmup_scheme": "linear",
   "warmup_steps": 1000,
   "plateau_steps": 0,
   "beta1": 0.8,
@@ -53,5 +53,5 @@
   "ema_decay": 0.999,
   "train_steps": 60000,
   "checkpoint_every": 1000,
-  "write_answer_file": false
+  "write_answer_file": true
 }

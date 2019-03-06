@@ -41,6 +41,7 @@ class QANet(tf.keras.Model):
         self.predict_pointers = layers.PredictionHead(params.answer_limit)
 
     def call(self, x, training=True, mask=None):
+        training = tf.cast(training, dtype=tf.bool)
         context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
         # Get the sequence length for this batch.
         context_max = tf.reduce_max(context_lengths)
@@ -87,8 +88,6 @@ class QANet(tf.keras.Model):
 
         if l2 is not None and l2 > 0.0:
             variables = tf.trainable_variables()
-            # Ignore bias/scale weights (Bag of Tricks for Image Classification with
-            # Convolutional Neural Networks, https://arxiv.org/pdf/1812.01187.pdf)
             variables = [v for v in variables if 'bias' not in v.name and 'scale' not in v.name]
             l2_loss = train_utils.l2_ops(l2, variables=variables)
             loss = loss + l2_loss
