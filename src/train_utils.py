@@ -81,7 +81,7 @@ def linear_warmup(learn_rate, warmup_steps=1000, global_step=None):
     if global_step is None:
         global_step = tf.train.get_global_step()
 
-    lr_decay = tf.minimum(1.0, tf.to_float(global_step) / warmup_steps)
+    lr_decay = tf.minimum(1.0, tf.cast(global_step, dtype=tf.float32) / warmup_steps)
     return lr_decay * learn_rate
 
 

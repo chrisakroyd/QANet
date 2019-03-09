@@ -1,0 +1,4 @@
+numpy==1.16.2
+spacy==2.0.16
+tensorflow-gpu==1.13.1
+tqdm==4.31.1
