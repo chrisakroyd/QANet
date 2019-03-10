@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow_probability as tfp
 from tensorflow.keras.layers import Dropout, Layer
 from src import layers
 
@@ -28,7 +29,7 @@ class SublayerWrapper(Layer):
 
         if self.use_layer_dropout:
             self.layer_survival_prob = 1 - (float(sublayer) / float(total_sublayers) * dropout)
-            self.bernoulli = tf.distributions.Bernoulli(probs=self.layer_survival_prob, dtype=tf.float32)
+            self.bernoulli = tfp.distributions.Bernoulli(probs=self.layer_survival_prob, dtype=tf.float32)
 
         if self.use_dropout:
             self.dropout = Dropout(dropout)
