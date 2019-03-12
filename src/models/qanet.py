@@ -10,8 +10,9 @@ class QANet(tf.keras.Model):
         self.attn_dropout = tf.placeholder_with_default(params.attn_dropout, (), name='attn_dropout')
 
         self.embedding = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
-                                               word_dim=params.embed_dim, char_dim=params.char_dim,
-                                               word_dropout=self.dropout, char_dropout=self.dropout / 2)
+                                               use_trainable=params.use_trainable, word_dim=params.embed_dim,
+                                               char_dim=params.char_dim, word_dropout=self.dropout,
+                                               char_dropout=self.dropout / 2)
 
         self.embedding_encoder = models.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,

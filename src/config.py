@@ -66,6 +66,7 @@ def model_config(defaults):
     flags.DEFINE_integer('parallel_calls', defaults.parallel_calls, 'Number of parallel calls for the pipeline.')
     flags.DEFINE_integer('max_prefetch', defaults.max_prefetch, 'Max number of prefetched batches.')
     flags.DEFINE_boolean('use_elmo', defaults.use_elmo, 'Whether to use ELMo embeddings.')
+    flags.DEFINE_boolean('use_trainable', defaults.use_trainable, 'Whether to use trainable embeddings.')
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
     flags.DEFINE_integer('hidden_size', defaults.hidden_size, 'Number of hidden units to use.')
