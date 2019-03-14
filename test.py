@@ -4,7 +4,7 @@ from src import config, constants, loaders, metrics, models, pipeline, train_uti
 
 
 def test(sess_config, params):
-    out_dir, model_dir, log_dir = util.train_paths(params)
+    model_dir, log_dir = util.save_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
 

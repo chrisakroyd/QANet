@@ -26,7 +26,7 @@ def demo(sess_config, params):
     app = Flask(__name__, static_folder=params.dist_dir)
     app.after_request(add_cors_headers)
 
-    _, model_dir, _ = util.train_paths(params)
+    model_dir, _ = util.save_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
     examples_path = util.examples_path(params)
     embedding_paths = util.embedding_paths(params)

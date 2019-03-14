@@ -2,18 +2,15 @@ import os
 from src import constants
 
 
-def get_directories(params):
-    """ Generates directory paths.
-        Args:
-            params: A dictionary of parameters.
-        returns:
-            String paths for directories containing unprocessed, processed, models and logs.
-    """
-    data_dir = os.path.abspath(params.data_dir)
-    processed_data_dir = os.path.join(data_dir, constants.DirNames.PROCESSED, params.dataset)
-    models_dir = os.path.abspath(params.models_dir)
+def processed_data_directory(params):
+    """ Generates a unique path to save processed data for a dataset """
+    processed_data_dir = os.path.join(params.data_dir, constants.DirNames.PROCESSED, params.dataset)
+    return processed_data_dir
 
-    return data_dir, processed_data_dir, models_dir
+
+def get_directories(params):
+    """ Generates directory paths for data, processed data and saving models """
+    return params.data_dir, processed_data_directory(params), params.models_dir
 
 
 def raw_data_directory(params, dataset=None):
@@ -67,7 +64,7 @@ def processed_data_paths(params):
         returns:
             String paths for processed answers and contexts for train and dev sets.
     """
-    _, processed_dir, _ = get_directories(params)
+    processed_dir = processed_data_directory(params)
     train, dev, test = constants.FileNames.TRAIN, constants.FileNames.DEV, constants.FileNames.TEST
 
     paths = (
@@ -89,7 +86,7 @@ def index_paths(params):
         returns:
             String paths for loading word, character and trainable indexes.
     """
-    _, processed_dir, _ = get_directories(params)
+    processed_dir = processed_data_directory(params)
 
     paths = []
 
@@ -106,7 +103,7 @@ def embedding_paths(params):
         returns:
             String paths for loading word, character and trainable embeddings.
     """
-    _, processed_dir, _ = get_directories(params)
+    processed_dir = processed_data_directory(params)
     paths = []
     for embed_type in constants.EmbeddingTypes.as_list():
         paths += [
@@ -115,26 +112,20 @@ def embedding_paths(params):
     return paths
 
 
-def train_paths(params):
+def save_paths(params):
     """ Generates paths to save trained models and logs for each run.
         Args:
             params: A dictionary of parameters.
         returns:
             String paths for loading data, saved models and saved logs.
     """
-    data_dir, _, out_dir = get_directories(params)
-
-    model_dir = os.path.join(out_dir, constants.DirNames.CHECKPOINTS)
-    logs_dir = os.path.join(out_dir, constants.DirNames.LOGS)
-
-    model_path = os.path.join(out_dir, model_dir, params.run_name)
-    logs_path = os.path.join(out_dir, logs_dir, params.run_name)
-
-    return out_dir, model_path, logs_path
+    model_path = os.path.join(params.models_dir, constants.DirNames.CHECKPOINTS, params.run_name)
+    logs_path = os.path.join(params.models_dir, constants.DirNames.LOGS, params.run_name)
+    return model_path, logs_path
 
 
 def results_path(params):
-    _, _, logs_path = train_paths(params)
+    _, logs_path = save_paths(params)
     return os.path.join(logs_path, 'results.json')
 
 
@@ -145,17 +136,17 @@ def tf_record_paths(params):
         returns:
             A string path to .tfrecord file.
     """
-    _, processed_data_dir, _ = get_directories(params)
+    processed_dir = processed_data_directory(params)
 
     paths = (
-        os.path.join(processed_data_dir, constants.FileNames.TF_RECORD.format(name=constants.FileNames.TRAIN)),
-        os.path.join(processed_data_dir, constants.FileNames.TF_RECORD.format(name=constants.FileNames.DEV)),
-        os.path.join(processed_data_dir, constants.FileNames.TF_RECORD.format(name=constants.FileNames.TEST))
+        os.path.join(processed_dir, constants.FileNames.TF_RECORD.format(name=constants.FileNames.TRAIN)),
+        os.path.join(processed_dir, constants.FileNames.TF_RECORD.format(name=constants.FileNames.DEV)),
+        os.path.join(processed_dir, constants.FileNames.TF_RECORD.format(name=constants.FileNames.TEST))
     )
 
     return paths
 
 
 def examples_path(params):
-    _, processed_dir, _ = get_directories(params)
+    processed_dir = processed_data_directory(params)
     return os.path.join(processed_dir, constants.FileNames.EXAMPLES)
