@@ -23,7 +23,7 @@
   "bucket": true,
   "bucket_ranges": [],
   "bucket_size": 40,
-  "shuffle_buffer_size": 15000,
+  "shuffle_buffer_size": 80000,
   "tf_record_buffer_size": 1024,
   "use_elmo": false,
   "use_trainable": true,

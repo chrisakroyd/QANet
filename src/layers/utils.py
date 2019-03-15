@@ -20,15 +20,26 @@ def apply_mask(inputs, mask, mask_value=-1e12):
 
          Args:
             inputs: Arbitrary-rank logits tensor to be masked.
-            mask: A `boolean` mask tensor.
+            mask: A tf.bool mask tensor.
             mask_value: A scalar value to fill `False` positions.
         Returns:
             Masked inputs with the same shape as `inputs`.
     """
-    # Invert mask, fill with mask value and apply to inputs
-    return inputs + (1.0 - tf.cast(mask, dtype=tf.float32)) * mask_value
+    return inputs + create_mask_vector(mask, mask_value)
+
+
+def create_mask_vector(mask, mask_value=-1e12):
+    """ Converts a tf.bool tensor into a float32 mask filled with mask_value for padding positions. """
+    return tf.cast(tf.logical_not(mask), dtype=tf.float32) * mask_value
+
+
+def create_attention_bias(mask, mask_value=-1e12):
+    """ Converts a boolean mask to a [batch_size, 1, 1, mask_length] float bias vector. """
+    bias = tf.expand_dims(tf.expand_dims(mask, axis=1), axis=1)  # Expand so that we can multiply this vector by n_heads
+    bias = create_mask_vector(bias, mask_value)
+    return bias
 
 
 def create_initializer(initializer_range=0.02):
-    """Creates a `truncated_normal_initializer` with the given range."""
+    """ Creates a `truncated_normal_initializer` with the given range. """
     return tf.truncated_normal_initializer(stddev=initializer_range)

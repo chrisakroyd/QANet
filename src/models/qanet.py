@@ -44,20 +44,19 @@ class QANet(tf.keras.Model):
     def call(self, x, training=True, mask=None):
         training = tf.cast(training, dtype=tf.bool)
         context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
-        # Get the sequence length for this batch.
-        context_max = tf.reduce_max(context_lengths)
-        query_max = tf.reduce_max(query_lengths)
-        # Init mask tensors on the trimmed input.
-        context_mask = layers.create_mask(context_lengths, context_max)
-        query_mask = layers.create_mask(query_lengths, query_max)
+        context_mask = layers.create_mask(context_lengths, maxlen=tf.reduce_max(context_lengths))
+        query_mask = layers.create_mask(query_lengths, maxlen=tf.reduce_max(query_lengths))
+        # We pre-compute the float mask tensors once as this saves both memory and compute.
+        context_attn_bias = layers.create_attention_bias(context_mask)
+        query_attn_bias = layers.create_attention_bias(query_mask)
 
         # Embed the query + context
         context_emb = self.embedding([context_words, context_chars], training=training)
         query_emb = self.embedding([query_words, query_chars], training=training)
 
         # Encode the query + context.
-        context_enc = self.embedding_encoder(context_emb, training=training, mask=context_mask)
-        query_enc = self.embedding_encoder(query_emb, training=training, mask=query_mask)
+        context_enc = self.embedding_encoder(context_emb, training=training, mask=context_attn_bias)
+        query_enc = self.embedding_encoder(query_emb, training=training, mask=query_attn_bias)
 
         # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
         c2q, q2c = self.context_query([context_enc, query_enc], training=training, mask=[context_mask, query_mask])
@@ -66,11 +65,10 @@ class QANet(tf.keras.Model):
         inputs = tf.concat([context_enc, c2q, context_enc * c2q, context_enc * q2c], axis=-1)
 
         # Run through our stacked model encoder blocks on this representation.
-        enc_1 = self.model_encoder(inputs, training=training, mask=context_mask)
-        enc_2 = self.model_encoder(enc_1, training=training, mask=context_mask)
-        enc_3 = self.model_encoder(enc_2, training=training, mask=context_mask)
+        enc_1 = self.model_encoder(inputs, training=training, mask=context_attn_bias)
+        enc_2 = self.model_encoder(enc_1, training=training, mask=context_attn_bias)
+        enc_3 = self.model_encoder(enc_2, training=training, mask=context_attn_bias)
 
-        # Get the start/end logits from the output layers
         start_logits = self.start_output([enc_1, enc_2], training=training, mask=context_mask)
         end_logits = self.end_output([enc_1, enc_3], training=training, mask=context_mask)
 

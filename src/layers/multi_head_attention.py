@@ -95,14 +95,19 @@ class MultiHeadAttention(Layer):
         logits = tf.matmul(query, key, transpose_b=True)
 
         if mask is not None:
-            mask = tf.expand_dims(tf.expand_dims(mask, axis=1), axis=1)  # reshape mask to [bs, 1, 1, num_heads]
-            logits = layers.apply_mask(logits, mask)
+            if mask.dtype == tf.bool:  # Boolean mask, we convert to be an attention bias vector + add.
+                bias = layers.create_attention_bias(mask)  # [batch_size, 1, 1, length]
+                logits = logits + bias
+            elif mask.dtype == tf.float32:  # Mask is already a bias vector
+                logits = logits + mask
+            else:
+                raise ValueError('Expected mask dtype to be tf.float32 or tf.bool')
 
         weights = self.softmax(logits)
         weights = self.dropout(weights, training=training)
         attention = tf.matmul(weights, values)
 
-        attention = self.combine_heads(attention, batch_size, length_x)
+        attention = self.combine_heads(attention, batch_size, length_x)  # [batch_size, length_x, hidden_size]
         attention = self.output_layer(attention)
 
         return attention

@@ -13,7 +13,7 @@ class EncoderBlock(tf.keras.Model):
             section 3), the main differences are the separable convolutions before the self-attention layer and
             Layer Dropout.
 
-            Each block after the position encoding is wrapped with a SublayerConnection which implments
+            Each block after the position encoding is wrapped with a SublayerConnection which implements
             common functionality for the residual connection, layer norm and dropout. This gives each 'block' the
             structure input -> LayerNorm -> WrappedLayer -> Dropout -> residual. It also implements
             layer dropout from the paper "Deep Networks with Stochastic Depth"
@@ -36,8 +36,7 @@ class EncoderBlock(tf.keras.Model):
         self.feed_forward_id = self.self_attention_id + 1
         self.total_sub_layers = conv_layers * total_blocks
 
-        # Block has 4 components, position encoding, n conv layers, a self-attention layer and a feed forward layer.
-        # Can have n convs, create a list of conv blocks to iterate through incrementing their block_ids.
+        # Block has 3 components, n conv layers, a self-attention layer and a feed forward layer.
         self.conv_layers = [layers.SublayerWrapper(SeparableConv1D(filters=hidden_size,
                                                                    kernel_size=kernel_size,
                                                                    padding='same',
@@ -73,10 +72,10 @@ class EncoderBlock(tf.keras.Model):
                 mask: A boolean mask tensor.
         """
         for conv in self.conv_layers:
-            x = conv(x, training=training, mask=mask)
+            x = conv(x, training=training)
 
         x = self.self_attention(x, training=training, mask=mask)
-        x = self.feed_forward(x, training=training, mask=mask)
+        x = self.feed_forward(x, training=training)
         x = self.output_normalization(x)
 
         return x
@@ -126,7 +125,7 @@ class EncoderBlockStack(tf.keras.Model):
         if not self.hidden_size == x.shape[-1]:
             x = self.projection(x)
 
-        x = self.position_encoding(x, training=training, mask=mask)
+        x = self.position_encoding(x, training=training)
 
         for block in self.blocks:
             x = block(x, training=training, mask=mask)

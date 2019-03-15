@@ -31,12 +31,8 @@ class PredictionHead(Layer):
 
         outer = tf.matmul(tf.expand_dims(start_prob, axis=2),
                           tf.expand_dims(end_prob, axis=1))
-        # @TODO In tf 1.12 this has moved to be tf.linalg.band_part but is still aliased, might break in tf 2.0.
-        outer = tf.matrix_band_part(outer, lower, upper)
+
+        outer = tf.linalg.band_part(outer, lower, upper)
         start_pointer = tf.argmax(tf.reduce_max(outer, axis=2), axis=1)
         end_pointer = tf.argmax(tf.reduce_max(outer, axis=1), axis=1)
         return start_prob, end_prob, start_pointer, end_pointer
-
-    def compute_output_shape(self, input_shape):
-        # @TODO @cakroyd fix the output shape so its calculated correctly (This is wrong as of 16/11/2018).
-        return (input_shape[0][0], 1), (input_shape[-1][0], 1)
