@@ -68,8 +68,6 @@ class ContextQueryAttention(Layer):
         context_mask, query_mask = mask
         batch_size, context_length, hidden_size = self.compute_input_shape(x_context)
         _, query_length, _ = self.compute_input_shape(x_query)
-        mask_context = tf.expand_dims(context_mask, axis=2)
-        mask_query = tf.expand_dims(query_mask, axis=1)
 
         query_reshape = tf.reshape(x_query, shape=(-1, hidden_size))
         context_reshape = tf.reshape(x_context, shape=(-1, hidden_size))
@@ -78,21 +76,31 @@ class ContextQueryAttention(Layer):
         sub_mat_0 = tf.tile(tf.expand_dims(sub_mat_0, axis=2), multiples=(1, 1, context_length))
         sub_mat_1 = tf.reshape(tf.matmul(context_reshape, self.W1), shape=(batch_size, context_length))
         sub_mat_1 = tf.tile(tf.expand_dims(sub_mat_1, axis=1), multiples=(1, query_length, 1))
-        sub_mat_2 = tf.matmul(x_query * self.W2, tf.transpose(x_context, perm=(0, 2, 1)))
+        sub_mat_2 = tf.matmul(x_query * self.W2, x_context, transpose_b=True)
+
         # Add the matrices together and transpose to form a matrix of shape [bs, context_length, query_length]
-        S = sub_mat_0 + sub_mat_1 + sub_mat_2
+        similarity_matrix = sub_mat_0 + sub_mat_1 + sub_mat_2
 
         if self.use_bias:
-            S += self.bias
+            similarity_matrix += self.bias
 
-        S = tf.transpose(S, perm=(0, 2, 1))
+        similarity_matrix = tf.transpose(similarity_matrix, perm=(0, 2, 1))  # [batch_size, context_length, query_length]
+
+        # We take our two mask tensors + form a mask of equal shape to the similarity matrix.
+        mask_context = tf.expand_dims(context_mask, axis=2)  # [batch_size, context_length, 1]
+        context_mask_tiled = tf.tile(mask_context, [1, 1, query_length])  # [batch_size, context_length, query_length]
+        mask_query = tf.expand_dims(query_mask, axis=1)  # [batch_size, 1, query_length]
+        query_mask_tiled = tf.tile(mask_query, [1, context_length, 1])  # [batch_size, context_length, query_length]
+        # Combine the two boolean mask tensors into a singular mask of shape [batch_size, context_length, query_length]
+        similarity_mask = tf.logical_and(query_mask_tiled, context_mask_tiled)
+        similarity_matrix = layers.apply_mask(similarity_matrix, mask=similarity_mask)
+
         # Standard context to query attention.
-        c2q_act = self.query_activation(layers.apply_mask(S, mask=mask_query))
+        c2q_act = self.query_activation(similarity_matrix)
         c2q = tf.matmul(c2q_act, x_query)
         # DCN style query to context attention.
-        q2c_act = self.context_activation(layers.apply_mask(S, mask=mask_context))
-        S_T = tf.transpose(q2c_act, perm=(0, 2, 1))
-        q2c = tf.matmul(tf.matmul(c2q_act, S_T), x_context)
+        q2c_act = self.context_activation(similarity_matrix)
+        q2c = tf.matmul(tf.matmul(c2q_act, q2c_act, transpose_b=True), x_context)
 
         return c2q, q2c
 
