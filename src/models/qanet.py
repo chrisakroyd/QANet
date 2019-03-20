@@ -8,6 +8,7 @@ class QANet(tf.keras.Model):
         self.global_step = tf.train.get_or_create_global_step()
         self.dropout = tf.placeholder_with_default(params.dropout, (), name='dropout')
         self.attn_dropout = tf.placeholder_with_default(params.attn_dropout, (), name='attn_dropout')
+        self.low_memory = params.low_memory
 
         self.embedding = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                use_trainable=params.use_trainable, word_dim=params.embed_dim,
@@ -22,6 +23,7 @@ class QANet(tf.keras.Model):
                                                           dropout=self.dropout,
                                                           attn_dropout=self.attn_dropout,
                                                           ff_inner_size=params.ff_inner_size,
+                                                          recompute_gradients=params.low_memory,
                                                           name='embedding_encoder')
 
         self.context_query = layers.ContextQueryAttention(name='context_query_attention')
@@ -34,6 +36,7 @@ class QANet(tf.keras.Model):
                                                       dropout=self.dropout,
                                                       attn_dropout=self.attn_dropout,
                                                       ff_inner_size=params.ff_inner_size,
+                                                      recompute_gradients=params.low_memory,
                                                       name='model_encoder')
 
         self.start_output = layers.OutputLayer(name='start_logits')
@@ -46,9 +49,14 @@ class QANet(tf.keras.Model):
         context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
         context_mask = layers.create_mask(context_lengths, maxlen=tf.reduce_max(context_lengths))
         query_mask = layers.create_mask(query_lengths, maxlen=tf.reduce_max(query_lengths))
-        # We pre-compute the float mask tensors once as this saves both memory and compute.
-        context_attn_bias = layers.create_attention_bias(context_mask)
-        query_attn_bias = layers.create_attention_bias(query_mask)
+        # We pre-compute the float mask tensors once as this saves both memory and compute, in low-memory mode
+        # this causes issues with variable scopes therefore we just use mask tensors.
+        if not self.low_memory:
+            context_attn_bias = layers.create_attention_bias(context_mask)
+            query_attn_bias = layers.create_attention_bias(query_mask)
+        else:
+            context_attn_bias = context_mask
+            query_attn_bias = query_mask
 
         # Embed the query + context
         context_emb = self.embedding([context_words, context_chars], training=training)
