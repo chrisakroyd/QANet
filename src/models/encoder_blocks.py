@@ -51,10 +51,15 @@ class EncoderBlock(tf.keras.Model):
                                                    name='conv_block_%d' % (self.block_start_id + i))
                             for i in range(conv_layers)]
 
-        self.self_attention = layers.SublayerWrapper(layers.MultiHeadAttention(hidden_size,
-                                                                               num_heads=heads,
-                                                                               dropout=attn_dropout,
-                                                                               self_attention=True),
+        # We need to wrap the layers we with a variable scope to 100% ensure that it only recomputes those values
+        # but this breaks backwards compatibility on checkpoints. Therefore only wrap if we are recomputing
+        if recompute_gradients:
+            with tf.variable_scope('self_attention_%d' % self.self_attention_id, reuse=tf.AUTO_REUSE):
+                self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout)
+        else:
+            self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout)
+
+        self.self_attention = layers.SublayerWrapper(self.multi_head,
                                                      use_layer_dropout=False,
                                                      dropout=dropout,
                                                      recompute_gradients=recompute_gradients,
