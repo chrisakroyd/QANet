@@ -42,9 +42,6 @@ class SublayerWrapper(Layer):
         if self.use_dropout:
             self.dropout = Dropout(dropout)
 
-    def build(self, input_shape):
-        super(SublayerWrapper, self).build(input_shape)
-
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
             Args:
@@ -79,6 +76,3 @@ class SublayerWrapper(Layer):
             x = self.dropout(x, training=training)
 
         return x
-
-    def compute_output_shape(self, input_shape):
-        return input_shape

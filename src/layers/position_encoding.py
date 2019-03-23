@@ -35,6 +35,3 @@ class PositionEncoding(Layer):
         signal = tf.reshape(signal, [1, length, channels])
         # Add input and signal
         return x + signal
-
-    def compute_output_shape(self, input_shape):
-        return input_shape

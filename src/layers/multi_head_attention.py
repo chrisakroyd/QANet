@@ -116,6 +116,3 @@ class MultiHeadAttention(Layer):
         attention = self.output_layer(attention)
 
         return attention
-
-    def compute_output_shape(self, input_shape):
-        return input_shape

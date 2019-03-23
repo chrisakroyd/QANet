@@ -10,12 +10,12 @@ class QANet(tf.keras.Model):
         self.attn_dropout = tf.placeholder_with_default(params.attn_dropout, (), name='attn_dropout')
         self.low_memory = params.low_memory
 
-        self.embedding = models.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
+        self.embedding = layers.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                use_trainable=params.use_trainable, word_dim=params.embed_dim,
                                                char_dim=params.char_dim, word_dropout=self.dropout,
                                                char_dropout=self.dropout / 2)
 
-        self.embedding_encoder = models.EncoderBlockStack(blocks=params.embed_encoder_blocks,
+        self.embedding_encoder = layers.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,
                                                           kernel_size=params.embed_encoder_kernel_width,
                                                           hidden_size=params.hidden_size,
@@ -28,7 +28,7 @@ class QANet(tf.keras.Model):
 
         self.context_query = layers.ContextQueryAttention(name='context_query_attention')
 
-        self.model_encoder = models.EncoderBlockStack(blocks=params.model_encoder_blocks,
+        self.model_encoder = layers.EncoderBlockStack(blocks=params.model_encoder_blocks,
                                                       conv_layers=params.model_encoder_convs,
                                                       kernel_size=params.model_encoder_kernel_width,
                                                       hidden_size=params.hidden_size,
@@ -49,6 +49,7 @@ class QANet(tf.keras.Model):
         context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
         context_mask = layers.create_mask(context_lengths, maxlen=tf.reduce_max(context_lengths))
         query_mask = layers.create_mask(query_lengths, maxlen=tf.reduce_max(query_lengths))
+
         # We pre-compute the float mask tensors once as this saves both memory and compute, in low-memory mode
         # this causes issues with variable scopes therefore we just use mask tensors.
         if not self.low_memory:

@@ -8,3 +8,5 @@ from .position_encoding import PositionEncoding
 from .prediction import PredictionHead
 from .sublayer_wrapper import SublayerWrapper
 from .utils import apply_mask, create_mask, create_initializer, create_attention_bias, create_mask_vector
+from .embedding_layer import EmbeddingLayer
+from .encoder_blocks import EncoderBlockStack

@@ -16,9 +16,6 @@ class OutputLayer(Layer):
         super(OutputLayer, self).__init__(**kwargs)
         self.conv = Conv1D(1, kernel_size=kernel_size, use_bias=False, kernel_initializer=layers.create_initializer())
 
-    def build(self, input_shape):
-        super(OutputLayer, self).build(input_shape)
-
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
             Args:
@@ -33,6 +30,3 @@ class OutputLayer(Layer):
         x = layers.apply_mask(x, mask)
 
         return x
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0][0], input_shape[0][1]

@@ -103,6 +103,3 @@ class ContextQueryAttention(Layer):
         q2c = tf.matmul(tf.matmul(c2q_act, q2c_act, transpose_b=True), x_context)
 
         return c2q, q2c
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0][0], input_shape[0][1], (input_shape[0][-1] * 4)

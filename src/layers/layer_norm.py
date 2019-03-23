@@ -35,6 +35,3 @@ class LayerNorm(Layer):
         variance = tf.reduce_mean(tf.square(x - mean), axis=-1, keepdims=True)
         norm = (x - mean) * tf.rsqrt(variance + self.epsilon)
         return norm * self.scale + self.bias
-
-    def compute_output_shape(self, input_shape):
-        return input_shape
