@@ -65,6 +65,8 @@ class FileNames:
     CONTEXT = '{data_type}_contexts.json'
     ANSWERS = '{data_type}_answers.json'
     TF_RECORD = '{name}.tfrecord'
+    CONFIG = 'model_config.json'
+    RESULTS = '{timestamp}_results.json'
     TRAIN = 'train'
     DEV = 'dev'
     TEST = 'test'

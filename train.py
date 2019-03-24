@@ -10,6 +10,7 @@ def train(sess_config, params, debug=False):
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
     util.make_dirs([model_dir, log_dir])
+    util.save_config(params, path=util.config_path(params), overwrite=False)  # Saves the run parameters in a .json
 
     train_data, val_data = loaders.load_squad_v1(params)
     train_spans, train_answers, train_ctxt_mapping = train_data
@@ -113,4 +114,6 @@ def train(sess_config, params, debug=False):
 
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
-    train(config.gpu_config(), config.model_config(defaults).FLAGS)
+    flags = config.model_config(defaults).FLAGS
+    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    train(config.gpu_config(), params)

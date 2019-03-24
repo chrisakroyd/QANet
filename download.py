@@ -10,14 +10,14 @@ def download(params):
     squad_v1_train_path, squad_v1_dev_path = util.raw_data_paths(params, dataset=constants.Datasets.SQUAD_1)
     squad_v2_train_path, squad_v2_dev_path = util.raw_data_paths(params, dataset=constants.Datasets.SQUAD_2)
 
-    if not os.path.exists(squad_v1_train_path) and not os.path.exists(squad_v1_dev_path):
+    if not util.file_exists(squad_v1_train_path) and not util.file_exists(squad_v1_dev_path):
         print('Downloading Squad v1.1...')
         util.download_json(constants.Urls.TRAIN_SQUAD_1, squad_v1_train_path)
         util.download_json(constants.Urls.DEV_SQUAD_1, squad_v1_dev_path)
     else:
         print('Squad v1.1 data already exists, skipping...')
 
-    if not os.path.exists(squad_v2_train_path) and not os.path.exists(squad_v2_dev_path):
+    if not util.file_exists(squad_v2_train_path) and not util.file_exists(squad_v2_dev_path):
         print('Downloading Squad v2.0...')
         util.download_json(constants.Urls.TRAIN_SQUAD_2, squad_v2_train_path)
         util.download_json(constants.Urls.DEV_SQUAD_2, squad_v2_dev_path)
@@ -25,7 +25,7 @@ def download(params):
         print('Squad v2.0 data already exists, skipping...')
 
     # If an embedding file doesn't exist at the specified location, download them.
-    if not os.path.exists(params.embeddings_path):
+    if not util.file_exists(params.embeddings_path):
         print('Downloading embeddings, this may take some time...')
         embedding_dir = os.path.join(data_dir, constants.DirNames.EMBEDDINGS)
         util.make_dirs(embedding_dir)

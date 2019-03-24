@@ -1,5 +1,5 @@
 import tensorflow as tf
-from src import layers, models, train_utils
+from src import layers, train_utils
 
 
 class QANet(tf.keras.Model):
@@ -59,21 +59,17 @@ class QANet(tf.keras.Model):
             context_attn_bias = context_mask
             query_attn_bias = query_mask
 
-        # Embed the query + context
         context_emb = self.embedding([context_words, context_chars], training=training)
         query_emb = self.embedding([query_words, query_chars], training=training)
 
-        # Encode the query + context.
         context_enc = self.embedding_encoder(context_emb, training=training, mask=context_attn_bias)
         query_enc = self.embedding_encoder(query_emb, training=training, mask=query_attn_bias)
 
-        # Calculate the Context -> Query (c2q) and Query -> Context Attention (q2c).
         c2q, q2c = self.context_query([context_enc, query_enc], training=training, mask=[context_mask, query_mask])
 
         # Input for the first stage of the model encoder, refer to section 2.2. of QANet paper for more details
         inputs = tf.concat([context_enc, c2q, context_enc * c2q, context_enc * q2c], axis=-1)
 
-        # Run through our stacked model encoder blocks on this representation.
         enc_1 = self.model_encoder(inputs, training=training, mask=context_attn_bias)
         enc_2 = self.model_encoder(enc_1, training=training, mask=context_attn_bias)
         enc_3 = self.model_encoder(enc_2, training=training, mask=context_attn_bias)
