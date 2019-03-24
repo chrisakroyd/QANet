@@ -4,7 +4,7 @@ from src import layers
 
 
 class MultiHeadAttention(Layer):
-    def __init__(self, hidden_size=128, num_heads=8, dropout=0.1, self_attention=True, **kwargs):
+    def __init__(self, hidden_size=128, num_heads=8, dropout=0.1, **kwargs):
         """ Multi-Headed Attention implementation.
 
             This is an implementation of multi-head attention based on the paper "Attention
@@ -20,13 +20,12 @@ class MultiHeadAttention(Layer):
 
             Args:
                 hidden_size: The number of units in the final dimension of the input tensor.
-                num_heads: Number of attention heads to compute.
+                num_heads: Number of attention heads to compute, when num_heads == 1, multi-head attention == attention
                 dropout: Fraction of units to drop.
                 self_attention: Boolean value for whether to use self-attention on the inputs.
         """
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.supports_masking = True
-        self.self_attention = self_attention
         self.num_heads = num_heads
         self.hidden_size = hidden_size
 
@@ -41,6 +40,10 @@ class MultiHeadAttention(Layer):
 
         self.output_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=False,
                                    kernel_initializer=layers.create_initializer())
+
+        if not self.hidden_size % self.num_heads == 0:
+            raise ValueError('Hidden Size {} must be divisible by the number of attention heads {} with no remainder.'
+                             .format(self.hidden_size, self.num_heads))
 
         # Square root of key depth Attention is all you Need, Section 3.2.1
         self.depth = (self.hidden_size // self.num_heads)
@@ -78,10 +81,12 @@ class MultiHeadAttention(Layer):
                 training: Boolean flag for training mode.
                 mask: A boolean mask tensor.
         """
-        if self.self_attention:
+        if isinstance(x, (tf.Tensor, tf.SparseTensor, tf.Variable)):  # Self attention -> X, Y = X, X
             x, y = x, x
-        else:
+        elif len(x) == 2:  # Attention between two tensors -> X, Y = X, Y
             x, y = x
+        else:  # Invalid, we can only take a tensor or list of two tensors for attention.
+            raise ValueError('Expected a maximum of two tensors passed to multi-head attention, got: {}'.format(len(x)))
 
         batch_size, length_x = self.compute_input_shape(x)
         _, length_y = self.compute_input_shape(y)
@@ -111,6 +116,3 @@ class MultiHeadAttention(Layer):
         attention = self.output_layer(attention)
 
         return attention
-
-    def compute_output_shape(self, input_shape):
-        return input_shape

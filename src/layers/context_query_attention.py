@@ -34,6 +34,8 @@ class ContextQueryAttention(Layer):
         """ Adds the necessary weights and an optional bias variable """
         hidden_size = int(input_shape[0][-1])
 
+        # We use the same initialization as the self attention/feed forward, this init works better because of the
+        # massive use of layer norm, if no layer norm its best to use a more standard weight init scheme.
         self.W0 = self.add_weight(name='W0',
                                   shape=(hidden_size, 1),
                                   initializer=layers.create_initializer(),
@@ -103,6 +105,3 @@ class ContextQueryAttention(Layer):
         q2c = tf.matmul(tf.matmul(c2q_act, q2c_act, transpose_b=True), x_context)
 
         return c2q, q2c
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0][0], input_shape[0][1], (input_shape[0][-1] * 4)

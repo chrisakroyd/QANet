@@ -1,11 +1,12 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
 from tensorflow.keras.layers import Dropout, Layer
-from src import layers
+from src import layers, gradients
 
 
 class SublayerWrapper(Layer):
-    def __init__(self, layer, dropout, sublayer=1, total_sublayers=1, dropout_every=1, use_layer_dropout=True, **kwargs):
+    def __init__(self, layer, dropout, sublayer=1, total_sublayers=1, dropout_every=1, use_layer_dropout=True,
+                 recompute_gradients=False, **kwargs):
         """ SublayerWrapper
 
             Every sublayer in QANet follows the rough template input -> LayerNorm -> Layer -> Dropout -> residual,
@@ -19,11 +20,18 @@ class SublayerWrapper(Layer):
                 dropout: P of dropping a layer.
                 sublayer: Integer or float value representing this layers position.
                 total_sublayers: The total number of layers.
+                recompute_gradients: Whether or not to recompute the output of the wrapped layer on the backward pass
+                    to save GPU Memory. NOTE: If the wrapped layer contains Dropout or other random layer, no guarantee
+                    that the outputs will be identical.
         """
         super(SublayerWrapper, self).__init__(**kwargs)
         self.layer_norm = layers.LayerNorm()
-        self.given_layer = layer
         self.use_dropout = sublayer % dropout_every == 0
+
+        if recompute_gradients:
+            self.given_layer = gradients.recompute_gradient(layer)
+        else:
+            self.given_layer = layer
 
         self.use_layer_dropout = use_layer_dropout
 
@@ -33,9 +41,6 @@ class SublayerWrapper(Layer):
 
         if self.use_dropout:
             self.dropout = Dropout(dropout)
-
-    def build(self, input_shape):
-        super(SublayerWrapper, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
@@ -71,6 +76,3 @@ class SublayerWrapper(Layer):
             x = self.dropout(x, training=training)
 
         return x
-
-    def compute_output_shape(self, input_shape):
-        return input_shape

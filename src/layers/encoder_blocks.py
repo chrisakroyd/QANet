@@ -5,7 +5,8 @@ from src import layers
 
 class EncoderBlock(tf.keras.Model):
     def __init__(self, conv_layers, kernel_size, block_number=0, total_blocks=1,
-                 hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1, ff_inner_size=1.0, **kwargs):
+                 hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1, ff_inner_size=1.0,
+                 recompute_gradients=False, **kwargs):
         """ Builds an encoder block.
 
             Encoder block from the paper "QANet" (https://arxiv.org/pdf/1804.09541.pdf, section 2.2), it is roughly
@@ -28,6 +29,8 @@ class EncoderBlock(tf.keras.Model):
                 heads: Number of attention heads to use.
                 dropout: Fraction of input units to drop in all dropout layers within this block.
                 ff_inner_size: Number of units in the inner non-linear layer of the feed-forward block.
+                recompute_gradients: Whether or not to recompute the output of the multi-head attention layer
+                    during back-propagation to save GPU Memory.
         """
         super(EncoderBlock, self).__init__(**kwargs)
         # These Ids and counts are for determining layer dropout, higher layers == more chance of dropout
@@ -48,12 +51,18 @@ class EncoderBlock(tf.keras.Model):
                                                    name='conv_block_%d' % (self.block_start_id + i))
                             for i in range(conv_layers)]
 
-        self.self_attention = layers.SublayerWrapper(layers.MultiHeadAttention(hidden_size,
-                                                                               num_heads=heads,
-                                                                               dropout=attn_dropout,
-                                                                               self_attention=True),
+        # We need to wrap the layers we with a variable scope to 100% ensure that it only recomputes those values
+        # but this breaks backwards compatibility on checkpoints. Therefore only wrap if we are recomputing
+        if recompute_gradients:
+            with tf.variable_scope('self_attention_%d' % self.self_attention_id, reuse=tf.AUTO_REUSE):
+                self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout)
+        else:
+            self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout)
+
+        self.self_attention = layers.SublayerWrapper(self.multi_head,
                                                      use_layer_dropout=False,
                                                      dropout=dropout,
+                                                     recompute_gradients=recompute_gradients,
                                                      name='self_attention_%d' % self.self_attention_id)
 
         self.feed_forward = layers.SublayerWrapper(layers.FeedForwardLayer(hidden_size, inner_size=ff_inner_size,
@@ -83,7 +92,7 @@ class EncoderBlock(tf.keras.Model):
 
 class EncoderBlockStack(tf.keras.Model):
     def __init__(self, blocks, conv_layers, kernel_size, hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1,
-                 ff_inner_size=128, **kwargs):
+                 ff_inner_size=128, recompute_gradients=False, **kwargs):
         """ Builds a stack of encoder blocks and handles input projection + output dropout.
 
             Wrapper around EncoderBlock that includes functionality for optional input projection,
@@ -97,6 +106,8 @@ class EncoderBlockStack(tf.keras.Model):
                 heads: Number of attention heads to use.
                 dropout: Fraction of input units to drop in all dropout layers within this stack.
                 ff_inner_size: Number of units in the inner non-linear layer of the feed-forward block.
+                recompute_gradients: Whether or not to recompute the output of the multi-head attention layer
+                    during back-propagation to save GPU Memory in all encoder blocks within this stack.
         """
         super(EncoderBlockStack, self).__init__(**kwargs)
         self.hidden_size = hidden_size
@@ -110,7 +121,8 @@ class EncoderBlockStack(tf.keras.Model):
         self.blocks = [EncoderBlock(conv_layers=conv_layers, kernel_size=kernel_size,
                                     hidden_size=hidden_size, heads=heads,
                                     dropout=dropout, attn_dropout=attn_dropout, block_number=i, total_blocks=blocks,
-                                    ff_inner_size=ff_inner_size, name='encoder_block_%d' % i) for i in range(blocks)]
+                                    ff_inner_size=ff_inner_size, recompute_gradients=recompute_gradients,
+                                    name='encoder_block_%d' % i) for i in range(blocks)]
 
         self.dropout = Dropout(dropout)
 

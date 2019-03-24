@@ -1,4 +1,9 @@
+"""
+File contains functions related to automatic filepath generation and handling, although this may seem overkill,
+it's a big time-saver during development.
+"""
 import os
+import time
 from src import constants
 
 
@@ -125,8 +130,15 @@ def save_paths(params):
 
 
 def results_path(params):
+    """ Generates a path to save test results. """
     _, logs_path = save_paths(params)
-    return os.path.join(logs_path, 'results.json')
+    return os.path.join(logs_path, constants.FileNames.RESULTS.format(timestamp=int(time.time())))
+
+
+def config_path(params):
+    """ Generates a path to a .json file containing parameters used for a train run. """
+    model_path, _ = save_paths(params)
+    return os.path.join(model_path, constants.FileNames.CONFIG)
 
 
 def tf_record_paths(params):

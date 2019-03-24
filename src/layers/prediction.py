@@ -17,9 +17,6 @@ class PredictionHead(Layer):
         self.start_softmax = Softmax()
         self.end_softmax = Softmax()
 
-    def build(self, input_shape):
-        super(PredictionHead, self).build(input_shape)
-
     def call(self, x, training=None, mask=None):
         start_logits, end_logits = x
         lower = tf.cast(0, dtype=tf.int32)

@@ -48,6 +48,3 @@ class HighwayLayer(Layer):
         trans_out = self.trans_dropout(trans_out, training=training)
         out = (gate_out * trans_out) + ((1.0 - gate_out) * x)
         return out
-
-    def compute_output_shape(self, input_shape):
-        return input_shape

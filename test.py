@@ -55,4 +55,6 @@ def test(sess_config, params):
 
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
-    test(config.gpu_config(), config.model_config(defaults).FLAGS)
+    flags = config.model_config(defaults).FLAGS
+    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    test(config.gpu_config(), params)

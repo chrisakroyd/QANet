@@ -6,14 +6,13 @@ from demo import demo
 from download import download
 
 
-def main(sess_config, flags):
-    params = flags.FLAGS
-
+def main(sess_config, params):
     if params.help:
         print(params)
         exit(0)
 
     mode = params.mode.lower().strip()
+    params = util.load_config(params, util.config_path(params))  # Loads a pre-existing config otherwise == params
 
     if mode == constants.Modes.TRAIN:
         train(sess_config, params)
@@ -35,4 +34,4 @@ def main(sess_config, flags):
 
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
-    main(config.gpu_config(), config.model_config(defaults))
+    main(config.gpu_config(), config.model_config(defaults).FLAGS)

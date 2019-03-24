@@ -43,6 +43,3 @@ class FeedForwardLayer(Layer):
         x = self.dropout(x, training=training)
         x = self.conv_ff_2(x)
         return x
-
-    def compute_output_shape(self, input_shape):
-        return input_shape[0], input_shape[1], self.filters
