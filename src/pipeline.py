@@ -40,20 +40,17 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_imp
     return data
 
 
-def index_lookup(data, tables, char_limit=16, num_parallel_calls=4, has_labels=True):
+def index_lookup(data, tables, char_limit=16, num_parallel_calls=4):
     """ Adds a map function to the dataset that maps strings to indices.
 
         To save memory + hard drive space we store contexts and queries as tokenised strings. Therefore we need
         to perform two tasks; Extract characters and map words + chars to an index for the embedding layer.
-
-        @TODO This is a pretty ugly solution to support labelled/unlabelled modes, refactor target?
 
         Args:
             data: A `tf.data.Dataset` object.
             tables: A tuple of contrib.lookup tables mapping string words to indices and string characters to indices.
             char_limit: Max number of characters per word.
             num_parallel_calls: An int for how many parallel lookups we perform.
-            has_labels: Include labels in the output dict.
         Returns:
             A `tf.data.Dataset` object.
     """
@@ -63,26 +60,45 @@ def index_lookup(data, tables, char_limit=16, num_parallel_calls=4, has_labels=T
         # +1 allows us to use 0 as a padding character without explicitly mapping it.
         context_words = word_table.lookup(fields['context_tokens']) + 1
         query_words = word_table.lookup(fields['query_tokens']) + 1
-        # @TODO Revist the +1's -1 situation.
         # Get chars + lookup in table, as table is 0 indexed, we have the default at -1 for the pad which becomes 0
         # with the addition of 1 to again treat padding as 0 without needing to define a padding character.
         context_chars = tf.string_split(fields['context_tokens'], delimiter='')
         query_chars = tf.string_split(fields['query_tokens'], delimiter='')
         context_chars = tf.sparse.to_dense(char_table.lookup(context_chars)) + 1
         query_chars = tf.sparse.to_dense(char_table.lookup(query_chars)) + 1
-        context_chars = context_chars[:, :char_limit]
-        query_chars = query_chars[:, :char_limit]
 
+        fields.update({
+            'context_words': context_words,
+            'context_chars': context_chars[:, :char_limit],
+            'query_words': query_words,
+            'query_chars': query_chars[:, :char_limit]
+        })
+
+        return fields
+
+    data = data.map(_lookup, num_parallel_calls=num_parallel_calls)
+    return data
+
+
+def post_processing(data, num_parallel_calls=4):
+    """ Casts tensors to their intended dtypes, required because .tfrecords can only store int64s. """
+
+    def _lookup(fields):
         out_dict = {
-            'context_words': tf.cast(context_words, dtype=tf.int32),
-            'context_chars': tf.cast(context_chars, dtype=tf.int32),
+            'context_words': tf.cast(fields['context_words'], dtype=tf.int32),
+            'context_chars': tf.cast(fields['context_chars'], dtype=tf.int32),
             'context_length': tf.cast(fields['context_length'], dtype=tf.int32),
-            'query_words': tf.cast(query_words, dtype=tf.int32),
-            'query_chars': tf.cast(query_chars, dtype=tf.int32),
+            'query_words': tf.cast(fields['query_words'], dtype=tf.int32),
+            'query_chars': tf.cast(fields['query_chars'], dtype=tf.int32),
             'query_length': tf.cast(fields['query_length'], dtype=tf.int32),
         }
 
-        if has_labels:
+        if 'is_impossible' in fields:
+            out_dict.update({
+                'is_impossible': tf.cast(fields['is_impossible'], dtype=tf.int32)
+            })
+
+        if 'answer_starts' in fields and 'answer_ends' in fields:
             out_dict.update({
                 'answer_starts': tf.cast(fields['answer_starts'], dtype=tf.int32),
                 'answer_ends': tf.cast(fields['answer_ends'], dtype=tf.int32),
@@ -92,6 +108,7 @@ def index_lookup(data, tables, char_limit=16, num_parallel_calls=4, has_labels=T
         return out_dict
 
     data = data.map(_lookup, num_parallel_calls=num_parallel_calls)
+
     return data
 
 
@@ -186,8 +203,8 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
         data = data.repeat()
 
     # Perform word -> index mapping.
-    data = index_lookup(data, tables, char_limit=params.char_limit,
-                        num_parallel_calls=parallel_calls)
+    data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
+    data = post_processing(data, num_parallel_calls=parallel_calls)
 
     if params.bucket and training:
         buckets = create_buckets(params.bucket_size, params.max_tokens, params.bucket_ranges)
@@ -228,8 +245,9 @@ def create_demo_pipeline(params, tables, data):
     parallel_calls = get_num_parallel_calls(params)
 
     data = tf.data.Dataset.from_tensor_slices(dict(data))
-    data = index_lookup(data, tables, char_limit=params.char_limit,
-                        num_parallel_calls=parallel_calls, has_labels=False)
+    data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
+    data = post_processing(data, num_parallel_calls=parallel_calls)
+
     padded_shapes = get_padded_shapes(max_characters=params.char_limit, has_labels=False)
     data = data.padded_batch(
         batch_size=params.batch_size,
