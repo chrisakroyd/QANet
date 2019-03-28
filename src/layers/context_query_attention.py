@@ -64,10 +64,9 @@ class ContextQueryAttention(Layer):
             Args:
                 x: List of two input tensors for the encoded context + query.
                 training: Boolean flag for training mode.
-                mask: Two boolean mask tensors, first for the context, second for query.
+                mask: A list containing two boolean mask tensors, first for the context, second for query.
         """
         x_context, x_query = x
-        context_mask, query_mask = mask
         batch_size, context_length, hidden_size = self.compute_input_shape(x_context)
         _, query_length, _ = self.compute_input_shape(x_query)
 
@@ -88,14 +87,16 @@ class ContextQueryAttention(Layer):
 
         similarity_matrix = tf.transpose(similarity_matrix, perm=(0, 2, 1))  # [batch_size, context_length, query_length]
 
-        # We take our two mask tensors + form a mask of equal shape to the similarity matrix.
-        mask_context = tf.expand_dims(context_mask, axis=2)  # [batch_size, context_length, 1]
-        context_mask_tiled = tf.tile(mask_context, [1, 1, query_length])  # [batch_size, context_length, query_length]
-        mask_query = tf.expand_dims(query_mask, axis=1)  # [batch_size, 1, query_length]
-        query_mask_tiled = tf.tile(mask_query, [1, context_length, 1])  # [batch_size, context_length, query_length]
-        # Combine the two boolean mask tensors into a singular mask of shape [batch_size, context_length, query_length]
-        similarity_mask = tf.logical_and(query_mask_tiled, context_mask_tiled)
-        similarity_matrix = layers.apply_mask(similarity_matrix, mask=similarity_mask)
+        if mask is not None and len(mask) == 2:
+            context_mask, query_mask = mask
+            # We take our two mask tensors + form a mask of equal shape to the similarity matrix.
+            mask_context = tf.expand_dims(context_mask, axis=2)  # [batch_size, context_length, 1]
+            context_mask_tiled = tf.tile(mask_context, [1, 1, query_length])  # [batch_size, context_length, query_length]
+            mask_query = tf.expand_dims(query_mask, axis=1)  # [batch_size, 1, query_length]
+            query_mask_tiled = tf.tile(mask_query, [1, context_length, 1])  # [batch_size, context_length, query_length]
+            # Combine the two boolean mask tensors into a mask of shape [batch_size, context_length, query_length]
+            similarity_mask = tf.logical_and(query_mask_tiled, context_mask_tiled)
+            similarity_matrix = layers.apply_mask(similarity_matrix, mask=similarity_mask)
 
         # Standard context to query attention.
         c2q_act = self.query_activation(similarity_matrix)
