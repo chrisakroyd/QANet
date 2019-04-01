@@ -3,13 +3,14 @@ import tensorflow as tf
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
-def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_impossible=False):
+def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_impossible=False, use_elmo=False):
     """ Creates a dataset from a TFRecord file.
         Args:
             filenames: A list of paths to .tfrecord files.
             buffer_size: Number of records to buffer.
             num_parallel_calls: How many functions we run in parallel.
             is_impossible: Whether this record file has an is_impossible key.
+            use_elmo: Whether this record file contains contextual embeddings for the query and context.
         Returns:
             A `tf.data.Dataset` object.
     """
@@ -25,6 +26,13 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_imp
         'answer_ends': int_feature,
         'answer_id': int_feature,
     }
+
+    if use_elmo:
+        float_feature = tf.FixedLenSequenceFeature([], tf.float32, allow_missing=True)
+        features.update({
+            'context_elmo': float_feature,
+            'query_elmo': float_feature,
+        })
 
     if is_impossible:
         features.update({'is_impossible': int_feature})
@@ -93,6 +101,16 @@ def post_processing(data, num_parallel_calls=4):
             'query_length': tf.cast(fields['query_length'], dtype=tf.int32),
         }
 
+        if 'context_elmo' in fields and 'query_elmo' in fields:
+            # Array structure is flat for .tfrecord, converts [length * elmo_dim] record shape to [length, elmo_dim]
+            context_embedding = tf.reshape(fields['context_elmo'], shape=(out_dict['context_length'], -1))
+            query_embedding = tf.reshape(fields['query_elmo'], shape=(out_dict['query_length'], -1))
+
+            out_dict.update({
+                'context_elmo': tf.cast(context_embedding, dtype=tf.float32),
+                'query_elmo': tf.cast(query_embedding, dtype=tf.float32),
+            })
+
         if 'is_impossible' in fields:
             out_dict.update({
                 'is_impossible': tf.cast(fields['is_impossible'], dtype=tf.int32)
@@ -126,7 +144,8 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
     return bucket_ranges
 
 
-def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True, is_impossible=False):
+def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True, is_impossible=False,
+                      use_elmo=False):
     """ Creates a dict of key: shape mappings for padding batches.
 
         Args:
@@ -135,6 +154,7 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
             max_characters: Max number of characters, -1 to pad to max within the batch.
             has_labels: Include padded shape for answer_starts and answer_ends.
             is_impossible: Whether this record file has an is_impossible key.
+            use_elmo: Whether this record file contains pre-processed contextual embeddings.
         Returns:
             A dict mapping of key: shape
     """
@@ -145,6 +165,13 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
         'query_words': [max_query],
         'query_chars': [max_query, max_characters],
         'query_length': []}
+
+    if use_elmo:
+        elmo_dim = 1024  # TODO: Remove this magic number
+        shape_dict.update({
+            'context_elmo': [max_context, elmo_dim],
+            'query_elmo': [max_query, elmo_dim]
+        })
 
     if has_labels:
         shape_dict.update({
@@ -194,8 +221,12 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
     """
     parallel_calls = get_num_parallel_calls(params)
 
-    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls, is_impossible=is_impossible)
-    data = data.cache()
+    data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls, is_impossible=is_impossible,
+                              use_elmo=params.use_elmo)
+
+    # When using ElMo file sizes are 50GB for train and 9GB for dev -> can't cache both in memory so cache smaller set.
+    if not params.use_elmo or not training:
+        data = data.cache()
 
     if training:
         data = data.apply(tf.data.experimental.shuffle_and_repeat(buffer_size=params.shuffle_buffer_size))
@@ -217,7 +248,8 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
                                                            bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
                                                            bucket_boundaries=buckets))
     else:
-        padded_shapes = get_padded_shapes(max_characters=params.char_limit, is_impossible=is_impossible)
+        padded_shapes = get_padded_shapes(max_characters=params.char_limit, is_impossible=is_impossible,
+                                          use_elmo=params.use_elmo)
         data = data.padded_batch(
             batch_size=params.batch_size,
             padded_shapes=padded_shapes,
