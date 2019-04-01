@@ -9,11 +9,12 @@ class QANet(tf.keras.Model):
         self.dropout = tf.placeholder_with_default(params.dropout, (), name='dropout')
         self.attn_dropout = tf.placeholder_with_default(params.attn_dropout, (), name='attn_dropout')
         self.low_memory = params.low_memory
+        self.use_elmo = params.use_elmo
 
         self.embedding = layers.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                use_trainable=params.use_trainable, word_dim=params.embed_dim,
                                                char_dim=params.char_dim, word_dropout=self.dropout,
-                                               char_dropout=self.dropout / 2)
+                                               char_dropout=self.dropout / 2, use_elmo=params.use_elmo)
 
         self.embedding_encoder = layers.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,
@@ -46,7 +47,17 @@ class QANet(tf.keras.Model):
 
     def call(self, x, training=True, mask=None):
         training = tf.cast(training, dtype=tf.bool)
-        context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
+
+        if self.use_elmo:
+            context_words, context_chars, context_elmo, context_lengths, \
+            query_words, query_chars, query_elmo, query_lengths = x
+            context_embed_input = [context_words, context_chars, context_elmo]
+            query_embed_input = [query_words, query_chars, query_elmo]
+        else:
+            context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
+            context_embed_input = [context_words, context_chars]
+            query_embed_input = [query_words, query_chars]
+
         context_mask = layers.create_mask(context_lengths, maxlen=tf.reduce_max(context_lengths))
         query_mask = layers.create_mask(query_lengths, maxlen=tf.reduce_max(query_lengths))
 
@@ -59,8 +70,8 @@ class QANet(tf.keras.Model):
             context_attn_bias = context_mask
             query_attn_bias = query_mask
 
-        context_emb = self.embedding([context_words, context_chars], training=training)
-        query_emb = self.embedding([query_words, query_chars], training=training)
+        context_emb = self.embedding(context_embed_input, training=training)
+        query_emb = self.embedding(query_embed_input, training=training)
 
         context_enc = self.embedding_encoder(context_emb, training=training, mask=context_attn_bias)
         query_enc = self.embedding_encoder(query_emb, training=training, mask=query_attn_bias)
