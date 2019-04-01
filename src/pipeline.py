@@ -102,9 +102,10 @@ def post_processing(data, num_parallel_calls=4):
         }
 
         if 'context_elmo' in fields and 'query_elmo' in fields:
+            elmo_dim = 1024  # TODO: Remove this magic number
             # Array structure is flat for .tfrecord, converts [length * elmo_dim] record shape to [length, elmo_dim]
-            context_embedding = tf.reshape(fields['context_elmo'], shape=(out_dict['context_length'], -1))
-            query_embedding = tf.reshape(fields['query_elmo'], shape=(out_dict['query_length'], -1))
+            context_embedding = tf.reshape(fields['context_elmo'], shape=(out_dict['context_length'], elmo_dim))
+            query_embedding = tf.reshape(fields['query_elmo'], shape=(out_dict['query_length'], elmo_dim))
 
             out_dict.update({
                 'context_elmo': tf.cast(context_embedding, dtype=tf.float32),
