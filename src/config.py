@@ -42,6 +42,7 @@ def model_config(defaults):
     # Dimension for the word + char embeddings. Char embeddings are generated during the pre-processing stage.
     flags.DEFINE_integer('embed_dim', defaults.embed_dim, 'Dimensionality of the input embeddings')
     flags.DEFINE_integer('char_dim', defaults.char_dim, 'Dimensionality of the character output embeddings')
+    flags.DEFINE_integer('char_kernel_size', defaults.char_kernel_size, 'Kernel size of the character convolution.')
     # Max lengths for context, query, answer, characters and mins for word+char occurrence.
     flags.DEFINE_integer('max_tokens', defaults.max_tokens, 'Max length of the input paragraph.')
     flags.DEFINE_integer('answer_limit', defaults.answer_limit, 'Max length of a answer.')

@@ -13,7 +13,7 @@ class QANet(tf.keras.Model):
         self.embedding = layers.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                use_trainable=params.use_trainable, word_dim=params.embed_dim,
                                                char_dim=params.char_dim, word_dropout=self.dropout,
-                                               char_dropout=self.dropout / 2)
+                                               char_dropout=self.dropout / 2, kernel_size=params.char_kernel_size)
 
         self.embedding_encoder = layers.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,
