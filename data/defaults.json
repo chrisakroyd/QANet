@@ -9,6 +9,7 @@
   "demo_server_port": 5000,
   "embed_dim": 300,
   "char_dim": 200,
+  "char_kernel_size": 3,
   "char_limit": 16,
   "max_tokens": 400,
   "answer_limit": 30,
