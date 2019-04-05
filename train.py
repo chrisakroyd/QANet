@@ -33,10 +33,8 @@ def train(sess_config, params, debug=False):
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
 
         placeholders = iterator.get_next()
-        qanet_inputs = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
-        y_start, y_end, id_tensor = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
-
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
+        y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
+        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,

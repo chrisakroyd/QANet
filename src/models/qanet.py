@@ -1,5 +1,5 @@
 import tensorflow as tf
-from src import layers, train_utils
+from src import constants, layers, train_utils, util
 
 
 class QANet(tf.keras.Model):
@@ -46,7 +46,9 @@ class QANet(tf.keras.Model):
 
     def call(self, x, training=True, mask=None):
         training = tf.cast(training, dtype=tf.bool)
-        context_words, context_chars, context_lengths, query_words, query_chars, query_lengths = x
+        context_words, context_chars, context_lengths, query_words, query_chars, \
+        query_lengths = util.unpack_dict(x, keys=constants.PlaceholderKeys.DEFAULT_INPUTS)
+
         context_mask = layers.create_mask(context_lengths, maxlen=tf.reduce_max(context_lengths))
         query_mask = layers.create_mask(query_lengths, maxlen=tf.reduce_max(query_lengths))
 

@@ -164,8 +164,8 @@ def load_vocab_files(paths):
     return vocabs
 
 
-def dict_keys_as_tuple(placeholder_dict, keys=None):
-    """ Converts a dictionary to a tuple with the values ordered by the keys given by keys param.
+def unpack_dict(placeholder_dict, keys=None):
+    """ Unpacks a dictionary into a tuple with the values in the same order as the keys given by keys param.
         Args:
             placeholder_dict: A dict of input tensors.
             keys: List of string keys representing the order placeholders should be returned.

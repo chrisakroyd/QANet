@@ -150,7 +150,10 @@ class PlaceholderKeys:
         LABEL_KEYS: Keys for labels.
         ID_KEY: Answer id key.
     """
-    INPUT_KEYS = ['context_words', 'context_chars', 'context_elmo', 'context_length',
-                  'query_words', 'query_chars', 'query_elmo', 'query_length']
+    DEFAULT_INPUTS = ['context_words', 'context_chars', 'context_length', 'query_words', 'query_chars',  'query_length']
+    FIXED_CONTEXTUAL_INPUTS = ['context_words', 'context_chars', 'context_embedded', 'context_length', 'query_words',
+                               'query_chars', 'query_embedded', 'query_length']
+    FINETUNE_CONTEXTUAL_INPUTS = ['context_tokens', 'context_words', 'context_chars', 'context_length', 'query_tokens',
+                                  'query_words', 'query_chars', 'query_length']
     LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
     ID_KEY = ['answer_id']
