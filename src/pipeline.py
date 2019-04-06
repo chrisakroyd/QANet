@@ -3,14 +3,14 @@ import tensorflow as tf
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
-def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_impossible=False, use_elmo=False):
+def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_impossible=False, use_contextual=False):
     """ Creates a dataset from a TFRecord file.
         Args:
             filenames: A list of paths to .tfrecord files.
             buffer_size: Number of records to buffer.
             num_parallel_calls: How many functions we run in parallel.
             is_impossible: Whether this record file has an is_impossible key.
-            use_elmo: Whether this record file contains contextual embeddings for the query and context.
+            use_contextual: Whether this record file contains contextual embeddings for the query and context.
         Returns:
             A `tf.data.Dataset` object.
     """
@@ -27,11 +27,11 @@ def tf_record_pipeline(filenames, buffer_size=1024, num_parallel_calls=4, is_imp
         'answer_id': int_feature,
     }
 
-    if use_elmo:
+    if use_contextual:
         float_feature = tf.FixedLenSequenceFeature([], tf.float32, allow_missing=True)
         features.update({
-            'context_elmo': float_feature,
-            'query_elmo': float_feature,
+            'context_embedded': float_feature,
+            'query_embedded': float_feature,
         })
 
     if is_impossible:
@@ -88,7 +88,7 @@ def index_lookup(data, tables, char_limit=16, num_parallel_calls=4):
     return data
 
 
-def post_processing(data, num_parallel_calls=4):
+def post_processing(data, use_contextual=True, num_parallel_calls=4):
     """ Casts tensors to their intended dtypes, required because .tfrecords can only store int64s. """
 
     def _lookup(fields):
@@ -101,16 +101,24 @@ def post_processing(data, num_parallel_calls=4):
             'query_length': tf.cast(fields['query_length'], dtype=tf.int32),
         }
 
-        if 'context_elmo' in fields and 'query_elmo' in fields:
-            elmo_dim = 1024  # TODO: Remove this magic number
-            # Array structure is flat for .tfrecord, converts [length * elmo_dim] record shape to [length, elmo_dim]
-            context_embedding = tf.reshape(fields['context_elmo'], shape=(out_dict['context_length'], elmo_dim))
-            query_embedding = tf.reshape(fields['query_elmo'], shape=(out_dict['query_length'], elmo_dim))
+        if use_contextual:
+            fixed_emb_dim = 1024  # TODO: Remove this magic number
+            if 'context_embedded' in fields and 'query_embedded' in fields:
+                # Array structure is flat for .tfrecord, converts [length * elmo_dim] record shape to [length, elmo_dim]
+                context_embedding = tf.reshape(fields['context_embedded'],
+                                               shape=(out_dict['context_length'], fixed_emb_dim))
+                query_embedding = tf.reshape(fields['query_embedded'],
+                                             shape=(out_dict['query_length'], fixed_emb_dim))
 
-            out_dict.update({
-                'context_elmo': tf.cast(context_embedding, dtype=tf.float32),
-                'query_elmo': tf.cast(query_embedding, dtype=tf.float32),
-            })
+                out_dict.update({
+                    'context_embedded': tf.cast(context_embedding, dtype=tf.float32),
+                    'query_embedded': tf.cast(query_embedding, dtype=tf.float32),
+                })
+            else:
+                out_dict.update({
+                    'context_tokens': fields['context_tokens'],
+                    'query_tokens': fields['query_tokens'],
+                })
 
         if 'is_impossible' in fields:
             out_dict.update({
@@ -146,7 +154,7 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
 
 
 def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True, is_impossible=False,
-                      use_elmo=False):
+                      use_contextual=False, fixed_contextual=False):
     """ Creates a dict of key: shape mappings for padding batches.
 
         Args:
@@ -155,7 +163,9 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
             max_characters: Max number of characters, -1 to pad to max within the batch.
             has_labels: Include padded shape for answer_starts and answer_ends.
             is_impossible: Whether this record file has an is_impossible key.
-            use_elmo: Whether this record file contains pre-processed contextual embeddings.
+            use_contextual: Whether or not we include fields needed for contextual embeddings,
+                            if we are fine-tuning this dataset contains pre-processed contextual embeddings.
+            fixed_contextual: Whether or not contextual embeddings are fixed or finetuneable.
         Returns:
             A dict mapping of key: shape
     """
@@ -165,14 +175,21 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
         'context_length': [],
         'query_words': [max_query],
         'query_chars': [max_query, max_characters],
-        'query_length': []}
+        'query_length': []
+    }
 
-    if use_elmo:
-        elmo_dim = 1024  # TODO: Remove this magic number
-        shape_dict.update({
-            'context_elmo': [max_context, elmo_dim],
-            'query_elmo': [max_query, elmo_dim]
-        })
+    if use_contextual:
+        fixed_emb_dim = 1024  # TODO: Remove this magic number
+        if fixed_contextual:  # In fixed mode we provide static embeddings, in finetune mode we do not.
+            shape_dict.update({
+                'context_embedded': [max_context, fixed_emb_dim],
+                'query_embedded': [max_query, fixed_emb_dim]
+            })
+        else:
+            shape_dict.update({
+                'context_tokens': [max_context],
+                'query_tokens': [max_query],
+            })
 
     if has_labels:
         shape_dict.update({
@@ -221,12 +238,15 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
             A `tf.data.Dataset` object and an initializable iterator.
     """
     parallel_calls = get_num_parallel_calls(params)
+    use_fixed_contextual_embeddings = params.use_contextual and params.fixed_contextual_embeddings
 
     data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls, is_impossible=is_impossible,
-                              use_elmo=params.use_elmo)
+                              use_contextual=use_fixed_contextual_embeddings)
 
-    # When using ElMo file sizes are 50GB for train and 9GB for dev -> can't cache both in memory so cache smaller set.
-    if not params.use_elmo or not training:
+    # When using pre-processed ElMo/BERT, file sizes are 50GB for train and 9GB for dev.
+    # We can't cache both in memory so cache smaller set for a performance bonus. This can be overriden by setting the
+    # flag --override_cache_behaviour
+    if not use_fixed_contextual_embeddings or not training or params.override_cache_behaviour:
         data = data.cache()
 
     if training:
@@ -236,7 +256,7 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
 
     # Perform word -> index mapping.
     data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
-    data = post_processing(data, num_parallel_calls=parallel_calls)
+    data = post_processing(data, use_contextual=params.use_contextual, num_parallel_calls=parallel_calls)
 
     if params.bucket and training:
         buckets = create_buckets(params.bucket_size, params.max_tokens, params.bucket_ranges)
@@ -249,8 +269,8 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
                                                            bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
                                                            bucket_boundaries=buckets))
     else:
-        padded_shapes = get_padded_shapes(max_characters=params.char_limit, is_impossible=is_impossible,
-                                          use_elmo=params.use_elmo)
+        padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=params.use_contextual,
+                                          fixed_contextual=params.fixed_contextual_embeddings, is_impossible=is_impossible)
         data = data.padded_batch(
             batch_size=params.batch_size,
             padded_shapes=padded_shapes,
@@ -279,9 +299,10 @@ def create_demo_pipeline(params, tables, data):
 
     data = tf.data.Dataset.from_tensor_slices(dict(data))
     data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
-    data = post_processing(data, num_parallel_calls=parallel_calls)
+    data = post_processing(data, use_contextual=params.use_contextual, num_parallel_calls=parallel_calls)
 
-    padded_shapes = get_padded_shapes(max_characters=params.char_limit, has_labels=False)
+    padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=params.use_contextual,
+                                      has_labels=False)
     data = data.padded_batch(
         batch_size=params.batch_size,
         padded_shapes=padded_shapes,
@@ -295,7 +316,7 @@ def create_demo_pipeline(params, tables, data):
 def create_placeholders():
     """ Creates a dict of placeholder tensors for use in demo mode. """
     placeholders = {
-        'context_tokens': tf.placeholder(shape=(None, None,), dtype=tf.string, name=' context_tokens'),
+        'context_tokens': tf.placeholder(shape=(None, None,), dtype=tf.string, name='context_tokens'),
         'context_length': tf.placeholder(shape=(None,), dtype=tf.int32, name='context_length'),
         'query_tokens': tf.placeholder(shape=(None, None,), dtype=tf.string, name='query_tokens'),
         'query_length': tf.placeholder(shape=(None,), dtype=tf.int32, name='query_length')
