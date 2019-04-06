@@ -4,7 +4,7 @@ import tensorflow as tf
 import tensorflow_hub as hub
 import numpy as np
 from tqdm import tqdm
-from src import preprocessing as prepro, config, util
+from src import constants, preprocessing as prepro, config, util
 
 
 def create_record(context, query):
@@ -106,13 +106,13 @@ def shuffle_queries(queries):
     return shuffled_queries
 
 
-def _write_with_elmo(path, contexts, queries, params, skip_too_long=True):
+def _write_with_contextual(path, contexts, queries, params, skip_too_long=True):
     """ Writes out a dataset as a .tfrecord file, pre-processing """
     # TODO: This whole function needs a major cleanup and a refactor.
     shuffled_queries = shuffle_queries(queries)
 
     with tf.python_io.TFRecordWriter(path) as writer, tf.Session(config=config.gpu_config()) as sess:
-        elmo = hub.Module("https://tfhub.dev/google/elmo/2", trainable=False)
+        elmo = hub.Module(constants.Urls.ELMO, trainable=False)
         sess.run(tf.global_variables_initializer())
         tokens_input = tf.placeholder(shape=(None, None,), dtype=tf.string)
         lengths_input = tf.placeholder(shape=(None,), dtype=tf.int32)
@@ -192,8 +192,8 @@ def write_tf_record(path, contexts, queries, params, skip_too_long=True):
             params: A dictionary of parameters.
             skip_too_long: Skip rows when either the query or context if their length is above max_tokens.
     """
-    if params.use_elmo:
-        _write_with_elmo(path, contexts, queries, params, skip_too_long=skip_too_long)
+    if params.use_contextual and params.fixed_contextual_embeddings:
+        _write_with_contextual(path, contexts, queries, params, skip_too_long=skip_too_long)
     else:
         _write_tf_record(path, contexts, queries, params, skip_too_long=skip_too_long)
 
