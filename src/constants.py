@@ -15,6 +15,9 @@ class Urls:
     DEV_SQUAD_2 = 'https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json'
     GLOVE_380_300D_URL = 'http://nlp.stanford.edu/data/glove.840B.300d.zip'
     EMBEDDING_URL = GLOVE_380_300D_URL
+    ELMO = 'https://tfhub.dev/google/elmo/2'
+    BERT_BASE = 'https://tfhub.dev/google/bert_cased_L-12_H-768_A-12/1'
+    BERT_LARGE = 'https://tfhub.dev/google/bert_cased_L-24_H-1024_A-16/1'
 
 
 class Datasets:

@@ -1,17 +1,15 @@
 import numpy as np
 
 
-def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
-    """ Function that zeroes out trainable words in the embedding index.
-
-        For trainable embeddings we only use the embedding from the trainable matrix, to ensure that
-        there is no pre-trained influence on these words we zero out the embedding in the pre-trained embedding
-        index.
+def generate_matrix(index, embedding_dimensions=300, skip_zero=True, scale=0.1):
+    """ Generates a matrix of shape [len(index), embedding_dimension] and initializes it with a
+        random normal distribution.
 
         Args:
             index: A dict of word to index.
             embedding_dimensions: Dimension of the embeddings.
             skip_zero: Whether or not 0 represents a padding character.
+            scale: Standard Deviation of the normal distribution.
         Returns:
             Embedding index with any trainable words set to all zero.
     """
@@ -19,7 +17,8 @@ def generate_matrix(index, embedding_dimensions=300, skip_zero=True):
         rows = len(index) + 1
     else:
         rows = len(index)
-    matrix = np.random.normal(scale=0.1, size=(rows, embedding_dimensions))
+
+    matrix = np.random.normal(scale=scale, size=(rows, embedding_dimensions))
 
     if skip_zero:
         matrix[0] = np.zeros(embedding_dimensions)
