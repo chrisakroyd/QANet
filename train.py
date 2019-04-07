@@ -30,11 +30,15 @@ def train(sess_config, params, debug=False):
         # Create the dataset iterators, handles are required for switching between train/val modes within one graph.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
-        qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+
+        if params.use_contextual:
+            qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
+        else:
+            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
 
         placeholders = iterator.get_next()
-        y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
+        y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,

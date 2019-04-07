@@ -189,8 +189,8 @@ def process(params):
                                                 trainable_embeddings=params.trainable_words,
                                                 embedding_index=embedding_index)
 
-    trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=params.embed_dim)
-    char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim)
+    trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=params.embed_dim, scale=0.1)
+    char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim, scale=0.1)
 
     print('Saving to TF Records...')
     prepro.write_tf_record(train_record_path, train_contexts, train_answers, params)
