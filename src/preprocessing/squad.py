@@ -193,9 +193,16 @@ def process(params):
     char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim, scale=0.1)
 
     print('Saving to TF Records...')
-    prepro.write_tf_record(train_record_path, train_contexts, train_answers, params)
-    prepro.write_tf_record(dev_record_path, dev_contexts, dev_answers, params)
-    prepro.write_tf_record(test_record_path, dev_contexts, dev_answers, params, skip_too_long=False)
+
+    if params.use_contextual and params.fixed_contextual_embeddings:
+        record_writer = prepro.ContextualEmbeddingWriter(params.max_tokens, contextual_model=params.contextual_model)
+    else:
+        record_writer = prepro.RecordWriter(params.max_tokens)
+
+    record_writer.write(train_record_path, train_contexts, train_answers)
+    record_writer.write(dev_record_path, dev_contexts, dev_answers)
+    record_writer.write(test_record_path, dev_contexts, dev_answers, skip_too_long=False)
+
     examples = prepro.get_examples(train_contexts, train_answers)
 
     train_contexts = util.remove_keys(train_contexts, keys_to_remove)
