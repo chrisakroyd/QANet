@@ -168,3 +168,5 @@ class Prompts:
     """
     DATA_EXISTS = 'Preprocessed data already exists for this dataset, would you like to overwrite?'
     FOUND_CONFIG_NO_CHECKPOINTS = 'Found config file at {path} without any checkpoints, would you like to use config?'
+    POSSIBLE_OOM = 'WARNING: Using {num_heads} attention heads may result in an OOM error while training, would you like to continue?'
+    LARGE_CONTEXTUAL_SHUFFLE_BUFFER = 'WARNING: Shuffle buffer larger than 10,000 while using fixed embeddings uses a large amount of memory, would you like to continue?'

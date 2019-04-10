@@ -10,6 +10,17 @@ def train(sess_config, params, debug=False):
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
     util.make_dirs([model_dir, log_dir])
+
+    # Continue prompt for when params.heads is > 1, this can cause OOM so make sure its intentional.
+    if params.heads > 1:
+        if not util.yes_no_prompt(constants.Prompts.POSSIBLE_OOM.format(num_heads=params.heads)):
+            exit(0)
+
+    # Continue prompt for when we have a large buffer size, pre-embedded records are large and this can fill up RAM.
+    if params.use_contextual and params.fixed_contextual_embeddings and params.shuffle_buffer_size > 10000:
+        if not util.yes_no_prompt(constants.Prompts.LARGE_CONTEXTUAL_SHUFFLE_BUFFER):
+            exit(0)
+
     util.save_config(params, path=util.config_path(params), overwrite=False)  # Saves the run parameters in a .json
 
     train_data, val_data = loaders.load_squad_v1(params)
