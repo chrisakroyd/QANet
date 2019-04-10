@@ -160,3 +160,10 @@ class PlaceholderKeys:
                                   'query_words', 'query_chars', 'query_length']
     LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
     ID_KEY = ['answer_id']
+
+
+class Prompts:
+    """ Prompt messages for asking user actions
+        DATA_EXISTS: Prompt for confirming a non-reversible overwriting of data.
+    """
+    DATA_EXISTS = 'Preprocessed data already exists for this dataset, would you like to overwrite?'

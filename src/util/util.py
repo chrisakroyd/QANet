@@ -103,8 +103,18 @@ def params_as_dict(params):
 
 
 def file_exists(path):
-    """ Tests whether or not a filepath exists. """
+    """ Tests whether or not a full filepath exists. """
     return os.path.exists(path)
+
+
+def directory_exists(path):
+    """ Tests whether or not a directory exists. """
+    return os.path.isdir(path)
+
+
+def directory_is_empty(path):
+    """ Tests whether or not a directory is empty. """
+    return len(os.listdir(path)) == 0
 
 
 def load_config(params, path):
