@@ -167,3 +167,4 @@ class Prompts:
         DATA_EXISTS: Prompt for confirming a non-reversible overwriting of data.
     """
     DATA_EXISTS = 'Preprocessed data already exists for this dataset, would you like to overwrite?'
+    FOUND_CONFIG_NO_CHECKPOINTS = 'Found config file at {path} without any checkpoints, would you like to use config?'

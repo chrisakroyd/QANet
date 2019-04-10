@@ -5,6 +5,7 @@ from io import BytesIO
 from collections import ChainMap
 from zipfile import ZipFile
 from types import SimpleNamespace
+from src import constants, util
 
 
 def save_json(path, data, indent=None):
@@ -118,8 +119,11 @@ def directory_is_empty(path):
 
 
 def load_config(params, path):
-    """ Loads a config if it exists, otherwise alerts the user and returns params."""
+    """ Loads a config if it exists and there's existing checkpoints, otherwise alerts the user and returns params."""
     if file_exists(path):
+        if len(os.listdir(os.path.dirname(path))) == 1:  # Only have a model config, check if this is intentional.
+            if not util.yes_no_prompt(constants.Prompts.FOUND_CONFIG_NO_CHECKPOINTS.format(path=path)):
+                return params
         print('Using config for {run_name} found at {path}...'.format(run_name=params.run_name, path=path))
         return namespace_json(path)
     else:
