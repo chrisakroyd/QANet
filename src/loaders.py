@@ -20,7 +20,7 @@ def load_answers(answers):
     return answer_cache, context_mapping
 
 
-def load_squad_v1_set(context_path, answer_path):
+def load_squad_set(context_path, answer_path):
     """ Function that loads a processed squad dataset.
         Args:
             context_path: string filepath to a .json file containing context details.
@@ -35,7 +35,7 @@ def load_squad_v1_set(context_path, answer_path):
     return contexts, answers, context_mapping
 
 
-def load_squad_v1(params):
+def load_squad(params):
     """ Loads the processed train and dev squad sets.
         Args:
             params: A dictionary of parameters.
@@ -43,7 +43,7 @@ def load_squad_v1(params):
             Tuple of contexts, answers and context_mapping for both train and val.
     """
     train_context_path, train_answer_path, val_context_path, val_answer_path, _, _ = util.processed_data_paths(params)
-    train_set = load_squad_v1_set(train_context_path, train_answer_path)
-    val_set = load_squad_v1_set(val_context_path, val_answer_path)
+    train_set = load_squad_set(train_context_path, train_answer_path)
+    val_set = load_squad_set(val_context_path, val_answer_path)
 
     return train_set, val_set

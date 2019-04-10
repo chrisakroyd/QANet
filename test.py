@@ -9,7 +9,7 @@ def test(sess_config, params):
     embedding_paths = util.embedding_paths(params)
 
     _, _, _, _, test_context_path, test_answer_path = util.processed_data_paths(params)
-    test_spans, test_answer_texts, test_ctxt_mapping = loaders.load_squad_v1_set(test_context_path, test_answer_path)
+    test_spans, test_answer_texts, test_ctxt_mapping = loaders.load_squad_set(test_context_path, test_answer_path)
     test_answers = util.load_json(test_answer_path)
 
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))

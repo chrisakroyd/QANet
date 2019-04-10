@@ -23,7 +23,7 @@ def train(sess_config, params, debug=False):
 
     util.save_config(params, path=util.config_path(params), overwrite=False)  # Saves the run parameters in a .json
 
-    train_data, val_data = loaders.load_squad_v1(params)
+    train_data, val_data = loaders.load_squad(params)
     train_spans, train_answers, train_ctxt_mapping = train_data
     val_spans, val_answers, val_ctxt_mapping = val_data
     
