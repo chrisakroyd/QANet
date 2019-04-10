@@ -31,7 +31,7 @@ def main(sess_config, params):
     elif mode == constants.Modes.DOWNLOAD:
         download(params)
     else:
-        print('Unknown Mode.')
+        print('Unknown Mode: {}'.format(mode))
         exit(0)
 
 
