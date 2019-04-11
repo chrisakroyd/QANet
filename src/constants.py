@@ -111,7 +111,6 @@ class Modes:
     PREPROCESS = 'preprocess'
     TEST = 'test'
     TRAIN = 'train'
-    TRANSLATE = 'translate'
 
 
 class EmbeddingTypes:
@@ -145,6 +144,8 @@ class ErrorMessages:
     INVALID_CONTEXT = 'Context must be longer than 0 excluding space characters.'
     INVALID_QUERY = 'Query must be longer than 0 excluding space characters.'
     OUT_OF_RANGE_ERR = 'Iterator out of range, attempted to call too many times. (Please report this error)'
+    UNSUPPORTED_CONTEXTUAL_MODEL = 'Unsupported contextual model {model},' \
+                                   'valid models are: ELMo, BERT_BASE and BERT_LARGE'
 
 
 class PlaceholderKeys:
@@ -167,6 +168,28 @@ class Prompts:
         DATA_EXISTS: Prompt for confirming a non-reversible overwriting of data.
     """
     DATA_EXISTS = 'Preprocessed data already exists for this dataset, would you like to overwrite?'
-    FOUND_CONFIG_NO_CHECKPOINTS = 'Found config file at {path} without any checkpoints, would you like to use config?'
+    FOUND_CONFIG_NO_CHECKPOINTS = 'Found config file at {path} without any checkpoints, would you like to use this config?'
     POSSIBLE_OOM = 'WARNING: Using {num_heads} attention heads may result in an OOM error while training, would you like to continue?'
     LARGE_CONTEXTUAL_SHUFFLE_BUFFER = 'WARNING: Shuffle buffer larger than 10,000 while using fixed embeddings uses a large amount of memory, would you like to continue?'
+
+
+class ContextualModels:
+    """ String input names of supported contextual models.
+        ELMO: Model name for ELMo
+        BERT_BASE: Model name for the smaller cased bert model.
+        BERT_LARGE: Model name for the larger cased bert model.
+    """
+    ELMO = 'elmo'
+    BERT_BASE = 'bert_base'
+    BERT_LARGE = 'bert_large'
+
+
+class ContextualDimensions:
+    """ Dimensionality of supported contextual models
+        ELMO: Output dimensionality of an ELMo model
+        BERT_BASE: Output dimensionality of the BERT base model.
+        BERT_LARGE: Output dimensionality of the BERT large model.
+    """
+    ELMO = 1024
+    BERT_BASE = 768
+    BERT_LARGE = 1024

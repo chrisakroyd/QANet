@@ -6,3 +6,4 @@ from .tokenizer import Tokenizer
 from .util import save_json, load_json, load_vocab_files, namespace_json, index_from_list, make_dirs, make_dirs, \
     remove_keys, download_json, download_unpack_zip, load_multiple_jsons, unpack_dict, pad_to_max_length, \
     file_exists, save_config, load_config, directory_exists, directory_is_empty
+from .contextual import get_hub_module, get_contextual_dimensionality, model_support_check

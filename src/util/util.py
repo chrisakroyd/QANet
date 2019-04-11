@@ -123,6 +123,7 @@ def load_config(params, path):
     if file_exists(path):
         if len(os.listdir(os.path.dirname(path))) == 1:  # Only have a model config, check if this is intentional.
             if not util.yes_no_prompt(constants.Prompts.FOUND_CONFIG_NO_CHECKPOINTS.format(path=path)):
+                os.remove(path)  # Delete the config.
                 return params
         print('Using config for {run_name} found at {path}...'.format(run_name=params.run_name, path=path))
         return namespace_json(path)

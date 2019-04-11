@@ -94,14 +94,9 @@ class ContextualEmbeddingWriter(RecordWriter):
     def __init__(self, max_tokens, contextual_model):
         super(ContextualEmbeddingWriter, self).__init__(max_tokens)
         self.session = tf.Session(config=config.gpu_config())
-
-        if contextual_model == 'elmo':
-            self.contextual_model = hub.Module(constants.Urls.ELMO, trainable=False)
-        else:
-            raise NotImplementedError('Only currently support ELMo as a contextual embedding module.')
-
+        util.model_support_check(contextual_model)
+        self.contextual_model = util.get_hub_module(contextual_model, trainable=False)
         self.session.run(tf.global_variables_initializer())
-
         self.tokens_input = tf.placeholder(shape=(None, None,), dtype=tf.string)
         self.lengths_input = tf.placeholder(shape=(None,), dtype=tf.int32)
         self.embed_out = self.contextual_model(inputs={'tokens': self.tokens_input, 'sequence_len': self.lengths_input},
@@ -109,9 +104,7 @@ class ContextualEmbeddingWriter(RecordWriter):
 
     def possibly_lower_batch_size(self, offset, lengths, base_batch_size=32):
         """ We have contexts up to 800 tokens long, this leads to OOM when we use too large of a static
-            batch size, as a precaution we drop it for lengths > 350
-
-            TODO: Objectively fragile, only tested on a 1080ti + evaluated empirically, needs to be re-done.
+            batch size, as a precaution we drop it for lengths > 350.
 
             Args:
                 offset: Start index,
@@ -124,7 +117,7 @@ class ContextualEmbeddingWriter(RecordWriter):
         highest_length = lengths[batch_end_index - 1]  # We pre-sort by length and don't shuffle so this will be highest
         batch_size = base_batch_size
 
-        if highest_length > 350:
+        if highest_length > 325:
             batch_size = 16
 
         return batch_size
@@ -214,7 +207,7 @@ class ContextualEmbeddingWriter(RecordWriter):
             tokens, lengths, ids, total = self.extract_lists(shuffled_queries, self.max_tokens, skip_too_long,
                                                              id_key='answer_id')
 
-            print('embedding queries...')
+            print('Embedding queries...')
             with tqdm(total=total) as pbar:
                 for i in range(0, total, query_batch_size):
                     batch_tokens, batch_lengths, batch_ids = self.get_batch(tokens, lengths, ids, i, total,

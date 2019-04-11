@@ -1,5 +1,6 @@
 import os
 import tensorflow as tf
+from src import util
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
@@ -88,7 +89,7 @@ def index_lookup(data, tables, char_limit=16, num_parallel_calls=4):
     return data
 
 
-def post_processing(data, use_contextual=True, num_parallel_calls=4):
+def post_processing(data, use_contextual=True, contextual_model=None, num_parallel_calls=4):
     """ Casts tensors to their intended dtypes, required because .tfrecords can only store int64s. """
 
     def _lookup(fields):
@@ -102,7 +103,7 @@ def post_processing(data, use_contextual=True, num_parallel_calls=4):
         }
 
         if use_contextual:
-            fixed_emb_dim = 1024  # TODO: Remove this magic number
+            fixed_emb_dim = util.get_contextual_dimensionality(contextual_model)
             if 'context_embedded' in fields and 'query_embedded' in fields:
                 # Array structure is flat for .tfrecord, converts [length * elmo_dim] record shape to [length, elmo_dim]
                 context_embedding = tf.reshape(fields['context_embedded'],
@@ -154,7 +155,7 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
 
 
 def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_labels=True, is_impossible=False,
-                      use_contextual=False, fixed_contextual=False):
+                      use_contextual=False, fixed_contextual=False, contextual_model=None):
     """ Creates a dict of key: shape mappings for padding batches.
 
         Args:
@@ -166,6 +167,7 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
             use_contextual: Whether or not we include fields needed for contextual embeddings,
                             if we are fine-tuning this dataset contains pre-processed contextual embeddings.
             fixed_contextual: Whether or not contextual embeddings are fixed or finetuneable.
+            contextual_model: The contextual model utilised (only used when use_contextual=True).
         Returns:
             A dict mapping of key: shape
     """
@@ -179,7 +181,7 @@ def get_padded_shapes(max_context=-1, max_query=-1, max_characters=16, has_label
     }
 
     if use_contextual:
-        fixed_emb_dim = 1024  # TODO: Remove this magic number
+        fixed_emb_dim = util.get_contextual_dimensionality(contextual_model)
         if fixed_contextual:  # In fixed mode we provide static embeddings, in finetune mode we do not.
             shape_dict.update({
                 'context_embedded': [max_context, fixed_emb_dim],
@@ -256,7 +258,8 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
 
     # Perform word -> index mapping.
     data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
-    data = post_processing(data, use_contextual=params.use_contextual, num_parallel_calls=parallel_calls)
+    data = post_processing(data, use_contextual=params.use_contextual, contextual_model=params.contextual_model,
+                           num_parallel_calls=parallel_calls)
 
     if params.bucket and training:
         buckets = create_buckets(params.bucket_size, params.max_tokens, params.bucket_ranges)
@@ -270,7 +273,8 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
                                                            bucket_boundaries=buckets))
     else:
         padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=params.use_contextual,
-                                          fixed_contextual=params.fixed_contextual_embeddings, is_impossible=is_impossible)
+                                          fixed_contextual=params.fixed_contextual_embeddings,
+                                          contextual_model=params.contextual_model, is_impossible=is_impossible)
         data = data.padded_batch(
             batch_size=params.batch_size,
             padded_shapes=padded_shapes,
@@ -299,10 +303,11 @@ def create_demo_pipeline(params, tables, data):
 
     data = tf.data.Dataset.from_tensor_slices(dict(data))
     data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
-    data = post_processing(data, use_contextual=params.use_contextual, num_parallel_calls=parallel_calls)
+    data = post_processing(data, use_contextual=params.use_contextual, contextual_model=params.contextual_model,
+                           num_parallel_calls=parallel_calls)
 
     padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=params.use_contextual,
-                                      has_labels=False)
+                                      contextual_model=params.contextual_model, has_labels=False)
     data = data.padded_batch(
         batch_size=params.batch_size,
         padded_shapes=padded_shapes,

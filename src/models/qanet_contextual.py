@@ -1,5 +1,4 @@
 import tensorflow as tf
-import tensorflow_hub as hub
 from src import constants, layers, train_utils, util
 
 
@@ -17,7 +16,8 @@ class QANetContextual(tf.keras.Model):
         self.fixed_contextual = params.fixed_contextual_embeddings
 
         if not self.fixed_contextual:
-            self.contextual_model = hub.Module(constants.Urls.ELMO, trainable=True)
+            util.model_support_check(params.contextual_model)
+            self.contextual_model = util.get_hub_module(params.contextual_model, trainable=True)
 
         self.embedding = layers.EmbeddingLayer(embedding_matrix, trainable_matrix, char_matrix,
                                                use_trainable=params.use_trainable, word_dim=params.embed_dim,
