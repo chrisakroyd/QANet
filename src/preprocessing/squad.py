@@ -1,6 +1,6 @@
 import numpy as np
 from tqdm import tqdm
-from src import preprocessing as prepro, util
+from src import preprocessing as prepro, util, tokenizer as toke
 
 keys_to_remove = ['tokens', 'length', 'query', 'elmo', 'orig_tokens']
 
@@ -165,7 +165,7 @@ def process(params):
     embedding_index = util.read_embeddings_file(params.embeddings_path)
     vocab = set([e for e, _ in embedding_index.items()])
 
-    tokenizer = util.Tokenizer(max_words=params.max_words + 1,
+    tokenizer = toke.Tokenizer(max_words=params.max_words + 1,
                                max_chars=params.max_chars + 1,
                                vocab=vocab,
                                lower=False,
