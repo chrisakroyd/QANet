@@ -146,6 +146,7 @@ class ErrorMessages:
     OUT_OF_RANGE_ERR = 'Iterator out of range, attempted to call too many times. (Please report this error)'
     UNSUPPORTED_CONTEXTUAL_MODEL = 'Unsupported contextual model {model},' \
                                    'valid models are: ELMo, BERT_BASE and BERT_LARGE'
+    INVALID_WARMUP_STEPS = 'Warmup steps parameter cannot be negative, got {steps}.'
 
 
 class PlaceholderKeys:
