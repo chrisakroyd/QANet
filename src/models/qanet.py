@@ -84,12 +84,8 @@ class QANet(tf.keras.Model):
         return start_logits, end_logits, start_pred, end_pred, start_prob, end_prob
 
     def compute_loss(self, start_logits, end_logits, start_labels, end_labels, l2=None):
-        start_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=start_logits, labels=start_labels)
-
-        end_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=end_logits, labels=end_labels)
-
+        start_loss = tf.losses.sparse_softmax_cross_entropy(logits=start_logits, labels=start_labels)
+        end_loss = tf.losses.sparse_softmax_cross_entropy(logits=end_logits, labels=end_labels)
         loss = tf.reduce_mean(start_loss) + tf.reduce_mean(end_loss)
 
         if l2 is not None and l2 > 0.0:

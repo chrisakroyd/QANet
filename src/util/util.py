@@ -188,22 +188,26 @@ def unpack_dict(placeholder_dict, keys=None):
             A tuple of input tensors.
     """
     if keys is None:
-        raise ValueError('No keys given to dict_keys_as_tuple.')
+        raise ValueError('No keys given to unpack_dict.')
 
     return tuple([placeholder_dict[key] for key in keys if key in placeholder_dict])
 
 
-def remove_keys(data, keys=[]):
+def remove_keys(data, keys=None):
     """ Removes specified keys from a list of dicts.
         Args:
-            data: Iterable of dicts.
+            data: A dictionary.
             keys: List of string keys to remove.
         Returns:
             Input data with keys removed.
     """
+    if keys is None:
+        raise ValueError('No keys passed to remove_keys.')
+
     for _, value in data.items():
         for key in keys:
             value.pop(key, None)
+
     return data
 
 

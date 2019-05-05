@@ -55,6 +55,7 @@ class FileNames:
         * TF_RECORD: Tfrecord template string for storing processed train/dev files.
         * TRAIN: String representing train mode data.
         * DEV: String representing val mode data.
+        * CONFIG: Name of a model config file.
     """
     TRAIN_SQUAD_1 = 'train-v1.1.json'
     DEV_SQUAD_1 = 'dev-v1.1.json'
@@ -151,7 +152,9 @@ class ErrorMessages:
 
 class PlaceholderKeys:
     """ Constants for placeholder dict keys.
-        INPUT_KEYS: Keys for model input, e.g. words, characters.
+        DEFAULT_INPUTS: Keys for model input, e.g. words, characters.
+        FIXED_CONTEXTUAL_INPUTS: Keys for model input when using fixed contextual embeddings, e.g. words, characters.
+        FINETUNE_CONTEXTUAL_INPUTS: Keys for model input when performing finetuning.
         LABEL_KEYS: Keys for labels.
         ID_KEY: Answer id key.
     """
@@ -167,6 +170,9 @@ class PlaceholderKeys:
 class Prompts:
     """ Prompt messages for asking user actions
         DATA_EXISTS: Prompt for confirming a non-reversible overwriting of data.
+        FOUND_CONFIG_NO_CHECKPOINTS: Prompt for loading a config if its in an empty folder.
+        POSSIBLE_OOM: Prompt for using options that can cause OOM on smaller GPUs.
+        LARGE_CONTEXTUAL_SHUFFER_BUFFER: Large buffer == more loaded == longer load times + possible ram filling.
     """
     DATA_EXISTS = 'Preprocessed data already exists for this dataset, would you like to overwrite?'
     FOUND_CONFIG_NO_CHECKPOINTS = 'Found config file at {path} without any checkpoints, would you like to use this config?'
