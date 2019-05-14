@@ -144,7 +144,10 @@ class Tokenizer(object):
 
         # Add any trainable words to the end of the index (Refer to src/models/embedding_layer for a full reason why)
         vocab_size = len(word_index)
-        for i, word in enumerate(self.trainable_words, start=1):
+        trainable_copy = set(self.trainable_words)
+        trainable_copy.remove(self.oov_token)  # Always want OOV at end of index, even if trainable.
+
+        for i, word in enumerate(self.trainable_copy, start=1):
             assert (vocab_size + i) not in word_index.values()
             word_index[word] = vocab_size + i
 
