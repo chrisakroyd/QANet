@@ -1,4 +1,5 @@
 import os
+import math
 import tensorflow as tf
 from src import util
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
@@ -150,7 +151,7 @@ def create_buckets(bucket_size, max_size, bucket_ranges=None):
             A list of integers for the start of buckets.
     """
     if bucket_ranges is None or len(bucket_ranges) == 0:
-        return [i for i in range(0, max_size + 1, bucket_size)]
+        return [(i + 1) * bucket_size for i in range(0, int(math.ceil(max_size / bucket_size)))]
     return bucket_ranges
 
 
