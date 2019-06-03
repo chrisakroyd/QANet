@@ -4,7 +4,7 @@ from src import layers
 
 
 class ContextQueryAttention(Layer):
-    def __init__(self, use_bias=True, **kwargs):
+    def __init__(self, use_bias=True, mean_aoa=False, **kwargs):
         """ Context-Query Attention implementation, also referred to as Attention-Flow layer.
 
             The Attention flow layer was introduced within "Bi-Directional Attention Flow for
@@ -19,9 +19,11 @@ class ContextQueryAttention(Layer):
 
             Args:
                 use_bias: Whether or not to add a bias vector to the result.
+                mean_aoa: Utilise Mean-over-mean attention.
         """
         super(ContextQueryAttention, self).__init__(**kwargs)
         self.use_bias = use_bias
+        self.mean_aoa = mean_aoa
         self.query_activation = Softmax(axis=-1)
         self.context_activation = Softmax(axis=1)
 
@@ -105,4 +107,11 @@ class ContextQueryAttention(Layer):
         q2c_act = self.context_activation(similarity_matrix)
         q2c = tf.matmul(tf.matmul(c2q_act, q2c_act, transpose_b=True), x_context)
 
-        return c2q, q2c
+        if self.mean_aoa:
+            aoa = tf.reduce_mean(c2q_act, axis=1, keepdims=True)  # Mean act for context words across all query words (aoa)
+            aoa = aoa * q2c_act
+            aoa = tf.reduce_mean(aoa, axis=-1, keepdims=True)
+            aoa = x_context * aoa
+            return c2q, q2c, aoa
+        else:
+            return c2q, q2c
