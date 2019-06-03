@@ -180,7 +180,7 @@ class Prompts:
     LARGE_CONTEXTUAL_SHUFFLE_BUFFER = 'WARNING: Shuffle buffer larger than 10,000 while using fixed embeddings uses a large amount of memory, would you like to continue?'
 
 
-class ContextualModels:
+class ModelTypes:
     """ String input names of supported contextual models.
         ELMO: Model name for ELMo
         BERT_BASE: Model name for the smaller cased bert model.
@@ -189,6 +189,7 @@ class ContextualModels:
     ELMO = 'elmo'
     BERT_BASE = 'bert_base'
     BERT_LARGE = 'bert_large'
+    UNIVERSAL_TRANSFORMER = 'ut_qanet'
 
 
 class ContextualDimensions:
