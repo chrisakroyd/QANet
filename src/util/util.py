@@ -234,3 +234,15 @@ def pad_to_max_length(tokens, lengths):
             assert len(tokens[i]) == max_len
 
     return tokens
+
+
+def filename(path):
+    """ Extracts the filename from a given path.
+        Args:
+            path: A string filepath.
+        Returns:
+            Filename of the given path without extension.
+    """
+    base = os.path.basename(path)
+    name = os.path.splitext(base)
+    return name[0]

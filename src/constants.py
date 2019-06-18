@@ -101,6 +101,8 @@ class Modes:
         The following keys are defined:
         * TRAIN: training mode.
         * TEST: testing mode.
+        * CHECKPOINT_SELECTION: test mode run over all checkpoints with best performing being used.
+        * CHECKPOINT_ENSEMBLE: test mode run over all checkpoints with all checkpoints being used for an ensemble.
         * PREPROCESS: preprocess mode.
         * DEBUG: Debug mode.
         * DEMO: inference mode.
@@ -111,6 +113,8 @@ class Modes:
     DOWNLOAD = 'download'
     PREPROCESS = 'preprocess'
     TEST = 'test'
+    CHECKPOINT_SELECTION = 'checkpoint_selection'
+    CHECKPOINT_ENSEMBLE = 'checkpoint_ensemble'
     TRAIN = 'train'
 
 
