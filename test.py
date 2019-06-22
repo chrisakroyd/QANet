@@ -1,9 +1,17 @@
+import operator
 import tensorflow as tf
 from tqdm import tqdm
 from src import config, constants, loaders, metrics, models, pipeline, train_utils, util
 
 
-def test(sess_config, params):
+def test(sess_config, params, checkpoint_selection=False):
+    """
+        Test procedure, optionally allows automated eval + ranking of all model checkpoints to find the best performing.
+        Args:
+            sess_config: tf session.
+            params: hparams
+            checkpoint_selection: Whether or not to run automated eval over all checkpoints as opposed to latest only.
+    """
     model_dir, log_dir = util.save_paths(params)
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
@@ -37,23 +45,53 @@ def test(sess_config, params):
         sess.run(tf.global_variables_initializer())
         # Restore the moving average version of the learned variables for eval.
         saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
-        saver.restore(sess, tf.train.latest_checkpoint(model_dir))
-        preds = []
-        # +1 for uneven batch values, +1 for the range.
-        for _ in tqdm(range(1, (len(test_answer_texts) // params.batch_size + 1) + 1)):
-            answer_ids, answer_starts, answer_ends = sess.run([id_tensor, start_pred, end_pred],
-                                                              feed_dict={is_training: False})
-            preds.append((answer_ids, 0.0, answer_starts, answer_ends,))
-        # Evaluate the predictions and reset the train result list for next eval period.
-        eval_metrics, answer_texts = metrics.evaluate_list(preds, test_spans, test_answer_texts, test_ctxt_mapping)
-        print("Exact Match: {}, F1: {}".format(eval_metrics['exact_match'], eval_metrics['f1']))
 
-        if params.write_answer_file:
-            results_path = util.results_path(params)
-            out_file = {}
-            for key, value in answer_texts.items():
-                out_file[test_answers[key]['id']] = answer_texts[key]['prediction']
-            util.save_json(results_path, out_file)
+        if checkpoint_selection:
+            checkpoints = tqdm(tf.train.get_checkpoint_state(model_dir).all_model_checkpoint_paths)
+        else:
+            checkpoints = [tf.train.latest_checkpoint(model_dir)]
+
+        results = []
+
+        for checkpoint in checkpoints:
+            saver.restore(sess, checkpoint)
+            preds = []
+            # +1 for uneven batch values, +1 for the range.
+            for _ in tqdm(range(1, (len(test_answer_texts) // params.batch_size + 1) + 1)):
+                answer_ids, answer_starts, answer_ends = sess.run([id_tensor, start_pred, end_pred],
+                                                                  feed_dict={is_training: False})
+                preds.append((answer_ids, 0.0, answer_starts, answer_ends,))
+            # Evaluate the predictions and reset the train result list for next eval period.
+            eval_metrics, answer_texts = metrics.evaluate_list(preds, test_spans, test_answer_texts, test_ctxt_mapping)
+            em, f1 = util.unpack_dict(eval_metrics, keys=['exact_match', 'f1'])
+            results.append({'exact_match': em, 'f1': f1, 'answer_texts': answer_texts, 'name': checkpoint})
+
+        # In checkpoint selection mode we perform a search for
+        if checkpoint_selection:
+            # TODO: Cleanup this if statement.
+            results = sorted(results, key=operator.itemgetter('exact_match'), reverse=True)
+            print('\nCheckpoints ranked by Exact Match (EM):')
+            for i, result in enumerate(results, start=1):
+                print('{rank}: {name}, EM={em}'.format(rank=i,
+                                                       name=util.filename(result['name']),
+                                                       em=result['exact_match']))
+
+            results = sorted(results, key=operator.itemgetter('f1'), reverse=True)
+            print('\nCheckpoints ranked by F1 score:')
+            for i, result in enumerate(results, start=1):
+                print('{rank}: {name}, F1={f1}'.format(rank=i,
+                                                       name=util.filename(result['name']),
+                                                       f1=result['f1']))
+        else:
+            em, f1, answer_texts = util.unpack_dict(results[0], ['exact_match', 'f1', 'answer_texts'])
+            print('\nExact Match: {em}, F1: {f1}'.format(em=em, f1=f1))
+
+            if params.write_answer_file:
+                results_path = util.results_path(params)
+                out_file = {}
+                for key, value in answer_texts.items():
+                    out_file[test_answers[key]['id']] = answer_texts[key]['prediction']
+                util.save_json(results_path, out_file)
 
 
 if __name__ == '__main__':

@@ -25,6 +25,8 @@ def main(sess_config, params):
         preprocess(params)
     elif mode == constants.Modes.TEST:
         test(sess_config, params)
+    elif mode == constants.Modes.CHECKPOINT_SELECTION:
+        test(sess_config, params, checkpoint_selection=True)
     elif mode == constants.Modes.DEMO:
         app = demo(sess_config, params)
         app.run(port=5000)
