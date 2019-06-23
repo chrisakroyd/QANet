@@ -63,6 +63,8 @@ def train(sess_config, params, debug=False):
                                                   ema_decay=params.ema_decay,
                                                   beta1=params.beta1,
                                                   beta2=params.beta2,
+                                                  optimizer=params.optimizer,
+                                                  weight_decay=params.weight_decay,
                                                   epsilon=params.epsilon)
 
         train_outputs = [id_tensor, loss_op, start_pred, end_pred, train_op]

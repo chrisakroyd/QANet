@@ -206,3 +206,12 @@ class ContextualDimensions:
     ELMO = 1024
     BERT_BASE = 768
     BERT_LARGE = 1024
+
+
+class Optimizers:
+    """ Supported optimizers
+        ADAM: Adam Optimizer
+        ADAMW: Adam optimizer with weight decay.
+    """
+    ADAM = 'adam'
+    ADAMW = 'adamw'

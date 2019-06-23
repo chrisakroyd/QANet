@@ -113,6 +113,8 @@ def model_config(defaults):
     flags.DEFINE_string('warmup_scheme', defaults.warmup_scheme, 'Learning rate warmup scheme.')
     flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every,
                          'After how many steps do we save a checkpoint and calculate EM/F1 scores.', lower_bound=1)
+    flags.DEFINE_string('optimizer', defaults.optimizer, 'Which optimization algorithm to use (adam/adamw)')
+    flags.DEFINE_float('weight_decay', defaults.weight_decay, 'Weight decay parameter for adamw')
 
     # Flags related to the use of contextual embedding models, e.g. BERT, ELMo
     flags.DEFINE_boolean('use_contextual', defaults.use_contextual,
@@ -123,5 +125,4 @@ def model_config(defaults):
                          'Whether or not the contextual embeddings are fixed (non-trainable).')
     flags.DEFINE_boolean('override_cache_behaviour', defaults.override_cache_behaviour,
                          'Overrides the default pipeline behaviour when using fixed contextual embeddings to always cache them (WARNING: Will use a lot of RAM.)')
-
     return flags

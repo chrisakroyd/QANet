@@ -59,5 +59,7 @@
   "use_contextual": false,
   "contextual_model": "elmo",
   "fixed_contextual_embeddings": false,
-  "override_cache_behaviour": false
+  "override_cache_behaviour": false,
+  "weight_decay": 0.000001,
+  "optimizer": "adam"
 }
