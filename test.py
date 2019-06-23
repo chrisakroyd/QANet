@@ -4,6 +4,22 @@ from tqdm import tqdm
 from src import config, constants, loaders, metrics, models, pipeline, train_utils, util
 
 
+def log_results(results, key=''):
+    """ Logs a ranked list of results
+
+        Args:
+            results: List of dictionarys.
+            key: Result key, key on which we rank the list of dictionarys.
+    """
+    results = sorted(results, key=operator.itemgetter(key), reverse=True)
+    print('\nCheckpoints ranked by {key}:'.format(key=key))
+    for i, result in enumerate(results, start=1):
+        print('{rank}: {name}, {key}={value}'.format(rank=i,
+                                                     key=key,
+                                                     name=util.filename(result['name']),
+                                                     value=result[key]))
+
+
 def test(sess_config, params, checkpoint_selection=False):
     """
         Test procedure, optionally allows automated eval + ranking of all model checkpoints to find the best performing.
@@ -40,7 +56,7 @@ def test(sess_config, params, checkpoint_selection=False):
         placeholders = iterator.get_next()
         is_training = tf.placeholder_with_default(True, shape=())
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=is_training)
-        id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)[0]
+        id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
 
         sess.run(tf.global_variables_initializer())
         # Restore the moving average version of the learned variables for eval.
@@ -68,20 +84,8 @@ def test(sess_config, params, checkpoint_selection=False):
 
         # In checkpoint selection mode we perform a search for
         if checkpoint_selection:
-            # TODO: Cleanup this if statement.
-            results = sorted(results, key=operator.itemgetter('exact_match'), reverse=True)
-            print('\nCheckpoints ranked by Exact Match (EM):')
-            for i, result in enumerate(results, start=1):
-                print('{rank}: {name}, EM={em}'.format(rank=i,
-                                                       name=util.filename(result['name']),
-                                                       em=result['exact_match']))
-
-            results = sorted(results, key=operator.itemgetter('f1'), reverse=True)
-            print('\nCheckpoints ranked by F1 score:')
-            for i, result in enumerate(results, start=1):
-                print('{rank}: {name}, F1={f1}'.format(rank=i,
-                                                       name=util.filename(result['name']),
-                                                       f1=result['f1']))
+            log_results(results, key='exact_match')
+            log_results(results, key='f1')
         else:
             em, f1, answer_texts = util.unpack_dict(results[0], ['exact_match', 'f1', 'answer_texts'])
             print('\nExact Match: {em}, F1: {f1}'.format(em=em, f1=f1))

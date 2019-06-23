@@ -93,6 +93,7 @@ def namespace_json(path):
 def params_as_dict(params):
     """
         Converts all flags + values generated with the abseil-py flag (tf.flags) object into a flat python dict.
+        Main purpose of this is to allow for saving as a .json file.
         Args:
             params: An instance of flags.Flags
         Returns:
