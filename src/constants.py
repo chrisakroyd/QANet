@@ -167,7 +167,8 @@ class PlaceholderKeys:
                                'query_chars', 'query_embedded', 'query_length']
     FINETUNE_CONTEXTUAL_INPUTS = ['context_tokens', 'context_words', 'context_chars', 'context_length', 'query_tokens',
                                   'query_words', 'query_chars', 'query_length']
-    LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
+    LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id']
+    LABEL_IMPOSSIBLE_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
     ID_KEY = ['answer_id']
 
 

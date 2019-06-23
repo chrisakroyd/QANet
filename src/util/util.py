@@ -1,4 +1,5 @@
 import json
+import operator
 import os
 import urllib.request
 from io import BytesIO
@@ -179,18 +180,19 @@ def load_vocab_files(paths):
     return vocabs
 
 
-def unpack_dict(placeholder_dict, keys=None):
-    """ Unpacks a dictionary into a tuple with the values in the same order as the keys given by keys param.
+def unpack_dict(dictionary, keys=None):
+    """ Utility function that unpacks a dictionary into a tuple which allows for unpacking into variables, values
+        returned are in the same order as the keys given by keys param.
+
         Args:
-            placeholder_dict: A dict of input tensors.
+            dictionary: A dictionary.
             keys: List of string keys representing the order placeholders should be returned.
         Returns:
             A tuple of input tensors.
     """
     if keys is None:
         raise ValueError('No keys given to unpack_dict.')
-
-    return tuple([placeholder_dict[key] for key in keys if key in placeholder_dict])
+    return operator.itemgetter(*keys)(dictionary)
 
 
 def remove_keys(data, keys=None):
