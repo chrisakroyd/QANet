@@ -11,13 +11,15 @@ def train(sess_config, params, debug=False):
     embedding_paths = util.embedding_paths(params)
     util.make_dirs([model_dir, log_dir])
 
+    use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
+
     # Continue prompt for when params.heads is > 1, this can cause OOM so make sure its intentional.
     if params.heads > 1:
         if not util.yes_no_prompt(constants.Prompts.POSSIBLE_OOM.format(num_heads=params.heads)):
             exit(0)
 
     # Continue prompt for when we have a large buffer size, pre-embedded records are large and this can fill up RAM.
-    if params.use_contextual and params.fixed_contextual_embeddings and params.shuffle_buffer_size > 10000:
+    if use_contextual and params.fixed_contextual_embeddings and params.shuffle_buffer_size > 10000:
         if not util.yes_no_prompt(constants.Prompts.LARGE_CONTEXTUAL_SHUFFLE_BUFFER):
             exit(0)
 
@@ -33,8 +35,10 @@ def train(sess_config, params, debug=False):
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
         train_record_path, val_record_path, _ = util.tf_record_paths(params)
-        train_set, train_iter = pipeline.create_pipeline(params, tables, train_record_path, training=True)
-        _, val_iter = pipeline.create_pipeline(params, tables, val_record_path, training=False)
+        train_set, train_iter = pipeline.create_pipeline(params, tables, train_record_path,
+                                                         use_contextual=use_contextual, training=True)
+        _, val_iter = pipeline.create_pipeline(params, tables, val_record_path,
+                                               use_contextual=use_contextual, training=False)
 
     with tf.Session(config=sess_config) as sess:
         sess.run([tf.tables_initializer(), train_iter.initializer, val_iter.initializer])
@@ -42,10 +46,12 @@ def train(sess_config, params, debug=False):
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
 
-        if params.use_contextual:
+        if params.model == constants.ModelTypes.QANET:
+            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+        elif params.model == constants.ModelTypes.QANET_CONTEXTUAL:
             qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
         else:
-            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+            raise ValueError('Unsupported model type.')
 
         placeholders = iterator.get_next()
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)

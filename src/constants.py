@@ -186,11 +186,13 @@ class Prompts:
 
 
 class ModelTypes:
-    """ String input names of supported contextual models.
+    """ String input names of supported models and contextual models.
         ELMO: Model name for ELMo
         BERT_BASE: Model name for the smaller cased bert model.
         BERT_LARGE: Model name for the larger cased bert model.
     """
+    QANET = 'qanet'
+    QANET_CONTEXTUAL = 'qanet_contextual'
     ELMO = 'elmo'
     BERT_BASE = 'bert_base'
     BERT_LARGE = 'bert_large'

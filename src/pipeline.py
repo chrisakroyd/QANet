@@ -225,7 +225,7 @@ def create_lookup_tables(vocabs):
     return tables
 
 
-def create_pipeline(params, tables, record_paths, training=True, is_impossible=False):
+def create_pipeline(params, tables, record_paths, training=True, use_contextual=False, is_impossible=False):
     """ Function that creates an input pipeline for train/eval.
 
         Optionally uses bucketing to generate batches of a similar length. Output tensors
@@ -236,12 +236,13 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
             tables: A tuple of contrib.lookup tables mapping string words to indices and string characters to indices.
             record_paths: A list of string filepaths for .tfrecord files.
             training: Boolean value signifying whether we are in train mode.
+            use_contextual: Whether this pipeline should read contextual embeddings.
             is_impossible: Whether this pipeline is for a dataset which contains impossible records (Squad 2.0).
         Returns:
             A `tf.data.Dataset` object and an initializable iterator.
     """
     parallel_calls = get_num_parallel_calls(params)
-    use_fixed_contextual_embeddings = params.use_contextual and params.fixed_contextual_embeddings
+    use_fixed_contextual_embeddings = use_contextual and params.fixed_contextual_embeddings
 
     data = tf_record_pipeline(record_paths, params.tf_record_buffer_size, parallel_calls, is_impossible=is_impossible,
                               use_contextual=use_fixed_contextual_embeddings)
@@ -259,7 +260,7 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
 
     # Perform word -> index mapping.
     data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
-    data = post_processing(data, use_contextual=params.use_contextual, contextual_model=params.contextual_model,
+    data = post_processing(data, use_contextual=use_contextual, contextual_model=params.contextual_model,
                            num_parallel_calls=parallel_calls)
 
     if params.bucket and training:
@@ -273,7 +274,7 @@ def create_pipeline(params, tables, record_paths, training=True, is_impossible=F
                                                            bucket_batch_sizes=[params.batch_size] * (len(buckets) + 1),
                                                            bucket_boundaries=buckets))
     else:
-        padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=params.use_contextual,
+        padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=use_contextual,
                                           fixed_contextual=params.fixed_contextual_embeddings,
                                           contextual_model=params.contextual_model, is_impossible=is_impossible)
         data = data.padded_batch(

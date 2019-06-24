@@ -35,6 +35,7 @@ def test(sess_config, params, checkpoint_selection=False):
     _, _, _, _, test_context_path, test_answer_path = util.processed_data_paths(params)
     test_spans, test_answer_texts, test_ctxt_mapping = loaders.load_squad_set(test_context_path, test_answer_path)
     test_answers = util.load_json(test_answer_path)
+    use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
 
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
@@ -42,16 +43,19 @@ def test(sess_config, params, checkpoint_selection=False):
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
         _, _, test_record_path = util.tf_record_paths(params)
-        test_data, iterator = pipeline.create_pipeline(params, tables, test_record_path, training=False)
+        test_data, iterator = pipeline.create_pipeline(params, tables, test_record_path,
+                                                       use_contextual=use_contextual, training=False)
 
     with tf.Session(config=sess_config) as sess:
         sess.run(iterator.initializer)
         sess.run(tf.tables_initializer())
 
-        if params.use_contextual:
+        if params.model == constants.ModelTypes.QANET:
+            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+        elif params.model == constants.ModelTypes.QANET_CONTEXTUAL:
             qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
         else:
-            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+            raise ValueError('Unsupported model type.')
 
         placeholders = iterator.get_next()
         is_training = tf.placeholder_with_default(True, shape=())
