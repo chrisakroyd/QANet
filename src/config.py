@@ -25,6 +25,7 @@ def model_config(defaults):
     flags = tf.flags
     flags.DEFINE_boolean('help', False, 'Print flag help')
     # Mode to run in, e.g. train, test.
+    flags.DEFINE_string('model', defaults.model, 'What model to use (qanet/qanet_contextual)')
     flags.DEFINE_string('mode', defaults.mode, 'Train/test/demo.')
     flags.DEFINE_string('dataset', defaults.dataset, 'Which dataset to use, e.g. Squad or MS Marco.')
     flags.DEFINE_string('run_name', defaults.run_name, 'Name for this run of training.')
@@ -117,8 +118,6 @@ def model_config(defaults):
     flags.DEFINE_float('weight_decay', defaults.weight_decay, 'Weight decay parameter for adamw')
 
     # Flags related to the use of contextual embedding models, e.g. BERT, ELMo
-    flags.DEFINE_boolean('use_contextual', defaults.use_contextual,
-                         'Whether or not to use a contextual embedding module e.g. ELMo/BERT.')
     flags.DEFINE_string('contextual_model', defaults.contextual_model,
                         'Which contextual model to use, options are elmo, bert_base and bert_large')
     flags.DEFINE_boolean('fixed_contextual_embeddings', defaults.fixed_contextual_embeddings,
