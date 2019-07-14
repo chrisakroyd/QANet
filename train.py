@@ -131,6 +131,7 @@ def train(sess_config, params, debug=False):
                 writer.flush()
                 filename = os.path.join(model_dir, 'model_{}.ckpt'.format(global_step))
                 saver.save(sess, filename)
+                sess.run(val_iter.initializer)
 
 
 if __name__ == '__main__':
