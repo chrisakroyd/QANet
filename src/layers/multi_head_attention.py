@@ -76,7 +76,7 @@ class MultiHeadAttention(Layer):
         """ Call function detailing this layers ops.
             Args:
                 x: List of two input tensors of shape [batch_size, seq_length, units], if they are the same,
-                   this is self-attention.
+                   this is self-attention. First tensor treated as the 'query', second tensor as the 'memory'.
                 training: Boolean flag for training mode.
                 mask: A boolean mask tensor.
         """

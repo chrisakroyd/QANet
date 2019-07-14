@@ -4,7 +4,7 @@ from src import layers
 
 
 class OutputLayer(Layer):
-    def __init__(self, kernel_size=1, **kwargs):
+    def __init__(self, kernel_size=1, use_bias=True, **kwargs):
         """ Output Layer
 
             Takes in two blocks and computes the output logits
@@ -12,9 +12,11 @@ class OutputLayer(Layer):
 
             Args:
                 kernel_size: Output units at each position.
+                use_bias: Whether or not to use bias, defaults to false.
         """
         super(OutputLayer, self).__init__(**kwargs)
-        self.conv = Conv1D(1, kernel_size=kernel_size, use_bias=False, kernel_initializer=layers.create_initializer())
+        self.conv = Conv1D(1, kernel_size=kernel_size, use_bias=use_bias,
+                           kernel_initializer=layers.create_initializer())
 
     def call(self, x, training=None, mask=None):
         """ Call function detailing this layers ops.
