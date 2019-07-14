@@ -43,8 +43,8 @@ def test(sess_config, params, checkpoint_selection=False):
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
         _, _, test_record_path = util.tf_record_paths(params)
-        test_data, iterator = pipeline.create_pipeline(params, tables, test_record_path,
-                                                       use_contextual=use_contextual, training=False)
+        _, iterator = pipeline.create_pipeline(params, tables, test_record_path,
+                                               use_contextual=use_contextual, training=False)
 
     with tf.Session(config=sess_config) as sess:
         sess.run(iterator.initializer)
@@ -85,6 +85,7 @@ def test(sess_config, params, checkpoint_selection=False):
             eval_metrics, answer_texts = metrics.evaluate_list(preds, test_spans, test_answer_texts, test_ctxt_mapping)
             em, f1 = util.unpack_dict(eval_metrics, keys=['exact_match', 'f1'])
             results.append({'exact_match': em, 'f1': f1, 'answer_texts': answer_texts, 'name': checkpoint})
+            sess.run(iterator.initializer)
 
         # In checkpoint selection mode we perform a search for
         if checkpoint_selection:
