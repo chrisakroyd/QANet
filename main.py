@@ -4,6 +4,7 @@ from preprocess import preprocess
 from test import test
 from demo import demo
 from download import download
+from ensemble import ensemble
 
 
 def main(sess_config, params):
@@ -27,6 +28,10 @@ def main(sess_config, params):
         test(sess_config, params)
     elif mode == constants.Modes.CHECKPOINT_SELECTION:
         test(sess_config, params, checkpoint_selection=True)
+    elif mode == constants.Modes.CHECKPOINT_ENSEMBLE:
+        ensemble(sess_config, params, checkpoint_ensemble=True)
+    elif mode == constants.Modes.ENSEMBLE:
+        ensemble(sess_config, params)
     elif mode == constants.Modes.DEMO:
         app = demo(sess_config, params)
         app.run(port=5000)

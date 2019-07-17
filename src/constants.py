@@ -103,6 +103,7 @@ class Modes:
         * TEST: testing mode.
         * CHECKPOINT_SELECTION: test mode run over all checkpoints with best performing being used.
         * CHECKPOINT_ENSEMBLE: test mode run over all checkpoints with all checkpoints being used for an ensemble.
+        * ENSEMBLE: test mode run over a list of models with all models being used for an ensemble.
         * PREPROCESS: preprocess mode.
         * DEBUG: Debug mode.
         * DEMO: inference mode.
@@ -115,6 +116,7 @@ class Modes:
     TEST = 'test'
     CHECKPOINT_SELECTION = 'checkpoint_selection'
     CHECKPOINT_ENSEMBLE = 'checkpoint_ensemble'
+    ENSEMBLE = 'ensemble'
     TRAIN = 'train'
 
 
@@ -196,7 +198,8 @@ class ModelTypes:
     ELMO = 'elmo'
     BERT_BASE = 'bert_base'
     BERT_LARGE = 'bert_large'
-    UNIVERSAL_TRANSFORMER = 'ut_qanet'
+    UNIVERSAL_TRANSFORMER = 'qanet_ut'
+    TENSORIZED_TRANSFORMER = 'qanet_tt'
 
 
 class ContextualDimensions:
