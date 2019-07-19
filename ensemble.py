@@ -5,6 +5,36 @@ from tqdm import tqdm
 from src import config, constants, loaders, metrics, models, pipeline, train_utils, util
 
 
+def get_predictions(prob_start, prob_end, max_context_size=400, max_answer_size=30):
+    """
+        Numpy equivalent of the prediction code in src/layers/prediction.py. Used to calulate fresh pointers
+        from average probabilities as a part of the ensemble_average strategy.
+
+        Args:
+          prob_start: Start probabilities, of shape (bs, context_length)
+          prob_end: End probabilities, of shape (bs, context_length)
+          max_context_size: Max length of context (in tokens).
+          max_answer_size: Max length (in tokens) of a valid answer.
+        Returns:
+          Tuple with (answer_start, answer_end, )
+    """
+    max_x_len = prob_start.shape[1]
+    upper_tri_mat = np.triu(
+            np.ones([max_context_size, max_context_size], dtype='float32') -
+            np.triu(np.ones([max_context_size, max_context_size], dtype='float32'),
+                    k=max_answer_size)
+    )[:max_x_len, :max_x_len]
+
+    # Outer product
+    prob_mat = np.expand_dims(prob_start, axis=-1) * np.expand_dims(prob_end, axis=1)
+    prob_mat *= np.expand_dims(upper_tri_mat, axis=0)
+
+    answer_starts = np.argmax(np.amax(prob_mat, axis=2), axis=1)
+    answer_ends = np.argmax(np.amax(prob_mat, axis=1), axis=1)
+
+    return answer_starts, answer_ends
+
+
 def pointer_prob(probs, indices, axis=1):
     """
         Given a vector of indices (predicted pointers) of length b and a list of probabilities of shape b * N,
@@ -53,9 +83,10 @@ def ensemble_best(model_predictions):
         (Models aren't mixed, answer comes from the single model with the highest probability)
 
         Args:
-            model_predictions:
+            model_predictions: A list of prediction outputs from several different models.
         Returns:
-            Best predictions
+            New set of answer_start + answer end pointers based on the highest scored answer out of all models for each
+            question.
     """
     answer_ids, answer_starts, answer_ends, scores = zip(*[calculate_scores(pred) for pred in model_predictions])
     # This check ensures all the ids in the answer_id arrays line up for each set of predictions, if this fails
@@ -76,6 +107,37 @@ def ensemble_best(model_predictions):
     answer_ends = [answer_ends[m, i] for i, m in enumerate(model_indices)]
 
     assert len(answer_ids) == len(answer_starts) == len(answer_ends)
+
+    return answer_ids, answer_starts, answer_ends
+
+
+def ensemble_average(model_predictions):
+    """
+        Ensemble method that averages the start/end probabilities of all models and computes new start/end pointers.
+        Able to handle an arbitrary number of models. (Models are mixed, answer comes from the highest span using the numpy
+        equivalent of the prediction code in src/layers/prediction.py)
+        Args:
+            model_predictions: A list of prediction outputs from several different models.
+        Returns:
+            New set of answer_start + answer end pointers based on an average probability over all model predictions.
+    """
+    answer_ids, _, _, prob_starts, prob_ends = zip(*[zip(*pred) for pred in model_predictions])
+    # This check ensures all the ids in the answer_id arrays line up for each set of predictions, if this fails
+    # check that iterators are reset after each test run.
+    assert all(map(lambda x: np.array_equal(*x), itertools.combinations(answer_ids, r=2)))
+    answer_ids = answer_ids[-1]  # After we have asserted they are all equal, just grab any of the id arrays.
+
+    max_context = max([arr.shape[-1] for arr in prob_starts[0]])
+
+    answer_starts, answer_ends = [], []
+    for i in range(len(answer_ids)):
+        avg_prob_start = np.average([prob_starts[m][i] for m in range(len(model_predictions))], axis=0)
+        avg_prob_end = np.average([prob_ends[m][i] for m in range(len(model_predictions))], axis=0)
+        answer_start, answer_end = get_predictions(avg_prob_start, avg_prob_end, max_context)
+        answer_starts.append(answer_start)
+        answer_ends.append(answer_end)
+
+    answer_ids, answer_starts, answer_ends = map(np.concatenate, [answer_ids, answer_starts, answer_ends])
 
     return answer_ids, answer_starts, answer_ends
 
