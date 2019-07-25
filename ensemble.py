@@ -1,8 +1,14 @@
 import itertools
+import operator
 import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
 from src import config, constants, loaders, metrics, models, pipeline, train_utils, util
+
+
+def harmonic_mean(x1, x2):
+    """ Two value special case of the harmonic mean """
+    return (2 * x1 * x2) / (x1 + x2)
 
 
 def get_predictions(prob_start, prob_end, max_context_size=400, max_answer_size=30):
@@ -21,8 +27,7 @@ def get_predictions(prob_start, prob_end, max_context_size=400, max_answer_size=
     max_x_len = prob_start.shape[1]
     upper_tri_mat = np.triu(
             np.ones([max_context_size, max_context_size], dtype='float32') -
-            np.triu(np.ones([max_context_size, max_context_size], dtype='float32'),
-                    k=max_answer_size)
+            np.triu(np.ones([max_context_size, max_context_size], dtype='float32'), k=max_answer_size)
     )[:max_x_len, :max_x_len]
 
     # Outer product
@@ -37,7 +42,7 @@ def get_predictions(prob_start, prob_end, max_context_size=400, max_answer_size=
 
 def pointer_prob(probs, indices, axis=1):
     """
-        Given a vector of indices (predicted pointers) of length b and a list of probabilities of shape b * N,
+        Given a vector of indices (predicted pointers) of length b and a matrix of probabilities of shape b * N,
         returns a vector of length b with the corresponding probabilities for that pointer.
 
         This is a pre-step to scoring and ranking models based on their span probability and is used as part of the
@@ -116,6 +121,7 @@ def ensemble_average(model_predictions):
         Ensemble method that averages the start/end probabilities of all models and computes new start/end pointers.
         Able to handle an arbitrary number of models. (Models are mixed, answer comes from the highest span using the numpy
         equivalent of the prediction code in src/layers/prediction.py)
+
         Args:
             model_predictions: A list of prediction outputs from several different models.
         Returns:
@@ -138,6 +144,53 @@ def ensemble_average(model_predictions):
         answer_ends.append(answer_end)
 
     answer_ids, answer_starts, answer_ends = map(np.concatenate, [answer_ids, answer_starts, answer_ends])
+
+    return answer_ids, answer_starts, answer_ends
+
+
+def ensemble_gradual(model_predictions, checkpoints, ensemble_function, spans, answer_texts, ctxt_mapping):
+    """
+        Combines models using a gradual approach of adding one model at a time and only adding another if the
+        addition of that model improves the ensemble metrics. Can be used with either ensemble_best or ensemble_average
+        strategy.
+
+        First we work out which model has the best metrics + then only add new models to the ensemble if they improve
+        the metrics.
+
+        Args:
+            model_predictions: A list of prediction outputs from several different models.
+            checkpoints: A list of checkpoint files used in the ensemble (Each should be unique).
+            ensemble_function: A function that combines predictions from multiple models.
+        Returns:
+            Tuple, answer_ids, answer_starts, answer_ends
+    """
+    results = []
+
+    # First, we find the best checkpoint by taking the harmonic mean between both metrics.
+    for prediction, checkpoint in zip(model_predictions, checkpoints):
+        answer_ids, answer_starts, answer_ends, _, _ = zip(*prediction)
+        preds = map(np.concatenate, [answer_ids, answer_starts, answer_ends])
+        em, f1 = metrics.evaluate_preds(preds, spans, answer_texts, ctxt_mapping)
+        results.append({'score':  harmonic_mean(em, f1), 'name': checkpoint, 'prediction': prediction})
+
+    sorted_results = sorted(results, key=operator.itemgetter('score'), reverse=True)
+
+    best_ensemble = [sorted_results.pop(0)]
+    best_score = best_ensemble[0]['score']
+
+    for result in sorted_results:
+        current_ensemble = best_ensemble + [result]
+        predictions = [model['prediction'] for model in current_ensemble]
+        ensembled_predictions = ensemble_function(predictions)
+        em, f1 = metrics.evaluate_preds(ensembled_predictions, spans, answer_texts, ctxt_mapping)
+        score = harmonic_mean(em, f1)
+
+        if score > best_score:
+            best_ensemble = current_ensemble
+            best_score = score
+
+    ensemble_predictions = [model['prediction'] for model in best_ensemble]
+    answer_ids, answer_starts, answer_ends = ensemble_function(ensemble_predictions)
 
     return answer_ids, answer_starts, answer_ends
 
@@ -190,13 +243,13 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
         saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
 
         if checkpoint_ensemble:
-            checkpoints = tqdm(tf.train.get_checkpoint_state(model_dir).all_model_checkpoint_paths)
+            checkpoints = tf.train.get_checkpoint_state(model_dir).all_model_checkpoint_paths
         else:
             raise ValueError('Not implemented.')
 
         model_predictions = []
 
-        for checkpoint in checkpoints:
+        for checkpoint in tqdm(checkpoints):
             saver.restore(sess, checkpoint)
             preds = []
             # +1 for uneven batch values, +1 for the range.
@@ -209,7 +262,15 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
             model_predictions.append(preds)
             sess.run(iterator.initializer)  # Resets val iterator, guarantees that
 
-        answer_ids, answer_starts, answer_ends = ensemble_best(model_predictions)
+        # ensemble_func = ensemble_average
+        ensemble_func = ensemble_best
+
+        if params.gradual:
+            answer_ids, answer_starts, answer_ends = ensemble_gradual(model_predictions, checkpoints, ensemble_func,
+                                                                      test_spans, test_answer_texts, test_ctxt_mapping)
+        else:
+            answer_ids, answer_starts, answer_ends = ensemble_func(model_predictions)
+
         answer_texts = metrics.get_answer_data(test_spans, test_answer_texts, test_ctxt_mapping,
                                                answer_ids, answer_starts, answer_ends)
         eval_metrics = metrics.evaluate(answer_texts)
