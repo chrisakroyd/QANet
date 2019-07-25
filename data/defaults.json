@@ -61,5 +61,7 @@
   "fixed_contextual_embeddings": false,
   "override_cache_behaviour": false,
   "weight_decay": 0.000001,
-  "optimizer": "adam"
+  "optimizer": "adam",
+  "max_models": 12,
+  "gradual": true
 }

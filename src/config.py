@@ -124,4 +124,9 @@ def model_config(defaults):
                          'Whether or not the contextual embeddings are fixed (non-trainable).')
     flags.DEFINE_boolean('override_cache_behaviour', defaults.override_cache_behaviour,
                          'Overrides the default pipeline behaviour when using fixed contextual embeddings to always cache them (WARNING: Will use a lot of RAM.)')
+
+    # Flags related to creating ensembles
+    flags.DEFINE_integer('max_models', defaults.max_models, 'Maximum number of models to use in an ensemble.')
+    flags.DEFINE_boolean('gradual', defaults.gradual, 'Gradual ensemble, adds models to the ensemble only if they improve the validation performance.')
+
     return flags
