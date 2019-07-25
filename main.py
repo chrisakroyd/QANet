@@ -15,7 +15,8 @@ def main(sess_config, params):
     mode = params.mode.lower().strip()
 
     # If we are in modes other than download / pre-process load pre-existing configs.
-    if mode in {constants.Modes.TRAIN, constants.Modes.TEST, constants.Modes.DEMO, constants.Modes.DEBUG}:
+    if mode in {constants.Modes.TRAIN, constants.Modes.TEST, constants.Modes.DEMO, constants.Modes.DEBUG,
+                constants.Modes.CHECKPOINT_ENSEMBLE}:
         params = util.load_config(params, util.config_path(params))  # Loads a pre-existing config otherwise == params
 
     if mode == constants.Modes.TRAIN:
