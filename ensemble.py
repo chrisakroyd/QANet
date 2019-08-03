@@ -81,7 +81,7 @@ def calculate_scores(predictions):
     return answer_ids, answer_starts, answer_ends, scores
 
 
-def ensemble_best(model_predictions):
+def best_ensemble(model_predictions):
     """
         Ensemble method that chooses the most probable answer from a set of predictions. Able to handle an arbitrary
         number of models.
@@ -116,7 +116,7 @@ def ensemble_best(model_predictions):
     return answer_ids, answer_starts, answer_ends
 
 
-def ensemble_average(model_predictions):
+def average_ensemble(model_predictions):
     """
         Ensemble method that averages the start/end probabilities of all models and computes new start/end pointers.
         Able to handle an arbitrary number of models. (Models are mixed, answer comes from the highest span using the numpy
@@ -148,7 +148,7 @@ def ensemble_average(model_predictions):
     return answer_ids, answer_starts, answer_ends
 
 
-def ensemble_gradual(model_predictions, checkpoints, ensemble_function, spans, answer_texts, ctxt_mapping):
+def gradual_ensemble(model_predictions, checkpoints, ensemble_function, spans, answer_texts, ctxt_mapping):
     """
         Combines models using a gradual approach of adding one model at a time and only adding another if the
         addition of that model improves the ensemble metrics. Can be used with either ensemble_best or ensemble_average
@@ -161,6 +161,9 @@ def ensemble_gradual(model_predictions, checkpoints, ensemble_function, spans, a
             model_predictions: A list of prediction outputs from several different models.
             checkpoints: A list of checkpoint files used in the ensemble (Each should be unique).
             ensemble_function: A function that combines predictions from multiple models.
+            spans: Context texts + word spans.
+            answer_texts: Ground truth mapping.
+            ctxt_mapping: answer_id -> context_id mapping.
         Returns:
             Tuple, answer_ids, answer_starts, answer_ends
     """
@@ -175,21 +178,21 @@ def ensemble_gradual(model_predictions, checkpoints, ensemble_function, spans, a
 
     sorted_results = sorted(results, key=operator.itemgetter('score'), reverse=True)
 
-    best_ensemble = [sorted_results.pop(0)]
-    best_score = best_ensemble[0]['score']
+    top_ensemble = [sorted_results.pop(0)]
+    top_score = top_ensemble[0]['score']
 
     for result in sorted_results:
-        current_ensemble = best_ensemble + [result]
+        current_ensemble = top_ensemble + [result]
         predictions = [model['prediction'] for model in current_ensemble]
         ensembled_predictions = ensemble_function(predictions)
         em, f1 = metrics.evaluate_preds(ensembled_predictions, spans, answer_texts, ctxt_mapping)
         score = harmonic_mean(em, f1)
 
-        if score > best_score:
-            best_ensemble = current_ensemble
-            best_score = score
+        if score > top_score:
+            top_ensemble = current_ensemble
+            top_score = score
 
-    ensemble_predictions = [model['prediction'] for model in best_ensemble]
+    ensemble_predictions = [model['prediction'] for model in top_ensemble]
     answer_ids, answer_starts, answer_ends = ensemble_function(ensemble_predictions)
 
     return answer_ids, answer_starts, answer_ends
@@ -262,11 +265,10 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
             model_predictions.append(preds)
             sess.run(iterator.initializer)  # Resets val iterator, guarantees that
 
-        # ensemble_func = ensemble_average
-        ensemble_func = ensemble_best
+        ensemble_func = best_ensemble
 
         if params.gradual:
-            answer_ids, answer_starts, answer_ends = ensemble_gradual(model_predictions, checkpoints, ensemble_func,
+            answer_ids, answer_starts, answer_ends = gradual_ensemble(model_predictions, checkpoints, ensemble_func,
                                                                       test_spans, test_answer_texts, test_ctxt_mapping)
         else:
             answer_ids, answer_starts, answer_ends = ensemble_func(model_predictions)
