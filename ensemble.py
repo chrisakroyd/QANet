@@ -81,6 +81,31 @@ def calculate_scores(predictions):
     return answer_ids, answer_starts, answer_ends, scores
 
 
+def sort_predictions(model_predictions, checkpoints, spans, answer_texts, ctxt_mapping, descending=True):
+    """
+        Sorts predictions by the harmonic mean of the evaluated em/f1.
+
+        Args:
+            model_predictions: A list of prediction outputs from several different models.
+            checkpoints: A list of checkpoint files used in the ensemble (Each should be unique).
+            spans: Context texts + word spans.
+            answer_texts: Ground truth mapping.
+            ctxt_mapping: answer_id -> context_id mapping.
+            descending: Sort items in descending order (default True).
+        Returns:
+             List of sorted predictions.
+    """
+    predictions = []
+    for prediction, checkpoint in zip(model_predictions, checkpoints):
+        answer_ids, answer_starts, answer_ends, _, _ = zip(*prediction)
+        preds = map(np.concatenate, [answer_ids, answer_starts, answer_ends])
+        em, f1 = metrics.evaluate_preds(preds, spans, answer_texts, ctxt_mapping)
+        predictions.append({'score':  harmonic_mean(em, f1), 'name': checkpoint, 'prediction': prediction})
+
+    sorted_results = sorted(predictions, key=operator.itemgetter('score'), reverse=descending)
+    return sorted_results
+
+
 def best_ensemble(model_predictions):
     """
         Ensemble method that chooses the most probable answer from a set of predictions. Able to handle an arbitrary
@@ -167,22 +192,13 @@ def gradual_ensemble(model_predictions, checkpoints, ensemble_function, spans, a
         Returns:
             Tuple, answer_ids, answer_starts, answer_ends
     """
-    results = []
-
     # First, we find the best checkpoint by taking the harmonic mean between both metrics.
-    for prediction, checkpoint in zip(model_predictions, checkpoints):
-        answer_ids, answer_starts, answer_ends, _, _ = zip(*prediction)
-        preds = map(np.concatenate, [answer_ids, answer_starts, answer_ends])
-        em, f1 = metrics.evaluate_preds(preds, spans, answer_texts, ctxt_mapping)
-        results.append({'score':  harmonic_mean(em, f1), 'name': checkpoint, 'prediction': prediction})
-
-    sorted_results = sorted(results, key=operator.itemgetter('score'), reverse=True)
-
-    top_ensemble = [sorted_results.pop(0)]
+    sorted_predictions = sort_predictions(model_predictions, checkpoints, spans, answer_texts, ctxt_mapping)
+    top_ensemble = [sorted_predictions.pop(0)]
     top_score = top_ensemble[0]['score']
 
-    for result in sorted_results:
-        current_ensemble = top_ensemble + [result]
+    for prediction in sorted_predictions:
+        current_ensemble = top_ensemble + [prediction]
         predictions = [model['prediction'] for model in current_ensemble]
         ensembled_predictions = ensemble_function(predictions)
         em, f1 = metrics.evaluate_preds(ensembled_predictions, spans, answer_texts, ctxt_mapping)
@@ -264,6 +280,13 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
                 preds.append((answer_ids, answer_starts, answer_ends, prob_starts, prob_ends,))
             model_predictions.append(preds)
             sess.run(iterator.initializer)  # Resets val iterator, guarantees that
+
+        if len(model_predictions) > params.max_models:
+            # Pick the top k models.
+            sorted_predictions = sort_predictions(model_predictions, checkpoints, test_spans, test_answer_texts,
+                                                  test_ctxt_mapping)[:params.max_models]
+            model_predictions = [prediction['prediction'] for prediction in sorted_predictions]
+            checkpoints = [prediction['name'] for prediction in sorted_predictions]
 
         ensemble_func = best_ensemble
 
