@@ -7,17 +7,24 @@ from download import download
 from ensemble import ensemble
 
 
-def main(sess_config, params):
-    if params.help:
-        print(params)
+def main(sess_config, orig_params):
+    if orig_params.help:
+        print(orig_params)
         exit(0)
 
-    mode = params.mode.lower().strip()
+    mode = orig_params.mode.lower().strip()
 
     # If we are in modes other than download / pre-process load pre-existing configs.
     if mode in {constants.Modes.TRAIN, constants.Modes.TEST, constants.Modes.DEMO, constants.Modes.DEBUG,
                 constants.Modes.CHECKPOINT_ENSEMBLE}:
-        params = util.load_config(params, util.config_path(params))  # Loads a pre-existing config otherwise == params
+        params = util.load_config(orig_params, util.config_path(orig_params))  # Loads a pre-existing config otherwise == params
+    else:
+        params = orig_params
+
+    # Some parameters in ensemble mode always need to be taken from the command line.
+    if mode == constants.Modes.ENSEMBLE or mode == constants.Modes.CHECKPOINT_ENSEMBLE:
+        params.gradual = orig_params.gradual
+        params.max_models = orig_params.max_models
 
     if mode == constants.Modes.TRAIN:
         train(sess_config, params)

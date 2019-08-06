@@ -62,6 +62,6 @@
   "override_cache_behaviour": false,
   "weight_decay": 0.000001,
   "optimizer": "adam",
-  "max_models": 12,
-  "gradual": true
+  "max_models": 15,
+  "gradual": false
 }
