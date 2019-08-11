@@ -46,13 +46,7 @@ def train(sess_config, params, debug=False):
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
 
-        if params.model == constants.ModelTypes.QANET:
-            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
-        elif params.model == constants.ModelTypes.QANET_CONTEXTUAL:
-            qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
-        else:
-            raise ValueError('Unsupported model type.')
-
+        qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
         placeholders = iterator.get_next()
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
         y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)

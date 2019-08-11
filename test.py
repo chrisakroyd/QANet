@@ -4,7 +4,7 @@ from tqdm import tqdm
 from src import config, constants, loaders, metrics, models, pipeline, train_utils, util
 
 
-def log_results(results, key=''):
+def log_results(results, key):
     """ Logs a ranked list of results
 
         Args:
@@ -50,13 +50,7 @@ def test(sess_config, params, checkpoint_selection=False):
         sess.run(iterator.initializer)
         sess.run(tf.tables_initializer())
 
-        if params.model == constants.ModelTypes.QANET:
-            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
-        elif params.model == constants.ModelTypes.QANET_CONTEXTUAL:
-            qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
-        else:
-            raise ValueError('Unsupported model type.')
-
+        qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
         placeholders = iterator.get_next()
         is_training = tf.placeholder_with_default(True, shape=())
         start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=is_training)
