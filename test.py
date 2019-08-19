@@ -28,7 +28,7 @@ def test(sess_config, params, checkpoint_selection=False):
             params: hparams
             checkpoint_selection: Whether or not to run automated eval over all checkpoints as opposed to latest only.
     """
-    model_dir, log_dir = util.save_paths(params)
+    model_dir, log_dir = util.save_paths(params.models_dir, params.run_name)
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
 

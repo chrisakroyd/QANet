@@ -117,27 +117,28 @@ def embedding_paths(params):
     return paths
 
 
-def save_paths(params):
+def save_paths(models_dir, run_name):
     """ Generates paths to save trained models and logs for each run.
         Args:
-            params: A dictionary of parameters.
+            models_dir: Directory in which we save checkpoints/logs.
+            run_name: Name of the run which we want to generate paths to.
         returns:
             String paths for loading data, saved models and saved logs.
     """
-    model_path = os.path.join(params.models_dir, constants.DirNames.CHECKPOINTS, params.run_name)
-    logs_path = os.path.join(params.models_dir, constants.DirNames.LOGS, params.run_name)
+    model_path = os.path.join(models_dir, constants.DirNames.CHECKPOINTS, run_name)
+    logs_path = os.path.join(models_dir, constants.DirNames.LOGS, run_name)
     return model_path, logs_path
 
 
 def results_path(params):
     """ Generates a path to save test results. """
-    _, logs_path = save_paths(params)
+    _, logs_path = save_paths(params.models_dir, params.run_name)
     return os.path.join(logs_path, constants.FileNames.RESULTS.format(timestamp=int(time.time())))
 
 
 def config_path(params):
     """ Generates a path to a .json file containing parameters used for a train run. """
-    model_path, _ = save_paths(params)
+    model_path, _ = save_paths(params.models_dir, params.run_name)
     return os.path.join(model_path, constants.FileNames.CONFIG)
 
 

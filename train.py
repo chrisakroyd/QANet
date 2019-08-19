@@ -6,7 +6,7 @@ from src import config, constants, loaders, metrics, models, pipeline, train_uti
 
 def train(sess_config, params, debug=False):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
-    model_dir, log_dir = util.save_paths(params)
+    model_dir, log_dir = util.save_paths(params.models_dir, params.run_name)
     word_index_path, _, char_index_path = util.index_paths(params)
     embedding_paths = util.embedding_paths(params)
     util.make_dirs([model_dir, log_dir])
