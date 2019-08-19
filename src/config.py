@@ -128,5 +128,5 @@ def model_config(defaults):
     # Flags related to creating ensembles
     flags.DEFINE_integer('max_models', defaults.max_models, 'Maximum number of models to use in an ensemble.')
     flags.DEFINE_boolean('gradual', defaults.gradual, 'Gradual ensemble, adds models to the ensemble only if they improve the validation performance.')
-
+    flags.DEFINE_list('ensemble_models', defaults.ensemble_models, 'A list of string run names for trained models.')
     return flags

@@ -25,6 +25,7 @@ def main(sess_config, orig_params):
     if mode == constants.Modes.ENSEMBLE or mode == constants.Modes.CHECKPOINT_ENSEMBLE:
         params.gradual = orig_params.gradual
         params.max_models = orig_params.max_models
+        params.ensemble_models = orig_params.ensemble_models
 
     if mode == constants.Modes.TRAIN:
         train(sess_config, params)

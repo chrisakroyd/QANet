@@ -63,5 +63,6 @@
   "weight_decay": 0.000001,
   "optimizer": "adam",
   "max_models": 15,
-  "gradual": false
+  "gradual": false,
+  "ensemble_models": ["cakroyd_qanet"]
 }
