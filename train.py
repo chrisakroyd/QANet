@@ -7,8 +7,8 @@ from src import config, constants, loaders, metrics, models, pipeline, train_uti
 def train(sess_config, params, debug=False):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
     model_dir, log_dir = util.save_paths(params.models_dir, params.run_name)
-    word_index_path, _, char_index_path = util.index_paths(params)
-    embedding_paths = util.embedding_paths(params)
+    word_index_path, _, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    embedding_paths = util.embedding_paths(params.data_dir, params.dataset)
     util.make_dirs([model_dir, log_dir])
 
     use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
@@ -23,7 +23,9 @@ def train(sess_config, params, debug=False):
         if not util.yes_no_prompt(constants.Prompts.LARGE_CONTEXTUAL_SHUFFLE_BUFFER):
             exit(0)
 
-    util.save_config(params, path=util.config_path(params), overwrite=False)  # Saves the run parameters in a .json
+    util.save_config(params,
+                     path=util.config_path(params.models_dir, params.run_name),
+                     overwrite=False)  # Saves the run parameters in a .json
 
     train_data, val_data = loaders.load_squad(params)
     train_spans, train_answers, train_ctxt_mapping = train_data
@@ -34,7 +36,7 @@ def train(sess_config, params, debug=False):
 
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
-        train_record_path, val_record_path, _ = util.tf_record_paths(params)
+        train_record_path, val_record_path, _ = util.tf_record_paths(params.data_dir, params.dataset)
         train_set, train_iter = pipeline.create_pipeline(params, tables, train_record_path,
                                                          use_contextual=use_contextual, training=True)
         _, val_iter = pipeline.create_pipeline(params, tables, val_record_path,
@@ -131,5 +133,5 @@ def train(sess_config, params, debug=False):
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     flags = config.model_config(defaults).FLAGS
-    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    params = util.load_config(flags, util.config_path(flags.models_dir, flags.run_name))  # Loads a pre-existing config otherwise == params
     train(config.gpu_config(), params)

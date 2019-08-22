@@ -29,10 +29,10 @@ def test(sess_config, params, checkpoint_selection=False):
             checkpoint_selection: Whether or not to run automated eval over all checkpoints as opposed to latest only.
     """
     model_dir, log_dir = util.save_paths(params.models_dir, params.run_name)
-    word_index_path, _, char_index_path = util.index_paths(params)
-    embedding_paths = util.embedding_paths(params)
+    word_index_path, _, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    embedding_paths = util.embedding_paths(params.data_dir, params.dataset)
 
-    _, _, _, _, test_context_path, test_answer_path = util.processed_data_paths(params)
+    _, _, _, _, test_context_path, test_answer_path = util.processed_data_paths(params.data_dir, params.dataset)
     test_spans, test_answer_texts, test_ctxt_mapping = loaders.load_squad_set(test_context_path, test_answer_path)
     test_answers = util.load_json(test_answer_path)
     use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
@@ -42,7 +42,7 @@ def test(sess_config, params, checkpoint_selection=False):
 
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
-        _, _, test_record_path = util.tf_record_paths(params)
+        _, _, test_record_path = util.tf_record_paths(params.data_dir, params.dataset)
         _, iterator = pipeline.create_pipeline(params, tables, test_record_path,
                                                use_contextual=use_contextual, training=False)
 
@@ -90,7 +90,7 @@ def test(sess_config, params, checkpoint_selection=False):
             print('\nExact Match: {em}, F1: {f1}'.format(em=em, f1=f1))
 
             if params.write_answer_file:
-                results_path = util.results_path(params)
+                results_path = util.results_path(params.models_dir, params.run_name)
                 out_file = {}
                 for key, value in answer_texts.items():
                     out_file[test_answers[key]['id']] = answer_texts[key]['prediction']
@@ -100,5 +100,5 @@ def test(sess_config, params, checkpoint_selection=False):
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     flags = config.model_config(defaults).FLAGS
-    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    params = util.load_config(flags, util.config_path(flags.models_dir, flags.run_name))  # Loads a pre-existing config otherwise == params
     test(config.gpu_config(), params)
