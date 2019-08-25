@@ -33,6 +33,7 @@ def train(sess_config, params, debug=False):
     
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
+    num_val_batches = (len(val_answers) // params.batch_size + 1) + 1
 
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
@@ -110,7 +111,7 @@ def train(sess_config, params, debug=False):
             if global_step % params.checkpoint_every == 0:
                 val_preds = []
                 # +1 for uneven batch values, +1 for the range.
-                for _ in tqdm(range(1, (len(val_answers) // params.batch_size + 1) + 1)):
+                for _ in tqdm(range(1, num_val_batches)):
                     answer_id, loss, answer_start, answer_end = sess.run(fetches=val_outputs,
                                                                          feed_dict={handle: val_handle,
                                                                                     qanet.dropout: 0.0,

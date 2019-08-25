@@ -147,18 +147,18 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
 
 
 def process(params):
-    directories = util.get_directories(params)
+    directories = util.get_directories(params.data_dir, params.dataset, params.models_dir)
     util.make_dirs(directories)
     # Path to squad
-    train_raw_path, dev_raw_path = util.raw_data_paths(params)
-    train_record_path, dev_record_path, test_record_path = util.tf_record_paths(params)
-    examples_path = util.examples_path(params)
+    train_raw_path, dev_raw_path = util.raw_data_paths(params.raw_data_dir, params.dataset)
+    train_record_path, dev_record_path, test_record_path = util.tf_record_paths(params.data_dir, params.dataset)
+    examples_path = util.examples_path(params.data_dir, params.dataset)
     # Paths for dumping our processed data.
     train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path, \
-    test_contexts_path, test_answers_path = util.processed_data_paths(params)
+    test_contexts_path, test_answers_path = util.processed_data_paths(params.data_dir, params.dataset)
     # Get paths for saving embedding related info.
-    word_index_path, trainable_index_path, char_index_path = util.index_paths(params)
-    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params)
+    word_index_path, trainable_index_path, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params.data_dir, params.dataset)
 
     # Read the embedding index and create a vocab of words with embeddings.
     print('Loading Embeddings, this may take some time...')

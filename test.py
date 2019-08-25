@@ -36,6 +36,7 @@ def test(sess_config, params, checkpoint_selection=False):
     test_spans, test_answer_texts, test_ctxt_mapping = loaders.load_squad_set(test_context_path, test_answer_path)
     test_answers = util.load_json(test_answer_path)
     use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
+    num_batches = (len(test_answer_texts) // params.batch_size + 1) + 1
 
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
@@ -71,7 +72,7 @@ def test(sess_config, params, checkpoint_selection=False):
             saver.restore(sess, checkpoint)
             preds = []
             # +1 for uneven batch values, +1 for the range.
-            for _ in tqdm(range(1, (len(test_answer_texts) // params.batch_size + 1) + 1)):
+            for _ in tqdm(range(1, num_batches)):
                 answer_ids, answer_starts, answer_ends = sess.run([id_tensor, start_pred, end_pred],
                                                                   feed_dict={is_training: False})
                 preds.append((answer_ids, 0.0, answer_starts, answer_ends,))
