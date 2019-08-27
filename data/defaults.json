@@ -41,6 +41,7 @@
   "model_encoder_blocks": 7,
   "model_encoder_convs": 2,
   "model_encoder_kernel_width": 5,
+  "output_bias": false,
   "dropout": 0.1,
   "attn_dropout": 0.1,
   "l2": 3e-7,

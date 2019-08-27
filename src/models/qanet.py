@@ -39,8 +39,8 @@ class QANet(tf.keras.Model):
                                                       recompute_gradients=params.low_memory,
                                                       name='model_encoder')
 
-        self.start_output = layers.OutputLayer(name='start_logits')
-        self.end_output = layers.OutputLayer(name='end_logits')
+        self.start_output = layers.OutputLayer(name='start_logits', use_bias=params.output_bias)
+        self.end_output = layers.OutputLayer(name='end_logits', use_bias=params.output_bias)
 
         self.predict_pointers = layers.PredictionHead(params.answer_limit)
 
