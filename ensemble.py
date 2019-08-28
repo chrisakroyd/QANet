@@ -26,8 +26,8 @@ def get_predictions(prob_start, prob_end, max_context_size=400, max_answer_size=
     """
     max_x_len = prob_start.shape[1]
     upper_tri_mat = np.triu(
-            np.ones([max_context_size, max_context_size], dtype='float32') -
-            np.triu(np.ones([max_context_size, max_context_size], dtype='float32'), k=max_answer_size)
+        np.ones([max_context_size, max_context_size], dtype='float32') -
+        np.triu(np.ones([max_context_size, max_context_size], dtype='float32'), k=max_answer_size)
     )[:max_x_len, :max_x_len]
 
     # Outer product
@@ -100,7 +100,7 @@ def sort_predictions(model_predictions, checkpoints, spans, answer_texts, ctxt_m
         answer_ids, answer_starts, answer_ends, _, _ = zip(*prediction)
         preds = map(np.concatenate, [answer_ids, answer_starts, answer_ends])
         em, f1 = metrics.evaluate_preds(preds, spans, answer_texts, ctxt_mapping)
-        predictions.append({'score':  harmonic_mean(em, f1), 'name': checkpoint, 'prediction': prediction})
+        predictions.append({'score': harmonic_mean(em, f1), 'name': checkpoint, 'prediction': prediction})
 
     sorted_results = sorted(predictions, key=operator.itemgetter('score'), reverse=descending)
     return sorted_results
@@ -217,102 +217,139 @@ def gradual_ensemble(model_predictions, checkpoints, ensemble_function, spans, a
 def ensemble(sess_config, params, checkpoint_ensemble=False):
     """
         Test procedure, optionally allows automated eval + ranking of all model checkpoints to find the best performing.
+
+        NOTE: Does not currently support mixing ELMO/Non-ELMO models in ensembles.
+
         Args:
             sess_config: tf session.
             params: hparams
             checkpoint_ensemble: Whether or not to run automated eval over all checkpoints as opposed to latest only.
     """
+    word_index_path, _, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    embedding_paths = util.embedding_paths(params.data_dir, params.dataset)
 
-    word_index_path, _, char_index_path = util.index_paths(params)
-    embedding_paths = util.embedding_paths(params)
-
-    _, _, _, _, test_context_path, test_answer_path = util.processed_data_paths(params)
+    _, _, _, _, test_context_path, test_answer_path = util.processed_data_paths(params.data_dir, params.dataset)
     test_spans, test_answer_texts, test_ctxt_mapping = loaders.load_squad_set(test_context_path, test_answer_path)
     test_answers = util.load_json(test_answer_path)
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
-
-    model_dir, log_dir = util.save_paths(params)
     use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
+    num_batches = (len(test_answer_texts) // params.batch_size + 1) + 1
+    model_predictions = []
 
-    with tf.device('/cpu:0'):
-        tables = pipeline.create_lookup_tables(vocabs)
-        _, _, test_record_path = util.tf_record_paths(params)
-        _, iterator = pipeline.create_pipeline(params, tables, test_record_path,
-                                               use_contextual=use_contextual, training=False)
+    if checkpoint_ensemble:
+        model_dir, _ = util.save_paths(params.models_dir, params.run_name)
+        checkpoints = tf.train.get_checkpoint_state(model_dir).all_model_checkpoint_paths
 
-    with tf.Session(config=sess_config) as sess:
-        sess.run(iterator.initializer)
-        sess.run(tf.tables_initializer())
+        with tf.device('/cpu:0'):
+            tables = pipeline.create_lookup_tables(vocabs)
+            _, _, test_record_path = util.tf_record_paths(params.data_dir, params.dataset)
+            _, iterator = pipeline.create_pipeline(params, tables, test_record_path,
+                                                   use_contextual=use_contextual, training=False)
 
-        if params.model == constants.ModelTypes.QANET:
-            qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
-        elif params.model == constants.ModelTypes.QANET_CONTEXTUAL:
-            qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
-        else:
-            raise ValueError('Unsupported model type.')
+        with tf.Session(config=sess_config) as sess:
+            sess.run(iterator.initializer)
+            sess.run(tf.tables_initializer())
 
-        placeholders = iterator.get_next()
-        is_training = tf.placeholder_with_default(True, shape=())
-        start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders, training=is_training)
-        id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
+            placeholders = iterator.get_next()
+            is_training = tf.placeholder_with_default(True, shape=())
 
-        sess.run(tf.global_variables_initializer())
-        # Restore the moving average version of the learned variables for eval.
-        saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
+            qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
+            start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders, training=is_training)
+            id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
 
-        if checkpoint_ensemble:
-            checkpoints = tf.train.get_checkpoint_state(model_dir).all_model_checkpoint_paths
-        else:
-            raise ValueError('Not implemented.')
+            sess.run(tf.global_variables_initializer())
+            # Restore the moving average version of the learned variables for eval.
+            saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
 
-        model_predictions = []
+            for checkpoint in tqdm(checkpoints):
+                saver.restore(sess, checkpoint)
+                preds = []
+                # +1 for uneven batch values, +1 for the range.
+                for _ in tqdm(range(1, num_batches)):
+                    answer_ids, answer_starts, answer_ends, prob_starts, prob_ends = sess.run(
+                        [id_tensor, start_pred, end_pred, start_prob, end_prob],
+                        feed_dict={is_training: False})
 
-        for checkpoint in tqdm(checkpoints):
-            saver.restore(sess, checkpoint)
-            preds = []
-            # +1 for uneven batch values, +1 for the range.
-            for _ in tqdm(range(1, (len(test_answer_texts) // params.batch_size + 1) + 1)):
-                answer_ids, answer_starts, answer_ends, prob_starts, prob_ends = sess.run(
-                    [id_tensor, start_pred, end_pred, start_prob, end_prob],
-                    feed_dict={is_training: False})
+                    preds.append((answer_ids, answer_starts, answer_ends, prob_starts, prob_ends,))
+                model_predictions.append(preds)
+                sess.run(iterator.initializer)  # Resets val iterator, guarantees that
 
-                preds.append((answer_ids, answer_starts, answer_ends, prob_starts, prob_ends,))
-            model_predictions.append(preds)
-            sess.run(iterator.initializer)  # Resets val iterator, guarantees that
+    else:
+        model_dirs = [util.save_paths(params.models_dir, run_name)[0] for run_name in params.ensemble_models]
+        ensemble_params = [util.namespace_json(util.config_path(params.models_dir, run_name))
+                           for run_name in params.ensemble_models]
+        checkpoints = [tf.train.latest_checkpoint(model_dir) for model_dir in model_dirs]
 
-        if len(model_predictions) > params.max_models:
-            # Pick the top k models.
-            sorted_predictions = sort_predictions(model_predictions, checkpoints, test_spans, test_answer_texts,
-                                                  test_ctxt_mapping)[:params.max_models]
-            model_predictions = [prediction['prediction'] for prediction in sorted_predictions]
-            checkpoints = [prediction['name'] for prediction in sorted_predictions]
+        for i in tqdm(range(len(checkpoints))):
+            checkpoint = checkpoints[i]
+            e_param = ensemble_params[i]
 
-        ensemble_func = best_ensemble
+            tf.reset_default_graph()
+            with tf.Session(config=sess_config) as sess:
+                with tf.device('/cpu:0'):
+                    tables = pipeline.create_lookup_tables(vocabs)
+                    _, _, test_record_path = util.tf_record_paths(params.data_dir, params.dataset)
+                    _, iterator = pipeline.create_pipeline(e_param, tables, test_record_path,
+                                                           use_contextual=use_contextual, training=False)
+                sess.run(iterator.initializer)
+                sess.run(tf.tables_initializer())
 
-        if params.gradual:
-            answer_ids, answer_starts, answer_ends = gradual_ensemble(model_predictions, checkpoints, ensemble_func,
-                                                                      test_spans, test_answer_texts, test_ctxt_mapping)
-        else:
-            answer_ids, answer_starts, answer_ends = ensemble_func(model_predictions)
+                placeholders = iterator.get_next()
+                is_training = tf.placeholder_with_default(True, shape=())
+                qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, e_param)
+                start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders,
+                                                                                             training=is_training)
+                id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
 
-        answer_texts = metrics.get_answer_data(test_spans, test_answer_texts, test_ctxt_mapping,
-                                               answer_ids, answer_starts, answer_ends)
-        eval_metrics = metrics.evaluate(answer_texts)
-        em, f1 = util.unpack_dict(eval_metrics, keys=['exact_match', 'f1'])
+                sess.run(tf.global_variables_initializer())
 
-        print('\nExact Match: {em}, F1: {f1}'.format(em=em, f1=f1))
+                # Restore the moving average version of the learned variables for eval.
+                saver = train_utils.get_saver(ema_decay=e_param.ema_decay, ema_vars_only=True)
+                saver.restore(sess, checkpoint)
+                preds = []
+                # +1 for uneven batch values, +1 for the range.
+                for _ in tqdm(range(1, num_batches)):
+                    answer_ids, answer_starts, answer_ends, prob_starts, prob_ends = sess.run(
+                        [id_tensor, start_pred, end_pred, start_prob, end_prob],
+                        feed_dict={is_training: False})
 
-        if params.write_answer_file:
-            results_path = util.results_path(params)
-            out_file = {}
-            for key, value in answer_texts.items():
-                out_file[test_answers[key]['id']] = answer_texts[key]['prediction']
-            util.save_json(results_path, out_file)
+                    preds.append((answer_ids, answer_starts, answer_ends, prob_starts, prob_ends,))
+                model_predictions.append(preds)
+
+    if len(model_predictions) > params.max_models:
+        # Pick the top k models.
+        sorted_predictions = sort_predictions(model_predictions, checkpoints, test_spans, test_answer_texts,
+                                              test_ctxt_mapping)[:params.max_models]
+        model_predictions = [prediction['prediction'] for prediction in sorted_predictions]
+        checkpoints = [prediction['name'] for prediction in sorted_predictions]
+
+    ensemble_func = best_ensemble
+
+    if params.gradual:
+        answer_ids, answer_starts, answer_ends = gradual_ensemble(model_predictions, checkpoints, ensemble_func,
+                                                                  test_spans, test_answer_texts, test_ctxt_mapping)
+    else:
+        answer_ids, answer_starts, answer_ends = ensemble_func(model_predictions)
+
+    answer_texts = metrics.get_answer_data(test_spans, test_answer_texts, test_ctxt_mapping,
+                                           answer_ids, answer_starts, answer_ends)
+    eval_metrics = metrics.evaluate(answer_texts)
+    em, f1 = util.unpack_dict(eval_metrics, keys=['exact_match', 'f1'])
+
+    print('\nExact Match: {em}, F1: {f1}'.format(em=em, f1=f1))
+
+    if params.write_answer_file:
+        results_path = util.results_path(params.models_dir, params.run_name)
+        out_file = {}
+        for key, value in answer_texts.items():
+            out_file[test_answers[key]['id']] = answer_texts[key]['prediction']
+        util.save_json(results_path, out_file)
 
 
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     flags = config.model_config(defaults).FLAGS
-    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    params = util.load_config(flags, util.config_path(flags.models_dir,
+                                                      flags.run_name))  # Loads a pre-existing config otherwise == params
     ensemble(config.gpu_config(), params)
