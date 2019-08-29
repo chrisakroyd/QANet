@@ -255,23 +255,17 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
             is_training = tf.placeholder_with_default(True, shape=())
 
             qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
-            start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders, training=is_training)
+            start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders,
+                                                                                         training=is_training)
             id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
+            ops = [id_tensor, start_pred, end_pred, start_prob, end_prob]
 
             sess.run(tf.global_variables_initializer())
             # Restore the moving average version of the learned variables for eval.
             saver = train_utils.get_saver(ema_decay=params.ema_decay, ema_vars_only=True)
-
             for checkpoint in tqdm(checkpoints):
                 saver.restore(sess, checkpoint)
-                preds = []
-                # +1 for uneven batch values, +1 for the range.
-                for _ in tqdm(range(1, num_batches)):
-                    answer_ids, answer_starts, answer_ends, prob_starts, prob_ends = sess.run(
-                        [id_tensor, start_pred, end_pred, start_prob, end_prob],
-                        feed_dict={is_training: False})
-
-                    preds.append((answer_ids, answer_starts, answer_ends, prob_starts, prob_ends,))
+                preds = [sess.run(ops, feed_dict={is_training: False}) for _ in tqdm(range(1, num_batches))]
                 model_predictions.append(preds)
                 sess.run(iterator.initializer)  # Resets val iterator, guarantees that
 
@@ -301,20 +295,14 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
                 start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders,
                                                                                              training=is_training)
                 id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
+                ops = [id_tensor, start_pred, end_pred, start_prob, end_prob]
 
                 sess.run(tf.global_variables_initializer())
-
                 # Restore the moving average version of the learned variables for eval.
                 saver = train_utils.get_saver(ema_decay=e_param.ema_decay, ema_vars_only=True)
                 saver.restore(sess, checkpoint)
-                preds = []
-                # +1 for uneven batch values, +1 for the range.
-                for _ in tqdm(range(1, num_batches)):
-                    answer_ids, answer_starts, answer_ends, prob_starts, prob_ends = sess.run(
-                        [id_tensor, start_pred, end_pred, start_prob, end_prob],
-                        feed_dict={is_training: False})
 
-                    preds.append((answer_ids, answer_starts, answer_ends, prob_starts, prob_ends,))
+                preds = [sess.run(ops, feed_dict={is_training: False}) for _ in tqdm(range(1, num_batches))]
                 model_predictions.append(preds)
 
     if len(model_predictions) > params.max_models:
