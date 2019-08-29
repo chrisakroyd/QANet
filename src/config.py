@@ -92,7 +92,7 @@ def model_config(defaults):
                          'Number of conv layers in each block of the model encoder.', lower_bound=0)
     flags.DEFINE_integer('model_encoder_kernel_width', defaults.model_encoder_kernel_width,
                          'Kernel width of each conv layer of the model encoder.', lower_bound=1)
-    flags.DEFINE_boolean('ouput_bias', defaults.output_bias, 'Whether or not to include a b term when calculating pointers.')
+    flags.DEFINE_boolean('output_bias', defaults.output_bias, 'Whether or not to include a b term when calculating pointers.')
 
     # Flags for train hyper params e.g. dropout, l2, gradient ema decay values (set to QANet paper values).
     flags.DEFINE_float('dropout', defaults.dropout, 'Dropout rate.', lower_bound=0.0, upper_bound=1.0)

@@ -27,7 +27,7 @@ def train(sess_config, params, debug=False):
                      path=util.config_path(params.models_dir, params.run_name),
                      overwrite=False)  # Saves the run parameters in a .json
 
-    train_data, val_data = loaders.load_squad(params)
+    train_data, val_data = loaders.load_squad(params.data_dir, params.dataset)
     train_spans, train_answers, train_ctxt_mapping = train_data
     val_spans, val_answers, val_ctxt_mapping = val_data
     
