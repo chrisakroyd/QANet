@@ -33,7 +33,7 @@ class QANetContextual(tf.keras.Model):
                                                           dropout=self.dropout,
                                                           attn_dropout=self.attn_dropout,
                                                           ff_inner_size=params.ff_inner_size,
-                                                          recompute_gradients=params.low_memory,
+                                                          recompute=params.low_memory,
                                                           name='embedding_encoder')
 
         self.context_query = layers.ContextQueryAttention(name='context_query_attention')
@@ -46,7 +46,7 @@ class QANetContextual(tf.keras.Model):
                                                       dropout=self.dropout,
                                                       attn_dropout=self.attn_dropout,
                                                       ff_inner_size=params.ff_inner_size,
-                                                      recompute_gradients=params.low_memory,
+                                                      recompute=params.low_memory,
                                                       name='model_encoder')
 
         self.start_output = layers.OutputLayer(name='start_logits', use_bias=params.output_bias)

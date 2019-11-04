@@ -6,7 +6,7 @@ from src import layers
 class EncoderBlock(tf.keras.Model):
     def __init__(self, conv_layers, kernel_size, block_number=0, total_blocks=1,
                  hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1, ff_inner_size=1.0,
-                 recompute_gradients=False, **kwargs):
+                 recompute=False, **kwargs):
         """ Builds an encoder block.
 
             Encoder block from the paper "QANet" (https://arxiv.org/pdf/1804.09541.pdf, section 2.2), it is roughly
@@ -29,7 +29,7 @@ class EncoderBlock(tf.keras.Model):
                 heads: Number of attention heads to use.
                 dropout: Fraction of input units to drop in all dropout layers within this block.
                 ff_inner_size: Number of units in the inner non-linear layer of the feed-forward block.
-                recompute_gradients: Whether or not to recompute the output of the multi-head attention layer
+                recompute: Whether or not to recompute the output of the multi-head attention layer
                     during back-propagation to save GPU Memory.
         """
         super(EncoderBlock, self).__init__(**kwargs)
@@ -53,16 +53,17 @@ class EncoderBlock(tf.keras.Model):
 
         # We need to wrap the layers we with a variable scope to 100% ensure that it only recomputes those values
         # but this breaks backwards compatibility on checkpoints. Therefore only wrap if we are recomputing
-        if recompute_gradients:
+        if recompute:
             with tf.variable_scope('self_attention_%d' % self.self_attention_id, reuse=tf.AUTO_REUSE):
-                self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout)
+                self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout,
+                                                            recompute=recompute)
         else:
             self.multi_head = layers.MultiHeadAttention(hidden_size, num_heads=heads, dropout=attn_dropout)
 
         self.self_attention = layers.SublayerWrapper(self.multi_head,
                                                      use_layer_dropout=False,
                                                      dropout=dropout,
-                                                     recompute_gradients=recompute_gradients,
+                                                     recompute_gradients=recompute,
                                                      name='self_attention_%d' % self.self_attention_id)
 
         self.feed_forward = layers.SublayerWrapper(layers.FeedForwardLayer(hidden_size, inner_size=ff_inner_size,

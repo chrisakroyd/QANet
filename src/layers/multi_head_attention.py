@@ -4,7 +4,7 @@ from src import layers
 
 
 class MultiHeadAttention(Layer):
-    def __init__(self, hidden_size=128, num_heads=8, dropout=0.1, use_bias=False, **kwargs):
+    def __init__(self, hidden_size=128, num_heads=8, dropout=0.1, use_bias=False, recompute=False, **kwargs):
         """ Multi-Headed Attention implementation.
 
             This is an implementation of multi-head attention based on the paper "Attention
@@ -24,12 +24,15 @@ class MultiHeadAttention(Layer):
                 dropout: Fraction of units to drop.
                 use_bias: Whether or not to use bias on the linear transformations, in Attention is All You Need no bias
                           is used but in BERT, GPT and GPT-2 it is.
+                recompute: Whether or not we are recomputing the gradients on this layer, if true we skip
+                           non-deterministic ops like dropout.
                 self_attention: Boolean value for whether to use self-attention on the inputs.
         """
         super(MultiHeadAttention, self).__init__(**kwargs)
         self.supports_masking = True
         self.num_heads = num_heads
         self.hidden_size = hidden_size
+        self.recompute = recompute
 
         self.queries_layer = Conv1D(self.hidden_size, kernel_size=1, use_bias=use_bias,
                                     kernel_initializer=layers.create_initializer())
@@ -86,7 +89,6 @@ class MultiHeadAttention(Layer):
             x, y = x
         else:  # Invalid, we can only take a tensor or list of two tensors for attention.
             raise ValueError('Expected a maximum of two tensors passed to multi-head attention, got: {}'.format(len(x)))
-
         batch_size, length_x = self.compute_input_shape(x)
         _, length_y = self.compute_input_shape(y)
         query, key, values = self.queries_layer(x), self.keys_layer(y), self.values_layer(y)
@@ -108,7 +110,11 @@ class MultiHeadAttention(Layer):
                 raise ValueError('Expected mask dtype to be tf.float32 or tf.bool')
 
         weights = self.softmax(logits)
-        weights = self.dropout(weights, training=training)
+
+        # Dropout is random -> Avoid when recomputing gradients as can't work out a way to make it deterministic.
+        if not self.recompute:
+            weights = self.dropout(weights, training=training)
+
         attention = tf.matmul(weights, values)
 
         attention = self.combine_heads(attention, batch_size, length_x)  # [batch_size, length_x, hidden_size]
