@@ -45,13 +45,17 @@ def demo(sess_config, params):
     # Keep sess alive as long as the server is live, probably not best practice but it works @TODO Improve this.
     sess = tf.Session(config=sess_config)
     sess.run(tf.tables_initializer())
-    qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+
+    if params.use_contextual:
+        qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
+    else:
+        qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
+
     pipeline_placeholders = pipeline.create_placeholders()
     demo_dataset, demo_iter = pipeline.create_demo_pipeline(params, tables, pipeline_placeholders)
 
     demo_placeholders = demo_iter.get_next()
-    demo_inputs = util.dict_keys_as_tuple(demo_placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
-    _, _, start_pred, end_pred, start_prob, end_prob = qanet(demo_inputs)
+    _, _, start_pred, end_pred, start_prob, end_prob = qanet(demo_placeholders)
     demo_outputs = [start_pred, end_pred, start_prob, end_prob]
     sess.run(tf.global_variables_initializer())
 

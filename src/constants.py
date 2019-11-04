@@ -15,6 +15,9 @@ class Urls:
     DEV_SQUAD_2 = 'https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json'
     GLOVE_380_300D_URL = 'http://nlp.stanford.edu/data/glove.840B.300d.zip'
     EMBEDDING_URL = GLOVE_380_300D_URL
+    ELMO = 'https://tfhub.dev/google/elmo/2'
+    BERT_BASE = 'https://tfhub.dev/google/bert_cased_L-12_H-768_A-12/1'
+    BERT_LARGE = 'https://tfhub.dev/google/bert_cased_L-24_H-1024_A-16/1'
 
 
 class Datasets:
@@ -52,6 +55,7 @@ class FileNames:
         * TF_RECORD: Tfrecord template string for storing processed train/dev files.
         * TRAIN: String representing train mode data.
         * DEV: String representing val mode data.
+        * CONFIG: Name of a model config file.
     """
     TRAIN_SQUAD_1 = 'train-v1.1.json'
     DEV_SQUAD_1 = 'dev-v1.1.json'
@@ -97,6 +101,9 @@ class Modes:
         The following keys are defined:
         * TRAIN: training mode.
         * TEST: testing mode.
+        * CHECKPOINT_SELECTION: test mode run over all checkpoints with best performing being used.
+        * CHECKPOINT_ENSEMBLE: test mode run over all checkpoints with all checkpoints being used for an ensemble.
+        * ENSEMBLE: test mode run over a list of models with all models being used for an ensemble.
         * PREPROCESS: preprocess mode.
         * DEBUG: Debug mode.
         * DEMO: inference mode.
@@ -107,8 +114,10 @@ class Modes:
     DOWNLOAD = 'download'
     PREPROCESS = 'preprocess'
     TEST = 'test'
+    CHECKPOINT_SELECTION = 'checkpoint_selection'
+    CHECKPOINT_ENSEMBLE = 'checkpoint_ensemble'
+    ENSEMBLE = 'ensemble'
     TRAIN = 'train'
-    TRANSLATE = 'translate'
 
 
 class EmbeddingTypes:
@@ -142,15 +151,72 @@ class ErrorMessages:
     INVALID_CONTEXT = 'Context must be longer than 0 excluding space characters.'
     INVALID_QUERY = 'Query must be longer than 0 excluding space characters.'
     OUT_OF_RANGE_ERR = 'Iterator out of range, attempted to call too many times. (Please report this error)'
+    UNSUPPORTED_CONTEXTUAL_MODEL = 'Unsupported contextual model {model},' \
+                                   'valid models are: ELMo, BERT_BASE and BERT_LARGE'
+    INVALID_WARMUP_STEPS = 'Warmup steps parameter cannot be negative, got {steps}.'
 
 
 class PlaceholderKeys:
     """ Constants for placeholder dict keys.
-        INPUT_KEYS: Keys for model input, e.g. words, characters.
+        DEFAULT_INPUTS: Keys for model input, e.g. words, characters.
+        FIXED_CONTEXTUAL_INPUTS: Keys for model input when using fixed contextual embeddings, e.g. words, characters.
+        FINETUNE_CONTEXTUAL_INPUTS: Keys for model input when performing finetuning.
         LABEL_KEYS: Keys for labels.
         ID_KEY: Answer id key.
     """
-    INPUT_KEYS = ['context_words', 'context_chars', 'context_elmo', 'context_length',
-                  'query_words', 'query_chars', 'query_elmo', 'query_length']
-    LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
+    DEFAULT_INPUTS = ['context_words', 'context_chars', 'context_length', 'query_words', 'query_chars',  'query_length']
+    FIXED_CONTEXTUAL_INPUTS = ['context_words', 'context_chars', 'context_embedded', 'context_length', 'query_words',
+                               'query_chars', 'query_embedded', 'query_length']
+    FINETUNE_CONTEXTUAL_INPUTS = ['context_tokens', 'context_words', 'context_chars', 'context_length', 'query_tokens',
+                                  'query_words', 'query_chars', 'query_length']
+    LABEL_KEYS = ['answer_starts', 'answer_ends', 'answer_id']
+    LABEL_IMPOSSIBLE_KEYS = ['answer_starts', 'answer_ends', 'answer_id', 'is_impossible']
     ID_KEY = ['answer_id']
+
+
+class Prompts:
+    """ Prompt messages for asking user actions
+        DATA_EXISTS: Prompt for confirming a non-reversible overwriting of data.
+        FOUND_CONFIG_NO_CHECKPOINTS: Prompt for loading a config if its in an empty folder.
+        POSSIBLE_OOM: Prompt for using options that can cause OOM on smaller GPUs.
+        LARGE_CONTEXTUAL_SHUFFER_BUFFER: Large buffer == more loaded == longer load times + possible ram filling.
+    """
+    DATA_EXISTS = 'Preprocessed data already exists for this dataset, would you like to overwrite?'
+    FOUND_CONFIG_NO_CHECKPOINTS = 'Found config file at {path} without any checkpoints, would you like to use this config?'
+    POSSIBLE_OOM = 'WARNING: Using {num_heads} attention heads may result in an OOM error while training, would you like to continue?'
+    LARGE_CONTEXTUAL_SHUFFLE_BUFFER = 'WARNING: Shuffle buffer larger than 10,000 while using fixed embeddings uses a large amount of memory, would you like to continue?'
+
+
+class ModelTypes:
+    """ String input names of supported models and contextual models.
+        ELMO: Model name for ELMo
+        BERT_BASE: Model name for the smaller cased bert model.
+        BERT_LARGE: Model name for the larger cased bert model.
+    """
+    QANET = 'qanet'
+    QANET_CONTEXTUAL = 'qanet_contextual'
+    ELMO = 'elmo'
+    BERT_BASE = 'bert_base'
+    BERT_LARGE = 'bert_large'
+    UNIVERSAL_TRANSFORMER = 'qanet_ut'
+    TENSORIZED_TRANSFORMER = 'qanet_tt'
+
+
+class ContextualDimensions:
+    """ Dimensionality of supported contextual models
+        ELMO: Output dimensionality of an ELMo model
+        BERT_BASE: Output dimensionality of the BERT base model.
+        BERT_LARGE: Output dimensionality of the BERT large model.
+    """
+    ELMO = 1024
+    BERT_BASE = 768
+    BERT_LARGE = 1024
+
+
+class Optimizers:
+    """ Supported optimizers
+        ADAM: Adam Optimizer
+        ADAMW: Adam optimizer with weight decay.
+    """
+    ADAM = 'adam'
+    ADAMW = 'adamw'

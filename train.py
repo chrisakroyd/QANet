@@ -6,37 +6,53 @@ from src import config, constants, loaders, metrics, models, pipeline, train_uti
 
 def train(sess_config, params, debug=False):
     # Get the directories where we save models+logs, create them if they do not exist for this run.
-    model_dir, log_dir = util.save_paths(params)
-    word_index_path, _, char_index_path = util.index_paths(params)
-    embedding_paths = util.embedding_paths(params)
+    model_dir, log_dir = util.save_paths(params.models_dir, params.run_name)
+    word_index_path, _, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    embedding_paths = util.embedding_paths(params.data_dir, params.dataset)
     util.make_dirs([model_dir, log_dir])
-    util.save_config(params, path=util.config_path(params), overwrite=False)  # Saves the run parameters in a .json
 
-    train_data, val_data = loaders.load_squad_v1(params)
+    use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
+
+    # Continue prompt for when params.heads is > 1, this can cause OOM so make sure its intentional.
+    if params.heads > 1:
+        if not util.yes_no_prompt(constants.Prompts.POSSIBLE_OOM.format(num_heads=params.heads)):
+            exit(0)
+
+    # Continue prompt for when we have a large buffer size, pre-embedded records are large and this can fill up RAM.
+    if use_contextual and params.fixed_contextual_embeddings and params.shuffle_buffer_size > 10000:
+        if not util.yes_no_prompt(constants.Prompts.LARGE_CONTEXTUAL_SHUFFLE_BUFFER):
+            exit(0)
+
+    util.save_config(params,
+                     path=util.config_path(params.models_dir, params.run_name),
+                     overwrite=False)  # Saves the run parameters in a .json
+
+    train_data, val_data = loaders.load_squad(params.data_dir, params.dataset)
     train_spans, train_answers, train_ctxt_mapping = train_data
     val_spans, val_answers, val_ctxt_mapping = val_data
     
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
+    num_val_batches = (len(val_answers) // params.batch_size + 1) + 1
 
     with tf.device('/cpu:0'):
         tables = pipeline.create_lookup_tables(vocabs)
-        train_record_path, val_record_path, _ = util.tf_record_paths(params)
-        train_set, train_iter = pipeline.create_pipeline(params, tables, train_record_path, training=True)
-        _, val_iter = pipeline.create_pipeline(params, tables, val_record_path, training=False)
+        train_record_path, val_record_path, _ = util.tf_record_paths(params.data_dir, params.dataset)
+        train_set, train_iter = pipeline.create_pipeline(params, tables, train_record_path,
+                                                         use_contextual=use_contextual, training=True)
+        _, val_iter = pipeline.create_pipeline(params, tables, val_record_path,
+                                               use_contextual=use_contextual, training=False)
 
     with tf.Session(config=sess_config) as sess:
         sess.run([tf.tables_initializer(), train_iter.initializer, val_iter.initializer])
         # Create the dataset iterators, handles are required for switching between train/val modes within one graph.
         handle = tf.placeholder(tf.string, shape=[])
         iterator = tf.data.Iterator.from_string_handle(handle, train_set.output_types, train_set.output_shapes)
-        qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
 
+        qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
         placeholders = iterator.get_next()
-        qanet_inputs = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.INPUT_KEYS)
-        y_start, y_end, id_tensor = util.dict_keys_as_tuple(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
-
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(qanet_inputs, training=True)
+        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
+        y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
         loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,
@@ -50,6 +66,8 @@ def train(sess_config, params, debug=False):
                                                   ema_decay=params.ema_decay,
                                                   beta1=params.beta1,
                                                   beta2=params.beta2,
+                                                  optimizer=params.optimizer,
+                                                  weight_decay=params.weight_decay,
                                                   epsilon=params.epsilon)
 
         train_outputs = [id_tensor, loss_op, start_pred, end_pred, train_op]
@@ -93,7 +111,7 @@ def train(sess_config, params, debug=False):
             if global_step % params.checkpoint_every == 0:
                 val_preds = []
                 # +1 for uneven batch values, +1 for the range.
-                for _ in tqdm(range(1, (len(val_answers) // params.batch_size + 1) + 1)):
+                for _ in tqdm(range(1, num_val_batches)):
                     answer_id, loss, answer_start, answer_end = sess.run(fetches=val_outputs,
                                                                          feed_dict={handle: val_handle,
                                                                                     qanet.dropout: 0.0,
@@ -110,10 +128,11 @@ def train(sess_config, params, debug=False):
                 writer.flush()
                 filename = os.path.join(model_dir, 'model_{}.ckpt'.format(global_step))
                 saver.save(sess, filename)
+                sess.run(val_iter.initializer)
 
 
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     flags = config.model_config(defaults).FLAGS
-    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    params = util.load_config(flags, util.config_path(flags.models_dir, flags.run_name))  # Loads a pre-existing config otherwise == params
     train(config.gpu_config(), params)

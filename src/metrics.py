@@ -2,7 +2,7 @@ import random
 import numpy as np
 import tensorflow as tf
 from collections import Counter
-from src import preprocessing
+from src import preprocessing, util
 
 
 def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, writer=None, global_step=0,
@@ -38,6 +38,23 @@ def evaluate_list(preds, contexts, answers, context_mapping, data_type=None, wri
     add_metric_summaries(metrics, data_type, writer, global_step)
 
     return metrics, answer_texts
+
+
+def evaluate_preds(preds, contexts, answers, context_mapping):
+    """ Calculates EM/F1 over a single set of predictions.
+        Args:
+            preds: A tuple containing answer_ids, answer_starts and answer_ends.
+            contexts: Context texts + word spans
+            answers: answer_id: Ground truth mapping.
+            context_mapping: answer_id: context_id mapping.
+        Returns:
+            Tuple containing EM/F1
+    """
+    answer_ids, answer_starts, answer_ends = preds
+    answer_texts = get_answer_data(contexts, answers, context_mapping, answer_ids, answer_starts, answer_ends)
+    eval_metrics = evaluate(answer_texts)
+    em, f1 = util.unpack_dict(eval_metrics, keys=['exact_match', 'f1'])
+    return em, f1
 
 
 def add_metric_summaries(metrics, data_type=None, writer=None, global_step=0):

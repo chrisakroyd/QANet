@@ -25,9 +25,9 @@ def model_config(defaults):
     flags = tf.flags
     flags.DEFINE_boolean('help', False, 'Print flag help')
     # Mode to run in, e.g. train, test.
+    flags.DEFINE_string('model', defaults.model, 'What model to use (qanet/qanet_contextual)')
     flags.DEFINE_string('mode', defaults.mode, 'Train/test/demo.')
     flags.DEFINE_string('dataset', defaults.dataset, 'Which dataset to use, e.g. Squad or MS Marco.')
-    # Adds a name for this run.
     flags.DEFINE_string('run_name', defaults.run_name, 'Name for this run of training.')
     # Within these flags we define where to find the original GLoVe/FastText embeddings and where to find/save data.
     flags.DEFINE_string('embeddings_path', defaults.embeddings_path, 'Path to Glove/embedding file.')
@@ -35,14 +35,16 @@ def model_config(defaults):
                         'Directory to save pre-processed word/char embeddings, indexes and data.')
     flags.DEFINE_string('raw_data_dir', defaults.raw_data_dir,
                         'Directory to save/load raw data from.')
+
     # Where we save logs, models or whether we write answers. Answer file saves in data_save_dir.
     flags.DEFINE_string('models_dir', defaults.models_dir, 'Directory to save the models, logs and answer files.')
     flags.DEFINE_boolean('write_answer_file', defaults.write_answer_file,
                          'Whether or not to write an out file with predictions.')
+
     # Dimension for the word + char embeddings. Char embeddings are generated during the pre-processing stage.
     flags.DEFINE_integer('embed_dim', defaults.embed_dim, 'Dimensionality of the input embeddings')
     flags.DEFINE_integer('char_dim', defaults.char_dim, 'Dimensionality of the character output embeddings')
-    flags.DEFINE_integer('char_kernel_size', defaults.char_kernel_size, 'Kernel size of the character convolution.')
+
     # Max lengths for context, query, answer, characters and mins for word+char occurrence.
     flags.DEFINE_integer('max_tokens', defaults.max_tokens, 'Max length of the input paragraph.')
     flags.DEFINE_integer('answer_limit', defaults.answer_limit, 'Max length of a answer.')
@@ -56,6 +58,7 @@ def model_config(defaults):
     # QANet paper utilises a trainable OOV token, we also allow specification of multiple trainable word embeddings.
     flags.DEFINE_string('oov_token', defaults.oov_token, 'Which word represents out of vocab words.')
     flags.DEFINE_list('trainable_words', defaults.trainable_words, 'Which words should have trainable embeddings.')
+
     # Flags for the pre-processing pipeline.
     flags.DEFINE_integer('shuffle_buffer_size', defaults.shuffle_buffer_size,
                          'Buffer size of the dataset shuffle function.')
@@ -66,27 +69,31 @@ def model_config(defaults):
     flags.DEFINE_integer('bucket_size', defaults.bucket_size, 'Size of a bucket (If no bucket ranges given).')
     flags.DEFINE_integer('parallel_calls', defaults.parallel_calls, 'Number of parallel calls for the pipeline.')
     flags.DEFINE_integer('max_prefetch', defaults.max_prefetch, 'Max number of prefetched batches.')
-    flags.DEFINE_boolean('use_elmo', defaults.use_elmo, 'Whether to use ELMo embeddings.')
     flags.DEFINE_boolean('use_trainable', defaults.use_trainable, 'Whether to use trainable embeddings.')
-    flags.DEFINE_boolean('low_memory', defaults.low_memory, 'Low memory mode, recomputes multi-head attention on the backward pass to reduce memory requirement.')
+    flags.DEFINE_boolean('low_memory', defaults.low_memory,
+                         'Low memory mode, recomputes multi-head attention on the backward pass to reduce memory requirement.')
+
     # Model hyper parameters (set to QANet paper values).
     flags.DEFINE_integer('batch_size', defaults.batch_size, 'Batch Size')
     flags.DEFINE_integer('hidden_size', defaults.hidden_size, 'Number of hidden units to use.')
+    flags.DEFINE_integer('char_kernel_size', defaults.char_kernel_size, 'Kernel size of the character convolution.')
     flags.DEFINE_integer('ff_inner_size', defaults.ff_inner_size,
                          'Number of units in the first layer of a feed forward block.')
     flags.DEFINE_integer('heads', defaults.heads, 'Number of heads used for multi-head attention.')
     flags.DEFINE_integer('embed_encoder_blocks', defaults.embed_encoder_blocks,
-                         'Number of blocks in the embedding_encoder.')
+                         'Number of blocks in the embedding_encoder.', lower_bound=0)
     flags.DEFINE_integer('embed_encoder_convs', defaults.embed_encoder_convs,
-                         'Number of conv layers in each block of the embed encoder.')
+                         'Number of conv layers in each block of the embed encoder.', lower_bound=0)
     flags.DEFINE_integer('embed_encoder_kernel_width', defaults.embed_encoder_kernel_width,
-                         'Kernel width of each conv layer of the embed encoder.')
+                         'Kernel width of each conv layer of the embed encoder.', lower_bound=1)
     flags.DEFINE_integer('model_encoder_blocks', defaults.model_encoder_blocks,
-                         'Number of blocks in the model_encoder.')
+                         'Number of blocks in the model_encoder.', lower_bound=1)
     flags.DEFINE_integer('model_encoder_convs', defaults.model_encoder_convs,
-                         'Number of conv layers in each block of the model encoder.')
+                         'Number of conv layers in each block of the model encoder.', lower_bound=0)
     flags.DEFINE_integer('model_encoder_kernel_width', defaults.model_encoder_kernel_width,
-                         'Kernel width of each conv layer of the model encoder.')
+                         'Kernel width of each conv layer of the model encoder.', lower_bound=1)
+    flags.DEFINE_boolean('output_bias', defaults.output_bias, 'Whether or not to include a b term when calculating pointers.')
+
     # Flags for train hyper params e.g. dropout, l2, gradient ema decay values (set to QANet paper values).
     flags.DEFINE_float('dropout', defaults.dropout, 'Dropout rate.', lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('attn_dropout', defaults.attn_dropout, 'Attention dropout rate.',
@@ -96,16 +103,31 @@ def model_config(defaults):
     flags.DEFINE_float('learn_rate', defaults.learn_rate, 'Learning rate.', lower_bound=0.0)
     flags.DEFINE_float('beta1', defaults.beta1, 'Beta 1 parameter of adam optimizer.', lower_bound=0.0, upper_bound=1.0)
     flags.DEFINE_float('beta2', defaults.beta2, 'Beta 2 parameter of adam optimizer.', lower_bound=0.0, upper_bound=1.0)
-    flags.DEFINE_float('epsilon', defaults.epsilon, 'Value for epsilon.')
+    flags.DEFINE_float('epsilon', defaults.epsilon, 'Value for epsilon.', lower_bound=0.0)
     flags.DEFINE_float('ema_decay', defaults.ema_decay, 'Exponential moving average decay rate.',
                        lower_bound=0.0, upper_bound=1.0)
-    # Train specific flags e.g. number of steps, early stop, eval period.
-    flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.')
-    flags.DEFINE_integer('warmup_steps', defaults.warmup_steps, 'Number of warmup steps.')
-    flags.DEFINE_integer('plateau_steps', defaults.plateau_steps,
-                         'Only used when `use_cosine_decay` is True. Number of steps to hold the learning rate for before decaying.')
+    flags.DEFINE_integer('train_steps', defaults.train_steps, 'Number of training steps to perform.', lower_bound=0)
+    flags.DEFINE_integer('warmup_steps', defaults.warmup_steps, 'Number of warmup steps.', lower_bound=0)
+    flags.DEFINE_integer('plateau_steps', defaults.plateau_steps, 'Only used when `use_cosine_decay` is True. Number of steps to hold the learning rate for before decaying.',
+                         lower_bound=0)
     flags.DEFINE_boolean('use_cosine_decay', defaults.use_cosine_decay,
                          'Whether or not to use cosine decay on the learning rate.')
     flags.DEFINE_string('warmup_scheme', defaults.warmup_scheme, 'Learning rate warmup scheme.')
-    flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every, 'After how many steps do we save a checkpoint and calculate EM/F1 scores.')
+    flags.DEFINE_integer('checkpoint_every', defaults.checkpoint_every,
+                         'After how many steps do we save a checkpoint and calculate EM/F1 scores.', lower_bound=1)
+    flags.DEFINE_string('optimizer', defaults.optimizer, 'Which optimization algorithm to use (adam/adamw)')
+    flags.DEFINE_float('weight_decay', defaults.weight_decay, 'Weight decay parameter for adamw')
+
+    # Flags related to the use of contextual embedding models, e.g. BERT, ELMo
+    flags.DEFINE_string('contextual_model', defaults.contextual_model,
+                        'Which contextual model to use, options are elmo, bert_base and bert_large')
+    flags.DEFINE_boolean('fixed_contextual_embeddings', defaults.fixed_contextual_embeddings,
+                         'Whether or not the contextual embeddings are fixed (non-trainable).')
+    flags.DEFINE_boolean('override_cache_behaviour', defaults.override_cache_behaviour,
+                         'Overrides the default pipeline behaviour when using fixed contextual embeddings to always cache them (WARNING: Will use a lot of RAM.)')
+
+    # Flags related to creating ensembles
+    flags.DEFINE_integer('max_models', defaults.max_models, 'Maximum number of models to use in an ensemble.')
+    flags.DEFINE_boolean('gradual', defaults.gradual, 'Gradual ensemble, adds models to the ensemble only if they improve the validation performance.')
+    flags.DEFINE_list('ensemble_models', defaults.ensemble_models, 'A list of string run names for trained models.')
     return flags

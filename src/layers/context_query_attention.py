@@ -4,7 +4,7 @@ from src import layers
 
 
 class ContextQueryAttention(Layer):
-    def __init__(self, use_bias=True, **kwargs):
+    def __init__(self, use_bias=True, mean_aoa=False, **kwargs):
         """ Context-Query Attention implementation, also referred to as Attention-Flow layer.
 
             The Attention flow layer was introduced within "Bi-Directional Attention Flow for
@@ -19,9 +19,11 @@ class ContextQueryAttention(Layer):
 
             Args:
                 use_bias: Whether or not to add a bias vector to the result.
+                mean_aoa: Utilise Mean-over-mean attention.
         """
         super(ContextQueryAttention, self).__init__(**kwargs)
         self.use_bias = use_bias
+        self.mean_aoa = mean_aoa
         self.query_activation = Softmax(axis=-1)
         self.context_activation = Softmax(axis=1)
 
@@ -64,10 +66,9 @@ class ContextQueryAttention(Layer):
             Args:
                 x: List of two input tensors for the encoded context + query.
                 training: Boolean flag for training mode.
-                mask: Two boolean mask tensors, first for the context, second for query.
+                mask: A list containing two boolean mask tensors, first for the context, second for query.
         """
         x_context, x_query = x
-        context_mask, query_mask = mask
         batch_size, context_length, hidden_size = self.compute_input_shape(x_context)
         _, query_length, _ = self.compute_input_shape(x_query)
 
@@ -88,14 +89,16 @@ class ContextQueryAttention(Layer):
 
         similarity_matrix = tf.transpose(similarity_matrix, perm=(0, 2, 1))  # [batch_size, context_length, query_length]
 
-        # We take our two mask tensors + form a mask of equal shape to the similarity matrix.
-        mask_context = tf.expand_dims(context_mask, axis=2)  # [batch_size, context_length, 1]
-        context_mask_tiled = tf.tile(mask_context, [1, 1, query_length])  # [batch_size, context_length, query_length]
-        mask_query = tf.expand_dims(query_mask, axis=1)  # [batch_size, 1, query_length]
-        query_mask_tiled = tf.tile(mask_query, [1, context_length, 1])  # [batch_size, context_length, query_length]
-        # Combine the two boolean mask tensors into a singular mask of shape [batch_size, context_length, query_length]
-        similarity_mask = tf.logical_and(query_mask_tiled, context_mask_tiled)
-        similarity_matrix = layers.apply_mask(similarity_matrix, mask=similarity_mask)
+        if mask is not None and len(mask) == 2:
+            context_mask, query_mask = mask
+            # We take our two mask tensors + form a mask of equal shape to the similarity matrix.
+            mask_context = tf.expand_dims(context_mask, axis=2)  # [batch_size, context_length, 1]
+            context_mask_tiled = tf.tile(mask_context, [1, 1, query_length])  # [batch_size, context_length, query_length]
+            mask_query = tf.expand_dims(query_mask, axis=1)  # [batch_size, 1, query_length]
+            query_mask_tiled = tf.tile(mask_query, [1, context_length, 1])  # [batch_size, context_length, query_length]
+            # Combine the two boolean mask tensors into a mask of shape [batch_size, context_length, query_length]
+            similarity_mask = tf.logical_and(query_mask_tiled, context_mask_tiled)
+            similarity_matrix = layers.apply_mask(similarity_matrix, mask=similarity_mask)
 
         # Standard context to query attention.
         c2q_act = self.query_activation(similarity_matrix)
@@ -104,4 +107,11 @@ class ContextQueryAttention(Layer):
         q2c_act = self.context_activation(similarity_matrix)
         q2c = tf.matmul(tf.matmul(c2q_act, q2c_act, transpose_b=True), x_context)
 
-        return c2q, q2c
+        if self.mean_aoa:
+            aoa = tf.reduce_mean(c2q_act, axis=1, keepdims=True)  # Mean act for context words across all query words (aoa)
+            aoa = aoa * q2c_act
+            aoa = tf.reduce_mean(aoa, axis=-1, keepdims=True)
+            aoa = x_context * aoa
+            return c2q, q2c, aoa
+        else:
+            return c2q, q2c

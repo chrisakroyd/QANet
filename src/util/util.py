@@ -1,10 +1,12 @@
 import json
+import operator
 import os
 import urllib.request
 from io import BytesIO
 from collections import ChainMap
 from zipfile import ZipFile
 from types import SimpleNamespace
+from src import constants, util
 
 
 def save_json(path, data, indent=None):
@@ -91,6 +93,7 @@ def namespace_json(path):
 def params_as_dict(params):
     """
         Converts all flags + values generated with the abseil-py flag (tf.flags) object into a flat python dict.
+        Main purpose of this is to allow for saving as a .json file.
         Args:
             params: An instance of flags.Flags
         Returns:
@@ -103,13 +106,27 @@ def params_as_dict(params):
 
 
 def file_exists(path):
-    """ Tests whether or not a filepath exists. """
+    """ Tests whether or not a full filepath exists. """
     return os.path.exists(path)
 
 
+def directory_exists(path):
+    """ Tests whether or not a directory exists. """
+    return os.path.isdir(path)
+
+
+def directory_is_empty(path):
+    """ Tests whether or not a directory is empty. """
+    return len(os.listdir(path)) == 0
+
+
 def load_config(params, path):
-    """ Loads a config if it exists, otherwise alerts the user and returns params."""
+    """ Loads a config if it exists and there's existing checkpoints, otherwise alerts the user and returns params."""
     if file_exists(path):
+        if len(os.listdir(os.path.dirname(path))) == 1:  # Only have a model config, check if this is intentional.
+            if not util.yes_no_prompt(constants.Prompts.FOUND_CONFIG_NO_CHECKPOINTS.format(path=path)):
+                os.remove(path)  # Delete the config.
+                return params
         print('Using config for {run_name} found at {path}...'.format(run_name=params.run_name, path=path))
         return namespace_json(path)
     else:
@@ -164,31 +181,36 @@ def load_vocab_files(paths):
     return vocabs
 
 
-def dict_keys_as_tuple(placeholder_dict, keys=None):
-    """ Converts a dictionary to a tuple with the values ordered by the keys given by keys param.
+def unpack_dict(dictionary, keys=None):
+    """ Utility function that unpacks a dictionary into a tuple which allows for unpacking into variables, values
+        returned are in the same order as the keys given by keys param.
+
         Args:
-            placeholder_dict: A dict of input tensors.
+            dictionary: A dictionary.
             keys: List of string keys representing the order placeholders should be returned.
         Returns:
             A tuple of input tensors.
     """
     if keys is None:
-        raise ValueError('No keys given to dict_keys_as_tuple.')
+        raise ValueError('No keys given to unpack_dict.')
+    return operator.itemgetter(*keys)(dictionary)
 
-    return tuple([placeholder_dict[key] for key in keys if key in placeholder_dict])
 
-
-def remove_keys(data, keys=[]):
+def remove_keys(data, keys=None):
     """ Removes specified keys from a list of dicts.
         Args:
-            data: Iterable of dicts.
+            data: A dictionary.
             keys: List of string keys to remove.
         Returns:
             Input data with keys removed.
     """
+    if keys is None:
+        raise ValueError('No keys passed to remove_keys.')
+
     for _, value in data.items():
         for key in keys:
             value.pop(key, None)
+
     return data
 
 
@@ -215,3 +237,15 @@ def pad_to_max_length(tokens, lengths):
             assert len(tokens[i]) == max_len
 
     return tokens
+
+
+def filename(path):
+    """ Extracts the filename from a given path.
+        Args:
+            path: A string filepath.
+        Returns:
+            Filename of the given path without extension.
+    """
+    base = os.path.basename(path)
+    name = os.path.splitext(base)
+    return name[0]

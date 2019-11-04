@@ -1,6 +1,7 @@
 import math
 import warnings
 import tensorflow as tf
+from src import constants, optimizers
 
 
 def ema_ops(train_op, decay, variables=None):
@@ -65,6 +66,11 @@ def inverse_exponential_warmup(learn_rate, warmup_steps=1000, global_step=None):
     if global_step is None:
         global_step = tf.train.get_global_step()
 
+    if warmup_steps < 0:
+        raise ValueError(constants.ErrorMessages.INVALID_WARMUP_STEPS.format(steps=warmup_steps))
+    elif warmup_steps == 0:
+        return learn_rate
+
     lr_decay = learn_rate / tf.log(tf.cast(warmup_steps, dtype=tf.float32)) * tf.log(tf.cast(global_step, dtype=tf.float32) + 1)
     return tf.minimum(learn_rate, lr_decay)
 
@@ -81,6 +87,11 @@ def linear_warmup(learn_rate, warmup_steps=1000, global_step=None):
     if global_step is None:
         global_step = tf.train.get_global_step()
 
+    if warmup_steps < 0:
+        raise ValueError(constants.ErrorMessages.INVALID_WARMUP_STEPS.format(steps=warmup_steps))
+    elif warmup_steps == 0:
+        return learn_rate
+
     lr_decay = tf.minimum(1.0, tf.cast(global_step, dtype=tf.float32) / warmup_steps)
     return lr_decay * learn_rate
 
@@ -95,6 +106,11 @@ def get_warmup_scheme(name, learn_rate, warmup_steps=1000, global_step=None):
         Returns:
             An op to calculate the learn rate at a given step.
     """
+    if warmup_steps < 0:
+        raise ValueError(constants.ErrorMessages.INVALID_WARMUP_STEPS.format(steps=warmup_steps))
+    elif warmup_steps == 0:
+        return learn_rate
+
     name = name.lower().strip()
     if name == 'linear':
         return linear_warmup(learn_rate, warmup_steps, global_step)
@@ -147,7 +163,7 @@ def cosine_decay_with_warmup(learn_rate, total_steps, warmup_scheme='linear',
 
 def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warmup_steps=1000, plateau_steps=0,
                        total_steps=0, use_cosine_decay=False, clip_norm=5.0, ema_decay=0.999, beta1=0.8, beta2=0.999,
-                       epsilon=1e-7, global_step=None):
+                       epsilon=1e-7, optimizer='adam', weight_decay=0.00001, global_step=None):
     """ Constructs a training op with options for warmup schemes, gradient clipping,
         exponential moving average weight decay + learn rate decay.
 
@@ -164,6 +180,8 @@ def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warm
             beta1: beta1 param for the adam optimizer.
             beta2: beta2 param for the adam optimizer.
             epsilon: A small constant for numerical stability.
+            optimizer: Optimizer to use.
+            weight_decay: Weight decay parameter for AdamW optimizer.
             global_step: Global step variable.
         Returns:
             A train op.
@@ -181,7 +199,14 @@ def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warm
     else:
         learning_rate = get_warmup_scheme(warmup_scheme, learn_rate, warmup_steps, global_step)
 
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=beta1, beta2=beta2, epsilon=epsilon)
+    if optimizer == constants.Optimizers.ADAM:
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=beta1, beta2=beta2, epsilon=epsilon)
+    elif optimizer == constants.Optimizers.ADAMW:
+        optimizer = optimizers.AdamWeightDecayOptimizer(learning_rate=learning_rate, weight_decay_rate=weight_decay,
+                                                        beta1=beta1, beta2=beta2, epsilon=epsilon,
+                                                        exclude_from_weight_decay=['bias', 'scale'])
+    else:
+        raise ValueError('Unsupported optimizer.')
 
     if clip_norm > 0.0:
         grads = optimizer.compute_gradients(loss)

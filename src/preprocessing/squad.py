@@ -1,37 +1,8 @@
-import random
-import tensorflow as tf
 import numpy as np
 from tqdm import tqdm
-from src import preprocessing as prepro, util
+from src import preprocessing as prepro, util, tokenizer as toke
 
 keys_to_remove = ['tokens', 'length', 'query', 'elmo', 'orig_tokens']
-
-
-def convert_idx(text, tokens):
-    """ Maps each token to its character offset within the text. """
-    current = 0
-    spans = []
-
-    for token in tokens:
-        next_toke_start = text.find(token, current)
-
-        # We normalize all dash characters (e.g. en dash, em dash to -) which requires special handling when mapping.
-        # TODO: @cakroyd look at this and improve implementation.
-        if len(token) == 1 and prepro.is_dash(token):
-            if prepro.is_dash(text[current]):
-                current = current
-            elif prepro.is_dash(text[current + 1]):
-                current = current + 1
-        else:
-            current = next_toke_start
-
-        if current == -1:
-            print('Token {} cannot be found'.format(token))
-            raise ValueError('Could not find token.')
-
-        spans.append((current, current + len(token)))
-        current += len(token)
-    return spans
 
 
 def read_squad_examples(path):
@@ -98,7 +69,7 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
         orig_text = context['orig_text'].strip()
         clean_text = prepro.clean(orig_text)
         tokens, modified_tokens = tokenizer.fit_on_texts(clean_text, error_correct=True)[-1]
-        token_orig_map = convert_idx(orig_text, tokens)
+        token_orig_map = prepro.convert_to_indices(orig_text, tokens)
 
         context.update({
             'text': clean_text,
@@ -175,93 +146,26 @@ def fit_and_extract(path, tokenizer, skip_on_errors=True):
     return contexts, processed_queries, tokenizer
 
 
-def create_record(context, query):
-    """ Creates a formatted tf.train Example for writing in a .tfrecord file. """
-    encoded_context = [m.encode('utf-8') for m in context['tokens']]
-    encoded_query = [m.encode('utf-8') for m in query['tokens']]
-
-    context_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_context))
-    context_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[context['length']]))
-    query_tokens = tf.train.Feature(bytes_list=tf.train.BytesList(value=encoded_query))
-    query_length = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['length']]))
-    answer_starts = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['answer_starts']]))
-    answer_ends = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['answer_ends']]))
-    answer_id = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['answer_id']]))
-
-    features = {
-        'context_tokens': context_tokens,
-        'context_length': context_length,
-        'query_tokens': query_tokens,
-        'query_length': query_length,
-        'answer_starts': answer_starts,
-        'answer_ends': answer_ends,
-        'answer_id': answer_id,
-    }
-
-    if 'is_impossible' in query:
-        features['is_impossible'] = tf.train.Feature(int64_list=tf.train.Int64List(value=[query['is_impossible']]))
-
-    record = tf.train.Example(features=tf.train.Features(feature=features))
-
-    return record
-
-
-def write_as_tf_record(path, contexts, queries, params, skip_too_long=True):
-    """ Shuffles the queries and writes out the context + queries as a .tfrecord file.
-
-        Args:
-            path: Output path for the .tfrecord file.
-            contexts: Dict mapping of context_id: words, spans + length (Context output from fit_and_extract)
-            queries: Dict mapping of answer_id: words, answers, +start/end (Queries output from fit_and_extract)
-            params: A dictionary of parameters.
-            skip_too_long: Skip rows when either the query or context if their length is above max_tokens.
-    """
-    shuffled = list(queries.values())
-    random.shuffle(shuffled)
-
-    with tf.python_io.TFRecordWriter(path) as writer:
-        for data in shuffled:
-            context_id = data['context_id']
-            context = contexts[context_id]
-            num_context_tokens = context['length']
-            num_query_tokens = data['length']
-
-            if (num_context_tokens > params.max_tokens or num_query_tokens > params.max_tokens) and skip_too_long:
-                continue
-
-            record = create_record(context, data)
-            writer.write(record.SerializeToString())
-
-
-def get_examples(contexts, queries, num_examples=1000):
-    """ Gets a subsample of the contexts/queries.  """
-    shuffled = list(queries.values())
-    random.shuffle(shuffled)
-    shuffled = shuffled[:num_examples]
-    examples = [{'context': contexts[data['context_id']]['text'], 'query': data['text']} for data in shuffled]
-    return examples
-
-
 def process(params):
-    directories = util.get_directories(params)
+    directories = util.get_directories(params.data_dir, params.dataset, params.models_dir)
     util.make_dirs(directories)
     # Path to squad
-    train_raw_path, dev_raw_path = util.raw_data_paths(params)
-    train_record_path, dev_record_path, test_record_path = util.tf_record_paths(params)
-    examples_path = util.examples_path(params)
+    train_raw_path, dev_raw_path = util.raw_data_paths(params.raw_data_dir, params.dataset)
+    train_record_path, dev_record_path, test_record_path = util.tf_record_paths(params.data_dir, params.dataset)
+    examples_path = util.examples_path(params.data_dir, params.dataset)
     # Paths for dumping our processed data.
     train_contexts_path, train_answers_path, dev_contexts_path, dev_answers_path, \
-    test_contexts_path, test_answers_path = util.processed_data_paths(params)
+    test_contexts_path, test_answers_path = util.processed_data_paths(params.data_dir, params.dataset)
     # Get paths for saving embedding related info.
-    word_index_path, trainable_index_path, char_index_path = util.index_paths(params)
-    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params)
+    word_index_path, trainable_index_path, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    word_embeddings_path, trainable_embeddings_path, char_embeddings_path = util.embedding_paths(params.data_dir, params.dataset)
 
     # Read the embedding index and create a vocab of words with embeddings.
     print('Loading Embeddings, this may take some time...')
     embedding_index = util.read_embeddings_file(params.embeddings_path)
     vocab = set([e for e, _ in embedding_index.items()])
 
-    tokenizer = util.Tokenizer(max_words=params.max_words + 1,
+    tokenizer = toke.Tokenizer(max_words=params.max_words + 1,
                                max_chars=params.max_chars + 1,
                                vocab=vocab,
                                lower=False,
@@ -285,14 +189,21 @@ def process(params):
                                                 trainable_embeddings=params.trainable_words,
                                                 embedding_index=embedding_index)
 
-    trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=params.embed_dim)
-    char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim)
+    trainable_matrix = util.generate_matrix(index=trainable_index, embedding_dimensions=params.embed_dim, scale=0.1)
+    char_matrix = util.generate_matrix(index=char_index, embedding_dimensions=params.char_dim, scale=0.1)
 
     print('Saving to TF Records...')
-    write_as_tf_record(train_record_path, train_contexts, train_answers, params)
-    write_as_tf_record(dev_record_path, dev_contexts, dev_answers, params)
-    write_as_tf_record(test_record_path, dev_contexts, dev_answers, params, skip_too_long=False)
-    examples = get_examples(train_contexts, train_answers)
+
+    if params.use_contextual and params.fixed_contextual_embeddings:
+        record_writer = prepro.ContextualEmbeddingWriter(params.max_tokens, contextual_model=params.contextual_model)
+    else:
+        record_writer = prepro.RecordWriter(params.max_tokens)
+
+    record_writer.write(train_record_path, train_contexts, train_answers)
+    record_writer.write(dev_record_path, dev_contexts, dev_answers)
+    record_writer.write(test_record_path, dev_contexts, dev_answers, skip_too_long=False)
+
+    examples = prepro.get_examples(train_contexts, train_answers)
 
     train_contexts = util.remove_keys(train_contexts, keys_to_remove)
     dev_contexts = util.remove_keys(dev_contexts, keys_to_remove)
