@@ -202,9 +202,9 @@ def construct_train_op(loss, learn_rate=0.001, warmup_scheme='inverse_exp', warm
     if optimizer == constants.Optimizers.ADAM:
         optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=beta1, beta2=beta2, epsilon=epsilon)
     elif optimizer == constants.Optimizers.ADAMW:
-        optimizer = optimizers.AdamWeightDecayOptimizer(learning_rate=learning_rate,
-                                                        weight_decay_rate=weight_decay, beta1=beta1, beta2=beta2,
-                                                        epsilon=epsilon, exclude_from_weight_decay=['bias', 'scale'])
+        optimizer = optimizers.AdamWeightDecayOptimizer(learning_rate=learning_rate, weight_decay_rate=weight_decay,
+                                                        beta1=beta1, beta2=beta2, epsilon=epsilon,
+                                                        exclude_from_weight_decay=['bias', 'scale'])
     else:
         raise ValueError('Unsupported optimizer.')
 
