@@ -51,9 +51,17 @@ def train(sess_config, params, debug=False):
 
         qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
         placeholders = iterator.get_next()
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
-        y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
-        loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
+
+        if params.model == constants.ModelTypes.UNIVERSAL_TRANSFORMER:
+            start_logits, end_logits, start_pred, end_pred, _, _, embed_encoder_extra, model_encoder_extra = \
+                qanet(placeholders, training=True)
+            y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
+            loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, embed_encoder_extra, model_encoder_extra, l2=params.l2)
+
+        else:
+            start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
+            y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
+            loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, l2=params.l2)
 
         train_op = train_utils.construct_train_op(loss_op,
                                                   learn_rate=params.learn_rate,
