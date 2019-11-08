@@ -199,7 +199,6 @@ class ModelTypes:
     BERT_BASE = 'bert_base'
     BERT_LARGE = 'bert_large'
     UNIVERSAL_TRANSFORMER = 'qanet_ut'
-    TENSORIZED_TRANSFORMER = 'qanet_tt'
 
 
 class ContextualDimensions:
