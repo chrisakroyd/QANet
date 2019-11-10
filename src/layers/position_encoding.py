@@ -25,6 +25,7 @@ class PositionEncoding(Layer):
                                    tf.maximum(tf.cast(num_timescales, dtype=tf.float32) - 1, 1))
         self.inv_timescales = self.min_timescale * tf.exp(
             tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale_increment)
+        super(PositionEncoding, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
         length = tf.shape(x)[1]
