@@ -17,22 +17,22 @@ class PositionEncoding(Layer):
         self.min_timescale = float(min_timescale)
         self.max_timescale = float(max_timescale)
 
-    def compute_input_shape(self, x):
-        shape = tf.shape(x)
-        return shape[1], shape[2]
-
-    def call(self, x, training=None, mask=None):
-        length, channels = self.compute_input_shape(x)
-        position = tf.cast(tf.range(length), dtype=tf.float32)
-        num_timescales = channels // 2
-        # Generate the signal with cos + sin waves.
+    def build(self, input_shape):
+        self.channels = input_shape[2]
+        num_timescales = self.channels // 2
+        # Generate the signal with cos + sin waves -> Pre-computed and stored for efficiency.
         log_timescale_increment = (tf.log(self.max_timescale / self.min_timescale) /
                                    tf.maximum(tf.cast(num_timescales, dtype=tf.float32) - 1, 1))
-        inv_timescales = self.min_timescale * tf.exp(
+        self.inv_timescales = self.min_timescale * tf.exp(
             tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale_increment)
-        scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(inv_timescales, 0)
+
+    def call(self, x, training=None, mask=None):
+        length = tf.shape(x)[1]
+        position = tf.cast(tf.range(length), dtype=tf.float32)
+
+        scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(self.inv_timescales, 0)
         signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-        signal = tf.pad(signal, [[0, 0], [0, tf.mod(channels, 2)]])
-        signal = tf.reshape(signal, [1, length, channels])
+        signal = tf.pad(signal, [[0, 0], [0, tf.mod(self.channels, 2)]])
+        signal = tf.reshape(signal, [1, length, self.channels])
         # Add input and signal
         return x + signal
