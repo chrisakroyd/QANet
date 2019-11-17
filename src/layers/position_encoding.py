@@ -17,7 +17,8 @@ class PositionEncoding(tf.keras.layers.Layer):
         self.max_timescale = float(max_timescale)
 
     def build(self, input_shape):
-        self.channels = input_shape[2]
+        self.channels = input_shape[-1]
+        self.channel_padding = self.channels % 2
         num_timescales = self.channels // 2
         # Generate the signal with cos + sin waves -> Pre-computed and stored for efficiency.
         log_timescale_increment = (tf.math.log(self.max_timescale / self.min_timescale) /
@@ -32,7 +33,7 @@ class PositionEncoding(tf.keras.layers.Layer):
 
         scaled_time = tf.expand_dims(position, 1) * tf.expand_dims(self.inv_timescales, 0)
         signal = tf.concat([tf.sin(scaled_time), tf.cos(scaled_time)], axis=1)
-        signal = tf.pad(signal, [[0, 0], [0, tf.math.mod(self.channels, 2)]])
+        signal = tf.pad(signal, [[0, 0], [0, self.channel_padding]])
         signal = tf.reshape(signal, [1, length, self.channels])
         # Add input and signal
         return x + signal
