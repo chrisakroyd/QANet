@@ -14,11 +14,11 @@ class StepEmbedding(Layer):
         self.num_layers = num_layers
 
     def build(self, input_shape):
-        channels = input_shape[-1]
+        channels = int(input_shape[0][-1])
         self.step_embedding = self.add_weight(name='step_embedding',
                                               shape=(self.num_layers, 1, 1, channels),
-                                              initializer=tf.random_normal_initializer(0, self.channels ** -0.5),
-                                              trainable=True) * (self.channels ** 0.5)
+                                              initializer=tf.random_normal_initializer(0, channels ** -0.5),
+                                              trainable=True) * (channels ** 0.5)
         super(StepEmbedding, self).build(input_shape)
 
     def call(self, x, training=None, mask=None):
