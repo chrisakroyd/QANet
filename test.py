@@ -54,8 +54,13 @@ def test(sess_config, params, checkpoint_selection=False):
         qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
         placeholders = iterator.get_next()
         is_training = tf.placeholder_with_default(True, shape=())
-        start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=is_training)
         id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
+
+        if params.model == constants.ModelTypes.UNIVERSAL_TRANSFORMER:
+            start_logits, end_logits, start_pred, end_pred, _, _, embed_encoder_extra, model_encoder_extra = \
+                qanet(placeholders, training=is_training)
+        else:
+            start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=is_training)
 
         sess.run(tf.global_variables_initializer())
         # Restore the moving average version of the learned variables for eval.
