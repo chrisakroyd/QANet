@@ -1,4 +1,5 @@
 import tensorflow as tf
+import math
 
 
 class PositionEncoding(tf.keras.layers.Layer):
@@ -21,8 +22,8 @@ class PositionEncoding(tf.keras.layers.Layer):
         self.channel_padding = self.channels % 2
         num_timescales = self.channels // 2
         # Generate the signal with cos + sin waves -> Pre-computed and stored for efficiency.
-        log_timescale_increment = (tf.math.log(self.max_timescale / self.min_timescale) /
-                                   tf.maximum(tf.cast(num_timescales, dtype=tf.float32) - 1, 1))
+        log_timescale_increment = (math.log(self.max_timescale / self.min_timescale) /
+                                   max(float(int(num_timescales)) - 1, 1))
         self.inv_timescales = self.min_timescale * tf.exp(
             tf.cast(tf.range(num_timescales), dtype=tf.float32) * -log_timescale_increment)
         super(PositionEncoding, self).build(input_shape)
