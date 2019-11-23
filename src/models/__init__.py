@@ -1,4 +1,5 @@
 from .qanet import QANet
+from .qanet_ut import UTQANet
 from . qanet_contextual import QANetContextual
 from src import constants
 
@@ -19,6 +20,8 @@ def create_model(word_matrix, character_matrix, trainable_matrix, params):
         model = QANet(word_matrix, character_matrix, trainable_matrix, params)
     elif params.model == constants.ModelTypes.QANET_CONTEXTUAL:
         model = QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
+    elif params.model == constants.ModelTypes.UNIVERSAL_TRANSFORMER:
+        model = UTQANet(word_matrix, character_matrix, trainable_matrix, params)
     else:
         raise ValueError('Unsupported model type.')
 
