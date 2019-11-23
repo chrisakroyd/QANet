@@ -53,11 +53,11 @@ def train(sess_config, params, debug=False):
         placeholders = iterator.get_next()
 
         if params.model == constants.ModelTypes.UNIVERSAL_TRANSFORMER:
-            start_logits, end_logits, start_pred, end_pred, _, _, embed_encoder_extra, model_encoder_extra = \
+            # TODO: Add in tensorboard vis for ponder times.
+            start_logits, end_logits, start_pred, end_pred, _, _, model_encoder_extra = \
                 qanet(placeholders, training=True)
             y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)
-            loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, embed_encoder_extra, model_encoder_extra, l2=params.l2)
-
+            loss_op = qanet.compute_loss(start_logits, end_logits, y_start, y_end, model_encoder_extra, l2=params.l2)
         else:
             start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=True)
             y_start, y_end, id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.LABEL_KEYS)

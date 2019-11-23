@@ -57,8 +57,7 @@ def test(sess_config, params, checkpoint_selection=False):
         id_tensor = util.unpack_dict(placeholders, keys=constants.PlaceholderKeys.ID_KEY)
 
         if params.model == constants.ModelTypes.UNIVERSAL_TRANSFORMER:
-            start_logits, end_logits, start_pred, end_pred, _, _, embed_encoder_extra, model_encoder_extra = \
-                qanet(placeholders, training=is_training)
+            start_logits, end_logits, start_pred, end_pred, _, _, _ = qanet(placeholders, training=is_training)
         else:
             start_logits, end_logits, start_pred, end_pred, _, _ = qanet(placeholders, training=is_training)
 
