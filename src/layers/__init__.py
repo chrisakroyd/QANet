@@ -10,3 +10,6 @@ from .sublayer_wrapper import SublayerWrapper
 from .utils import apply_mask, create_mask, create_initializer, create_attention_bias, create_mask_vector
 from .embedding_layer import EmbeddingLayer
 from .encoder import EncoderBlockStack, EncoderBlock
+from .act_wrapper import ACTWrapper
+from .step_embedding import StepEmbedding
+from .coordinate_embedding import CoordinateEmbedding

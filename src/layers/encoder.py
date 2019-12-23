@@ -63,7 +63,7 @@ class EncoderBlock(tf.keras.Model):
         self.self_attention = layers.SublayerWrapper(self.multi_head,
                                                      use_layer_dropout=False,
                                                      dropout=dropout,
-                                                     recompute_gradients=recompute,
+                                                     recompute=recompute,
                                                      name='self_attention_%d' % self.self_attention_id)
 
         self.feed_forward = layers.SublayerWrapper(layers.FeedForwardLayer(hidden_size, inner_size=ff_inner_size,
@@ -93,7 +93,7 @@ class EncoderBlock(tf.keras.Model):
 
 class EncoderBlockStack(tf.keras.Model):
     def __init__(self, blocks, conv_layers, kernel_size, hidden_size=128, heads=8, dropout=0.1, attn_dropout=0.1,
-                 ff_inner_size=128, recompute_gradients=False, **kwargs):
+                 ff_inner_size=128, recompute=False, **kwargs):
         """ Builds a stack of encoder blocks and handles input projection + output dropout.
 
             Wrapper around EncoderBlock that includes functionality for optional input projection,
@@ -107,7 +107,7 @@ class EncoderBlockStack(tf.keras.Model):
                 heads: Number of attention heads to use.
                 dropout: Fraction of input units to drop in all dropout layers within this stack.
                 ff_inner_size: Number of units in the inner non-linear layer of the feed-forward block.
-                recompute_gradients: Whether or not to recompute the output of the multi-head attention layer
+                recompute: Whether or not to recompute the output of the multi-head attention layer
                     during back-propagation to save GPU Memory in all encoder blocks within this stack.
         """
         super(EncoderBlockStack, self).__init__(**kwargs)
@@ -122,7 +122,7 @@ class EncoderBlockStack(tf.keras.Model):
         self.blocks = [EncoderBlock(conv_layers=conv_layers, kernel_size=kernel_size,
                                     hidden_size=hidden_size, heads=heads,
                                     dropout=dropout, attn_dropout=attn_dropout, block_number=i, total_blocks=blocks,
-                                    ff_inner_size=ff_inner_size, recompute_gradients=recompute_gradients,
+                                    ff_inner_size=ff_inner_size, recompute=recompute,
                                     name='encoder_block_%d' % i) for i in range(blocks)]
 
         self.dropout = Dropout(dropout)

@@ -10,8 +10,6 @@ def gpu_config():
         allow_soft_placement=True,
     )
 
-    config.gpu_options.allow_growth = True
-
     return config
 
 
