@@ -254,6 +254,7 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
             placeholders = iterator.get_next()
             is_training = tf.placeholder_with_default(True, shape=())
 
+            # TODO: Refactor out common function.
             qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, params)
             start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders,
                                                                                          training=is_training)
@@ -291,6 +292,7 @@ def ensemble(sess_config, params, checkpoint_ensemble=False):
 
                 placeholders = iterator.get_next()
                 is_training = tf.placeholder_with_default(True, shape=())
+                # TODO: Refactor out common function.
                 qanet = models.create_model(word_matrix, character_matrix, trainable_matrix, e_param)
                 start_logits, end_logits, start_pred, end_pred, start_prob, end_prob = qanet(placeholders,
                                                                                              training=is_training)
