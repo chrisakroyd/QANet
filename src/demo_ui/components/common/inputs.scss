@@ -1,5 +1,4 @@
 $anim-duration: .5s;
-$button-height: 20px;
 $back-button-height: 24px;
 $button-padding: 15px;
 $border-radius: 5px;
@@ -20,7 +19,6 @@ $section-margin: 20px;
   display: flex;
   justify-content: center;
   vertical-align: middle;
-  height: $button-height;
   padding: $button-padding;
   font-size: $font-size;
   border-radius: $border-radius;
@@ -63,12 +61,11 @@ $section-margin: 20px;
 .context-options {
   display: flex;
   flex-direction: row;
+  align-items: center;
   margin: $section-margin 0;
 
   .context-or, .context-option {
-    height: $button-height;
     padding: $button-padding;
-    margin-right: $context-option-spacing;
   }
 
   .context-option {
@@ -91,7 +88,7 @@ $section-margin: 20px;
   border: $border-width solid $neutral-colour;
   border-radius: $border-radius;
   background-color: rgba(0, 0, 0, 0.02);
-  transition: .25s;
+  transition: $anim-duration;
 
   &:hover {
     background-color: rgba(0, 0, 0, 0.05);

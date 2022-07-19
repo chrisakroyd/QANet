@@ -4,7 +4,7 @@
   * Python>=3.6
   * NumPy
   * tqdm
-  * TensorFlow==1.12
+  * TensorFlow==1.13
   * Spacy
   * Flask (only for demo)
 
@@ -19,7 +19,25 @@ To run QANet on SQuAD, you will first need to download the dataset. The the nece
 *   [train-v1.1.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v1.1.json)
 *   [dev-v1.1.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json)
 
-Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically.
+Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically. To run on this dataset the command is:
+```
+python main.py --mode train --dataset squad_v1
+```
+
+### SQuAD 2.0
+
+SQuAD 2.0 is the next iteration of the SQuAD dataset that introduces 43,498 negative examples, questions which have no answer within the given text. This expands the total size of the dataset to 130,319 and introduces an is_impossible key and possible answers that could answer the question but do not. An experimental version of this repository which works with squad-2.0 can be found on its own branch [here](https://github.com/ChristopherAkroyd/QANet/tree/squad-2.0).
+
+To run QANet on SQuAD, you will first need to download the dataset. The the necessary data files can be found here:
+
+*   [train-v2.0.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json)
+*   [dev-v2.0.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json)
+*   [Evaluation Script v2.0](https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/)
+
+Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically. To run on this dataset the command is:
+```
+python main.py --mode train --dataset squad_v2
+```
 
 ## Usage
 To download and preprocess the data, run the following commands:
@@ -55,7 +73,7 @@ tensorboard --logdir=./models/logs
 
 To evaluate the model with the official code, run
 ```
-python evaluate-v1.1.py ~/data/squad/dev-v1.1.json models/logs/{run_name}/answers.json
+python evaluate-v1.1.py ./data/raw/squad_v1/dev-v1.1.json ./models/logs/{run_name}/results.json
 ```
 
 
@@ -69,8 +87,8 @@ Here are the collected results from this repository and the original paper.
 
 |      Model     | Training Steps | Size | Attention Heads | Data Size (aug) |  EM  |  F1    | Time |
 |:--------------:|:--------------:|:----:|:---------------:|:---------------:|:----: |:----:  |:----:|
-|This repository* |     30,000     |  128  |        1        |   87k (no aug)  | 69.9 | 79.0  | 3h 9m|
-|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 71.2 | 80.2  | 6h 49m |
+|This repository* |     30,000     |  128  |        1        |   87k (no aug)  | 71.9 | 80.7  | 3h 17m|
+|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 71.6 | 80.5  | 7h 09m |
 |This repository* |     150,000     |  128  |        8        |   87k (no aug)  | 72.9| 81.6 | 16h 55m|
 |[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|1|87k (no aug)| 70.7 | 79.8 | - |
 |[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|8|87k (no aug)| 70.8 | 80.1 | - |
@@ -79,7 +97,7 @@ Here are the collected results from this repository and the original paper.
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     150,000    |  128 |        8        |   87k (no aug)  | 73.6 | 82.7 | 18h 00m
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     340,000    |  128 |        8        |    240k (aug)   | 75.1 | 83.8 | -
 
-\* Results + train time measured through tensorboard on a computer running Windows 10 Education with 2 Nvidia GTX 1080 Ti, Ryzen Threadripper 1900X and 32GB RAM. Results gained without the use of exponential moving average variables, test-time performance is therefore likely to be higher.
+\* Results + train time measured through tensorboard on a computer running Windows 10 Education with a Nvidia GTX 1080 Ti, Ryzen Threadripper 1900X and 32GB RAM. Results gained without the use of exponential moving average variables, test-time performance is therefore likely to be higher.
 
 ## Implementation Notes
   * This repository makes heavy use of tf.keras API for code readability and future compatability reasons as TensorFlow is standardising upon this for TF v2.0.
@@ -92,6 +110,7 @@ Here are the collected results from this repository and the original paper.
   * In the original paper, each word is padded or truncated to 16 characters in length before embedding, this implementation pads or truncates to the max character length within the batch.
   * The original paper doesn't specify how they handled using pre-trained embeddings with trainable unknown tokens (<UNK>), this implementation adopts a original approach which I will be detailing in a blog post at a later date.
   * A linear learning rate warmup rate is used versus the inverse exponential used in the paper.
+  * The original papers approach to backtranslation was to train two Seq2Seq models for each language. In the interests of ease of use and my wallet, we use the Azue translate API as it has a generous free tier of 2 million characters and support for a wide range of languages.
 
 ## TODO's
 #### Preprocessing

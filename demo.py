@@ -26,10 +26,10 @@ def demo(sess_config, params):
     app = Flask(__name__, static_folder=params.dist_dir)
     app.after_request(add_cors_headers)
 
-    model_dir, _ = util.save_paths(params)
-    word_index_path, _, char_index_path = util.index_paths(params)
-    examples_path = util.examples_path(params)
-    embedding_paths = util.embedding_paths(params)
+    model_dir, _ = util.save_paths(params.models_dir, params.run_name)
+    examples_path = util.examples_path(params.data_dir, params.dataset)
+    word_index_path, _, char_index_path = util.index_paths(params.data_dir, params.dataset)
+    embedding_paths = util.embedding_paths(params.data_dir, params.dataset)
     word_index, char_index, examples = util.load_multiple_jsons(paths=(word_index_path, char_index_path, examples_path))
 
     tokenizer = util.Tokenizer(lower=False,
@@ -137,6 +137,6 @@ def demo(sess_config, params):
 if __name__ == '__main__':
     defaults = util.namespace_json(path=constants.FilePaths.DEFAULTS)
     flags = config.model_config(defaults).FLAGS
-    params = util.load_config(flags, util.config_path(flags))  # Loads a pre-existing config otherwise == params
+    params = util.load_config(flags, util.config_path(flags.models_dir, flags.run_name))  # Loads a pre-existing config otherwise == params
     app = demo(config.gpu_config(), params)
     app.run(port=5000)
