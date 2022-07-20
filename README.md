@@ -1,5 +1,4 @@
 # QANet
-## What makes this implementation different?
 ## Requirements
   * Python>=3.6
   * NumPy
@@ -8,41 +7,12 @@
   * Spacy
   * Flask (only for demo)
 
-## Dataset
-
-### SQuAD 1.1
-
-The Stanford Question Answering Dataset (SQuAD) is a reading comprehension dataset consisting of 100,000+ question/answer pairs where each answer is a span of text from a corresponding wikipedia article. At the time of writing, a QANet ensemble is currently in 3rd place on the [SQuAD 1.1 leaderboard](https://rajpurkar.github.io/SQuAD-explorer/) but at release it achieved state-of-the-art results. Although SQuAD is a great example of an open-source public dataset, there are several cases where the given answers don't match the wikipedia articles, have several characters cut off or the given text is littered with [citation needed] tags. We deal with this via a similarity measure during preprocessing and adopt the character-character alignment approach from [BERT](https://github.com/google-research/bert) when extracting answers.
-
-To run QANet on SQuAD, you will first need to download the dataset. The the necessary data files can be found here:
-
-*   [train-v1.1.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v1.1.json)
-*   [dev-v1.1.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json)
-
-Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically. To run on this dataset the command is:
-```
-python main.py --mode train --dataset squad_v1
-```
-
-### SQuAD 2.0
-
-SQuAD 2.0 is the next iteration of the SQuAD dataset that introduces 43,498 negative examples, questions which have no answer within the given text. This expands the total size of the dataset to 130,319 and introduces an is_impossible key and possible answers that could answer the question but do not. An experimental version of this repository which works with squad-2.0 can be found on its own branch [here](https://github.com/ChristopherAkroyd/QANet/tree/squad-2.0).
-
-To run QANet on SQuAD, you will first need to download the dataset. The the necessary data files can be found here:
-
-*   [train-v2.0.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json)
-*   [dev-v2.0.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json)
-*   [Evaluation Script v2.0](https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/)
-
-Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically. To run on this dataset the command is:
-```
-python main.py --mode train --dataset squad_v2
-```
-
 ## Usage
 To download and preprocess the data, run the following commands:
 
 ```
+# Download Spacy Model
+python -m spacy download en_core_web_sm
 # Download SQuAD and Glove
 python main.py --mode download
 # Preprocess the data
@@ -76,9 +46,62 @@ To evaluate the model with the official code, run
 python evaluate-v1.1.py ./data/raw/squad_v1/dev-v1.1.json ./models/logs/{run_name}/results.json
 ```
 
+## Running the demo.
 
+To run the demo, you need to have either downloaded or trained a model. To avoid polluting the repository I haven't included a pre-built version of
+the demo with the project. To run the demo you need to first have node/npm installed and run the below commands.
+
+```
+npm install
+npm run build-production
+```
+
+All you need to do now is run the below command to start the demo. By default the server runs on localhost:5000, not only do you
+have a demo run on the port but a full API hooked up to run inference that you can use for other purposes.
+
+```
+python main.py --mode demo --run_name this_is_a_new_run_name
+```
+
+## Dataset
+
+### SQuAD 1.1
+
+The Stanford Question Answering Dataset (SQuAD) is a reading comprehension dataset consisting of 100,000+ question/answer pairs where each answer is a span of text from a corresponding wikipedia article. At the time of writing, a QANet ensemble is currently in 3rd place on the [SQuAD 1.1 leaderboard](https://rajpurkar.github.io/SQuAD-explorer/) but at release it achieved state-of-the-art results. Although SQuAD is a great example of an open-source public dataset, there are several cases where the given answers don't match the wikipedia articles, have several characters cut off or the given text is littered with [citation needed] tags. We deal with this via a similarity measure during preprocessing and adopt the character-character alignment approach from [BERT](https://github.com/google-research/bert) when extracting answers.
+
+To run QANet on SQuAD, you will first need to download the dataset. The the necessary data files can be found here:
+
+*   [train-v1.1.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v1.1.json)
+*   [dev-v1.1.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v1.1.json)
+
+Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically. To run on this dataset the command is:
+```
+python main.py --mode train --dataset squad_v1
+```
+
+### SQuAD 2.0
+
+SQuAD 2.0 is the next iteration of the SQuAD dataset that introduces 43,498 negative examples, questions which have no answer within the given text. This expands the total size of the dataset to 130,319 and introduces an is_impossible key and possible answers that could answer the question but do not. An experimental version of this repository which works with squad-2.0 can be found on its own branch [here](https://github.com/ChristopherAkroyd/QANet/tree/squad-2.0).
+
+To run QANet on SQuAD, you will first need to download the dataset. The the necessary data files can be found here:
+
+*   [train-v2.0.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/train-v2.0.json)
+*   [dev-v2.0.json](https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json)
+*   [Evaluation Script v2.0](https://worksheets.codalab.org/rest/bundles/0x6b567e1cf2e041ec80d7098f031c5c9e/contents/blob/)
+
+Alternatively run the command ```python main.py --mode download``` and all the neccessary files will be downloaded automatically. To run on this dataset the command is:
+```
+python main.py --mode train --dataset squad_v2
+```
 
 ### Preprocessed Data and Pretrained Model
+
+#### Preprocessed data
+* [No augmentation Squad V1.1 data](https://drive.google.com/open?id=1N_Il8LK8LdiYpJCR_JGmfgX4t1oeVoL_).
+
+#### Pre-trained models
+* 30k Training steps, 1 attention head 72.0/80.7 EM/F1 [download here]().
+* 60k Training steps, 1 attention head, 72.1/80.8 EM/F1 [download here]().
 
 Preprocessed data will be available once I've completed the implementation of the data augmentation section of the paper. A model trained for 28k steps with dev EM/F1 score of 69.4/78.8 can be downloaded from here: INSERT LINK TO CLOUD DOWNLOAD
 
@@ -87,17 +110,18 @@ Here are the collected results from this repository and the original paper.
 
 |      Model     | Training Steps | Size | Attention Heads | Data Size (aug) |  EM  |  F1    | Time |
 |:--------------:|:--------------:|:----:|:---------------:|:---------------:|:----: |:----:  |:----:|
-|This repository* |     30,000     |  128  |        1        |   87k (no aug)  | 71.9 | 80.7  | 3h 17m|
-|This repository* |     60,000     |  128  |        1        |   87k (no aug)  | 71.6 | 80.5  | 7h 09m |
-|This repository* |     150,000     |  128  |        8        |   87k (no aug)  | 72.9| 81.6 | 16h 55m|
-|[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|1|87k (no aug)| 70.7 | 79.8 | - |
-|[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (reported)|60,000|128|8|87k (no aug)| 70.8 | 80.1 | - |
-|[NLPLearn - QANet](https://github.com/NLPLearn/QANet) (measured)*|60,000|128|1|87k (no aug)| 70.4| 79.2| 11h 32m|
-|[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     35,000     |  128 |        8        |   87k (no aug)  |  NA  | 77.0 | 3h 00m
+|This repository |     30,000     |  128  |        1        |   87k (no aug)  | 72.0 | 80.7  | 3h 07m|
+|This repository |     60,000     |  128  |        1        |   87k (no aug)  | 72.1 | 80.8  | 6h 32m |
+|This repository |     150,000     |  128  |        8        |   87k (no aug)  | 73.1| 82.3 | 16h 55m|
+|This repository + ELMo Fixed |     14,000     |  128  |        1        |   87k (no aug)  | 74.9 | 83.0  | 2h 15m |
+|This repository + ELMo Finetuned |     13,000     |  128  |        1        |   87k (no aug)  | 75.2 | 83.3  | 5h 12m |
+|[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     -     |  128 |        8        |   87k (no aug)  |  NA  | 77.0 | 3h 00m
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     150,000    |  128 |        8        |   87k (no aug)  | 73.6 | 82.7 | 18h 00m
 |[Original Paper](https://arxiv.org/pdf/1804.09541.pdf)|     340,000    |  128 |        8        |    240k (aug)   | 75.1 | 83.8 | -
 
-\* Results + train time measured through tensorboard on a computer running Windows 10 Education with a Nvidia GTX 1080 Ti, Ryzen Threadripper 1900X and 32GB RAM. Results gained without the use of exponential moving average variables, test-time performance is therefore likely to be higher.
+Results + train time for single-headed runs were measured through tensorboard on a computer running Windows 10 Education with a Nvidia GTX 1080 Ti, Ryzen Threadripper 1900X and 32GB RAM. Runs with 8 attention heads were trained on a Google Cloud n1-standard-8 instance with a V100 GPU. ELMo runs used max_tokens of 300 instead of 400 used in the original paper
+
+The ELMo results could very easily be improved with some parameter tuning/a run longer than 15000 steps/max_tokens > 300 but I currently have not had the time/resources to do this myself.
 
 ## Implementation Notes
   * This repository makes heavy use of tf.keras API for code readability and future compatability reasons as TensorFlow is standardising upon this for TF v2.0.
@@ -108,9 +132,11 @@ Here are the collected results from this repository and the original paper.
 
 ## Differences to Original Paper
   * In the original paper, each word is padded or truncated to 16 characters in length before embedding, this implementation pads or truncates to the max character length within the batch.
-  * The original paper doesn't specify how they handled using pre-trained embeddings with trainable unknown tokens (<UNK>), this implementation adopts a original approach which I will be detailing in a blog post at a later date.
+  * The original paper doesn't specify how they handled using pre-trained embeddings with trainable unknown tokens (<UNK>), this implementation adopts a original approach.
   * A linear learning rate warmup rate is used versus the inverse exponential used in the paper.
-  * The original papers approach to backtranslation was to train two Seq2Seq models for each language. In the interests of ease of use and my wallet, we use the Azue translate API as it has a generous free tier of 2 million characters and support for a wide range of languages.
+  * Position encoding takes place at the start of each stack vs the start of each block as in the original paper.
+  * Weights are initialized with a truncated normal initializer with a standard deviation of 0.02.
+  * Currently supports both fixed and fine-tunable [ELMo embeddings](https://allennlp.org/elmo).
 
 ## TODO's
 #### Preprocessing
@@ -132,9 +158,9 @@ Here are the collected results from this repository and the original paper.
 - [x] Full model implementation following the original paper.
 - [x] Train with full hyperparameters (Augmented data, 8 heads, hidden units = 128).
 - [x] Official script evaluation.
-- [ ] Character-to-character answer alignment from BERT (Devlin et al. 2018)
+- [x] Character-to-character answer alignment from BERT (Devlin et al. 2018)
 - [ ] SQuAD 2.0 support.
-- [ ] ELMo support.
+- [x] ELMo support.
 - [ ] Tensor processing unit (TPU) and tf.estimator Support.
 
 
@@ -159,10 +185,11 @@ Yes! As long as the file storing the vectors is formatted like a GloVE or FastTe
 
 #### I am getting out-of-memory errors, what is wrong?
 
-This issue happens because the gradient calculation for the multi-head attention can be quite expensive, especially
+This issue occurs because gradient calculation for the multi-head attention can be quite memory intensive, especially
 when used in tandem with a high max_tokens. The best way to avoid this is to, reduce the character dimension, hidden size
-or the batch size or max_tokens. Otherwise I'm working on adding support for [Gradient Checkpointing](https://github.com/openai/gradient-checkpointing)
-and a more memory-efficient multi-head attention implementation.
+or the batch size or max_tokens.
+
+If this doesn't work or you'd still like to train with full parameters, pass the command line flag `--low_memory`. This is an **_experimental_** feature that tells the neural network to recompute the forward pass of every multi-head attention layer during backpropagation in order to save GPU memory at the cost of performance (≈40% slower) but allows the 8-headed variant to be trained on a 11GB GPU. As this is experimental, there are **_no guarantees_** that an 8-headed variant trained with recomputed gradients will match the performance of one trained using standard backprop.
 
 #### What is Spacy being used for?
 Spacy provides much better tokenization out of the box vs nltk or simply splitting on whitespace.

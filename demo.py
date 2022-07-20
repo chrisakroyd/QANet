@@ -3,10 +3,11 @@ import random
 import numpy as np
 import tensorflow as tf
 from src import config, constants, demo_utils, models, pipeline, preprocessing as prepro, train_utils, util
-
+from src.tokenizer import Tokenizer
 API_VERSION = 1
 BAD_REQUEST_CODE = 400
 
+dist_dir = './dist/'
 
 def demo(sess_config, params):
     # Although bad practice, I don't want to force people to install unnecessary dependencies to run this repo.
@@ -23,7 +24,7 @@ def demo(sess_config, params):
                 response.headers['Access-Control-Allow-Headers'] = headers
         return response
 
-    app = Flask(__name__, static_folder=params.dist_dir)
+    app = Flask(__name__, static_folder=dist_dir)
     app.after_request(add_cors_headers)
 
     model_dir, _ = util.save_paths(params.models_dir, params.run_name)
@@ -32,12 +33,12 @@ def demo(sess_config, params):
     embedding_paths = util.embedding_paths(params.data_dir, params.dataset)
     word_index, char_index, examples = util.load_multiple_jsons(paths=(word_index_path, char_index_path, examples_path))
 
-    tokenizer = util.Tokenizer(lower=False,
-                               oov_token=params.oov_token,
-                               word_index=word_index,
-                               char_index=char_index,
-                               trainable_words=params.trainable_words,
-                               filters=None)
+    tokenizer = Tokenizer(lower=False,
+                          oov_token=params.oov_token,
+                          word_index=word_index,
+                          char_index=char_index,
+                          trainable_words=params.trainable_words,
+                          filters=None)
 
     vocabs = util.load_vocab_files(paths=(word_index_path, char_index_path))
     word_matrix, trainable_matrix, character_matrix = util.load_numpy_files(paths=embedding_paths)
@@ -46,7 +47,9 @@ def demo(sess_config, params):
     sess = tf.Session(config=sess_config)
     sess.run(tf.tables_initializer())
 
-    if params.use_contextual:
+    use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
+
+    if use_contextual:
         qanet = models.QANetContextual(word_matrix, character_matrix, trainable_matrix, params)
     else:
         qanet = models.QANet(word_matrix, character_matrix, trainable_matrix, params)
@@ -76,8 +79,8 @@ def demo(sess_config, params):
         context = prepro.normalize(data['context'])
         query = prepro.normalize(data['query'])
 
-        context_tokens = tokenizer.tokenize(context)
-        query_tokens = tokenizer.tokenize(query)
+        context_tokens = tokenizer.tokenize(context)[0]
+        query_tokens = tokenizer.tokenize(query)[0]
 
         if len(data['context']) <= 0 or len(context_tokens) <= 0:
             return json.dumps(demo_utils.get_error_response(constants.ErrorMessages.INVALID_CONTEXT,
@@ -126,10 +129,10 @@ def demo(sess_config, params):
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve(path):
-        if path != '' and os.path.exists(params.dist_dir + path):
-            return send_from_directory(params.dist_dir, path)
+        if path != '' and os.path.exists(dist_dir + path):
+            return send_from_directory(dist_dir, path)
         else:
-            return send_from_directory(params.dist_dir, 'index.html')
+            return send_from_directory(dist_dir, 'index.html')
 
     return app
 

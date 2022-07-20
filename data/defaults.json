@@ -58,7 +58,7 @@
   "train_steps": 60000,
   "checkpoint_every": 1000,
   "write_answer_file": true,
-  "contextual_model": "elmo",
+  "contextual_model": "",
   "fixed_contextual_embeddings": false,
   "override_cache_behaviour": false,
   "weight_decay": 0.000001,

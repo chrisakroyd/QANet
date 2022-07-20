@@ -1,7 +1,7 @@
 import os
 import math
 import tensorflow as tf
-from src import util
+from src import constants, util
 # useful link on pipelines: https://cs230-stanford.github.io/tensorflow-input-data.html
 
 
@@ -302,13 +302,13 @@ def create_demo_pipeline(params, tables, data):
             A `tf.data.Dataset` object and an initializable iterator.
     """
     parallel_calls = get_num_parallel_calls(params)
-
+    use_contextual = params.model == constants.ModelTypes.QANET_CONTEXTUAL
     data = tf.data.Dataset.from_tensor_slices(dict(data))
     data = index_lookup(data, tables, char_limit=params.char_limit, num_parallel_calls=parallel_calls)
-    data = post_processing(data, use_contextual=params.use_contextual, contextual_model=params.contextual_model,
+    data = post_processing(data, use_contextual=use_contextual, contextual_model=params.contextual_model,
                            num_parallel_calls=parallel_calls)
 
-    padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=params.use_contextual,
+    padded_shapes = get_padded_shapes(max_characters=params.char_limit, use_contextual=use_contextual,
                                       contextual_model=params.contextual_model, has_labels=False)
     data = data.padded_batch(
         batch_size=params.batch_size,

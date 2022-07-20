@@ -7,8 +7,6 @@
     "doc": "docs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "server": "cd src/server && node server.js",
     "build-dev": "webpack-dev-server --progress --color --live-reload --static-watch --profile --port 8081 --config webpack.dev.js",
     "build-production": "webpack --progress --color --profile --config webpack.prod.js"
   },

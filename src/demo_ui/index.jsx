@@ -1,5 +1,5 @@
 import React from 'react';
-import createHashHistory from 'history/createHashHistory';
+import createBrowserHistory from 'history/createBrowserHistory';
 import thunk from 'redux-thunk';
 import { render } from 'react-dom';
 import { createStore, applyMiddleware, combineReducers } from 'redux';
@@ -14,7 +14,7 @@ import './index.scss';
 
 let middleware;
 
-const history = createHashHistory();
+const history = createBrowserHistory();
 
 
 if (process.env.NODE_ENV !== 'production') {
@@ -26,7 +26,7 @@ if (process.env.NODE_ENV !== 'production') {
     logger,
   ));
 } else {
-  middleware = applyMiddleware(thunk);
+  middleware = applyMiddleware(routerMiddleware(history), thunk);
 }
 
 const reducers = combineReducers({

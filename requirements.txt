@@ -1,6 +1,7 @@
 numpy==1.16.2
 spacy==2.0.12
 tensorflow==1.13.1
+tensorflow-gpu==1.13.1
 tensorflow-probability==0.6.0
 tensorflow-hub==0.7.0
 regex==2018.07.11

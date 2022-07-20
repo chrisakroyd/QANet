@@ -1,8 +1,30 @@
 # Project Overview
 This is an implemenation of the paper [QANet](https://arxiv.org/pdf/1804.09541.pdf)
-## Running from scratch
 
-## Adding a new dataset
+## Running from scratch on Google Cloud
+
+```
+gcloud compute instances create cakroyd-qanet --zone=europe-west4-b --image-family=tf-latest-gpu --image-project=deeplearning-platform-release --maintenance-policy=TERMINATE --accelerator=type=nvidia-tesla-v100,count=1 --machine-type=n1-standard-8 --preemptible --boot-disk-size=200GB --boot-disk-type=pd-ssd --boot-disk-device-name=cakroyd-qanet --metadata=install-nvidia-driver=True
+```
+
+## How the pipeline works 
+The training and validation pipeline is built with the tf.data API and lookup tables, lookup tables for a text input pipeline may be unfamiliar so I will be giving a brief explanation. During pre-processing we save the context and query as a sequence of string tokens and perform an index lookup when we first load the data.
+
+We first create a lookup table from a vocab (in this repo we create two, one for words, one for characters):
+`word_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(vocab, dtype=tf.string), default_value=len(vocab) - 1)`
+
+We then convert a sequence of string tokens to a sequence of word indices and add 1 so that 0 can be treated as a pad token.
+`context_words = word_table.lookup(fields['context_tokens']) + 1`
+
+We get the characters by using string split and perform the lookup in the exact same way. The only difference is that as a result of the string split the lookup returns a sparse tensor which we must convert to be dense.
+
+````
+context_chars = tf.string_split(fields['context_tokens'], delimiter='')
+context_chars = char_table.lookup(context_chars), default_value=-1) + 1
+context_chars = tf.sparse.to_dense(context_chars)
+````
+
+So why use this method? Instead of having to save two matrices of shape [max_tokens], [max_tokens, char_limit] we end up only needing to save one which cuts filesize by two thirds and decreases load time by the same amount. By caching the dataset we only need to perform this once on the first epoch, negating any performance impact from the lookups.
 
 ## File Structure
 
@@ -40,7 +62,7 @@ This is an implemenation of the paper [QANet](https://arxiv.org/pdf/1804.09541.p
 ├── demo.py            <- Runs the Flask Demo server.
 ├── download.py        <- Downloads embeddings + data.
 ├── test.py            <- Runs test mode, outputting metrics and a results file.
-├── train.py           <- Runs train mode,
+├── train.py           <- Runs train mode, 
 ├── main.py            <- Runs any mode set with the --mode flag.
 ├── requirements.txt
 ├── LICENSE
@@ -213,21 +235,3 @@ This is an implemenation of the paper [QANet](https://arxiv.org/pdf/1804.09541.p
 ````
 
 
-## How the pipeline works
-The training and validation pipeline is built with the tf.data API and lookup tables, lookup tables for a text input pipeline may be unfamiliar so I will be giving a brief explanation. During pre-processing we save the context and query as a sequence of string tokens and perform an index lookup when we first load the data.
-
-We first create a lookup table from a vocab (in this repo we create two, one for words, one for characters):
-`word_table = tf.contrib.lookup.index_table_from_tensor(mapping=tf.constant(vocab, dtype=tf.string), default_value=len(vocab) - 1)`
-
-We then convert a sequence of string tokens to a sequence of word indices and add 1 so that 0 can be treated as a pad token.
-`context_words = word_table.lookup(fields['context_tokens']) + 1`
-
-We get the characters by using string split and perform the lookup in the exact same way. The only difference is that as a result of the string split the lookup returns a sparse tensor which we must convert to be dense.
-
-````
-context_chars = tf.string_split(fields['context_tokens'], delimiter='')
-context_chars = char_table.lookup(context_chars), default_value=-1) + 1
-context_chars = tf.sparse.to_dense(context_chars)
-````
-
-So why use this method? Instead of having to save two matrices of shape [max_tokens], [max_tokens, char_limit] we end up only needing to save one which cuts filesize by two thirds and decreases load time by the same amount. By caching the dataset we only need to perform this once on the first epoch, negating any performance impact from the lookups.

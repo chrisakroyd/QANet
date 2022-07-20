@@ -23,7 +23,7 @@ class QANetContextual(tf.keras.Model):
                                                use_trainable=params.use_trainable, word_dim=params.embed_dim,
                                                char_dim=params.char_dim, word_dropout=self.dropout,
                                                char_dropout=self.dropout / 2, kernel_size=params.char_kernel_size,
-                                               use_contextual=params.use_contextual)
+                                               use_contextual=True)
 
         self.embedding_encoder = layers.EncoderBlockStack(blocks=params.embed_encoder_blocks,
                                                           conv_layers=params.embed_encoder_convs,
